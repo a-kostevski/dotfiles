@@ -1,0 +1,10 @@
+#!/bin/zsh
+if [ $1 ]; then
+    src="$1"
+else
+    src=$XDG_CONFIG_HOME/macos
+fi
+
+echo "Reading configuration from $src"
+source $src/defaults
+source $src/harden

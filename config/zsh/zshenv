@@ -1,0 +1,77 @@
+# Unset all global options, giving us total control over the environment.
+unsetopt GLOBAL_RCS
+
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+
+export TMPDIR=${TMPDIR:-$(getconf DARWIN_USER_TEMP_DIR)}
+export XDG_RUNTIME_DIR=$TMPDIR/run
+[ ! -d $XDG_RUNTIME_DIR ] && mkdir -m 0700 -p $XDG_RUNTIME_DIR
+
+# Default zsh dotfile directory
+export ZDOTDIR=$XDG_CONFIG_HOME/zsh
+
+# Disable less history
+export LESSHISTFILE=-
+
+# Composer
+export COMPOSER_HOME=${XDG_CONFIG_HOME}/composer
+export COMPOSER_CACHE_DIR=${XDG_CACHE_HOME}/composer
+
+# Cpanm
+export PERL_CPANM_HOME=$XDG_CONFIG_HOME/cpanm
+
+# Python & iPython
+export PYTHONSTARTUP=$XDG_CONFIG_HOME/python/startup.py
+export IPYTHONDIR=$XDG_CONFIG_HOME/ipython
+export PYTHON_HISTORY=$XDG_STATE_HOME/python/history
+export PYTHONPYCACHEPREFIX=$XDG_CACHE_HOME/python
+export PYTHONUSERBASE=$XDG_DATA_HOME/python
+
+# Poetry
+export POETRY_HOME=$XDG_DATA_HOME/poetry
+export POETRY_DATA_DIR=$XDG_DATA_HOME/poetry
+export POETRY_CACHE_DIR=$XDG_CACHE_HOME/poetry
+export POETRY_CONFIG_DIR=$XDG_CONFIG_HOME/poetry
+export POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true
+
+# Matplotlib
+export MPLCONFIGDIR=$XDG_CONFIG_HOME/matplotlib
+
+# ffmpeg
+export FFMPEG_DATADIR=$XDG_CONFIG_HOME/ffmpeg
+
+# Gnupg
+export GNUPGHOME=$XDG_DATA_HOME/gnupg
+
+# Gem
+export GEM_HOME=$XDG_DATA_HOME/gem
+export GEM_SPEC_CACHE=$XDG_CACHE_HOME/gem
+
+# npm
+export NPM_CONFIG_USERCONFIG=$XDG_CONFIG_HOME/npm/npmrc
+export NODE_REPL_HISTORY=$XDG_STATE_HOME/node/node_repl_history
+
+# electrum
+export ELECTRUMDIR=$XDG_DATA_HOME/electrum
+
+# Bundle
+export BUNDLE_USER_CONFIG=$XDG_CONFIG_HOME/bundle
+export BUNDLE_USER_CACHE=$XDG_CACHE_HOME/bundle
+export BUNDLE_USER_PLUGIN=$XDG_DATA_HOME/bundle
+
+# sqlite and postgres
+export SQLITE_HISTORY=$XDG_DATA_HOME/sqlite_history
+export PSQL_HISTORY=$XDG_DATA_HOME/psql_history
+export PSQLRC=$XDG_CONFIG_HOME/pg/psqlrc
+export PSQL_HISTORY=$XDG_STATE_HOME/psql_history
+export PGPASSFILE=$XDG_CONFIG_HOME/pg/pgpass
+export PGSERVICEFILE=$XDG_CONFIG_HOME/pg/pg_service.conf
+
+# https://github.com/sorin-ionescu/prezto/blob/master/runcoms/zshenv
+# Ensure that a non-login, non-interactive shell has a defined environment.
+if [[ $SHLVL == 1 && ! -o LOGIN ]]; then
+    source $ZDOTDIR/.zprofile
+fi
