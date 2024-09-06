@@ -1,5 +1,4 @@
 [alias]
-
 	# View abbreviated SHA, description, and history graph of the latest 20 commits.
 	l = log --pretty=oneline -n 20 --graph --abbrev-commit
 
@@ -93,9 +92,6 @@
 	untrackedCache = true
 
 [color]
-
-	# Use colors in Git commands that are capable of colored output when
-	# outputting to the terminal. (This is the default setting in Git ≥ 1.8.4.)
 	ui = auto
 
 [color "branch"]
@@ -139,9 +135,17 @@
 [init]
 	defaultBranch = main
 
-[user]
-	name = a-kostevski
-	email = anton@kostevski.com
+[gpg]
+    format = ssh
+
+[gpg "ssh"]
+    program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+
+[commit]
+    gpgSign = true
+
+[include]
+    path = gitconfig.local
 
 [filter "lfs"]
 	process = git-lfs filter-process
