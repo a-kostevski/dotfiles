@@ -1,9 +1,5 @@
 export PROMPT_EOL_MARK=""
 
-# PROMPT_PATH='%B%F{reset}%(6~.%-1~/…/%4~.%5~)%b%F{green}'
-# PROMPT_LINE2=$'\n%F{green}└─%B%F{blue}$%b%F{reset} '
-# PROMPT=$PROMPT_PATH$PROMPT_LINE2
-
 git_prompt_status() {
   local INDEX STATUS
 

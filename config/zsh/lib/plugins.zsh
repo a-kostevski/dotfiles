@@ -9,7 +9,8 @@ export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agen
 ## pyenv
 export PYENV_ROOT=$XDG_DATA_HOME/pyenv
 eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
+[[ -z "$PYENV_VIRTUALENV_INIT" ]] && eval "$(pyenv virtualenv-init -)"
+
 
 ## zsh-syntax-highlighting
 source $HOMEBREW_PREFIX/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
