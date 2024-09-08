@@ -13,6 +13,7 @@ alias clr="clear;echo 'Currently logged in on $(tty), as $(whoami) in directory 
 
 # --- Network ---
 alias getmac="ifconfig en0 | grep 'ether' | awk '{print \$2}'"
+alias geoip="curl ipinfo.io/"
 alias localip4="ipconfig getifaddr en0"
 alias localip6="ifconfig en0 | grep inet6 | awk '{print \$2}'"
 alias localip="localip4"
@@ -55,6 +56,8 @@ alias reload="exec ${SHELL}"
 alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
 alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
 
+alias brewgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
+alias macos_config="source $XDG_CONFIG_HOME/macos/defaults && source $XDG_CONFIG_HOME/macos/harden"
 # --- Profiling ---
 alias zshtimeprofile="time ZSH_PROFILING=true zsh -i -c exit;"
 alias zshtime="for i in $(seq 1 10); do time zsh -i -c exit; done"

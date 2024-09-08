@@ -1,51 +1,72 @@
-#!/bin/zsh
-# Creates a GNU or MIT license file for a project
-# Usage: mk_license [-o output_file] [-y year] [-a author] [-l license] [-f force] [-h]
+#!/bin/sh
+# Public: Create a license file for a project.
+#
 # Defaults: output_file=LICENSE, year=current year, author=author, license=MIT
+#
+# Examples:
+#
+#   mk_license -o LICENSE -y 2018 -a "John Doe" -l MIT
+#   mk_license -o LICENSE -y 2018 -a "John Doe" -l GNU
+#
+usage() {
+    echo "Usage: mk_license [-o output_file] [-y year] [-a author] [-l license] [-hf]"
+    echo
+    echo "Options:"
+    echo "  -o, --output       Set the output file (default: LICENSE)"
+    echo "  -y, --year         Set the year (default: current year)"
+    echo "  -a, --author       Set the author (default: author)"
+    echo "  -l, --license      Set the license type (MIT or GNU, default: MIT)"
+    echo "  -f, --force        Force overwrite of existing file"
+    echo "  -h, --help         Show this help message"
+}
 
-# Default values
 output_file="LICENSE"
 year=$(date +%Y)
 author=$(whoami)
 license="MIT"
 force=false
-# Function to display help
-show_help() {
-  echo "Usage: mk_license [-o output_file] [-y year] [-a author] [-l license] [-hf]"
-  echo
-  echo "Options:"
-  echo "  -o output_file  Set the output file (default: LICENSE)"
-  echo "  -y year         Set the year (default: current year)"
-  echo "  -a author       Set the author (default: author)"
-  echo "  -l license      Set the license type (MIT or GNU, default: MIT)"
-  echo "  -f              Force overwrite of existing file"
-  echo "  -h              Show this help message"
-}
-
 # Parse command line options
-while getopts "o:y:a:l:fh:" opt; do
-  case $opt in
-    o) output_file=$OPTARG ;;
-    y) year=$OPTARG ;;
-    a) author=$OPTARG ;;
-    l) license=$OPTARG ;;
-    f) force=true ;;
-    h) show_help
-       exit 0 ;;
-    *) show_help
-       exit 1 ;;
-  esac
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -o | --output)
+        shift
+        output_file=$1
+        ;;
+    -y | --year)
+        shift
+        year=$1
+        ;;
+    -a | --author)
+        shift
+        author=$1
+        ;;
+    -l | --license)
+        shift
+        license=$1
+        ;;
+    -f | --force)
+        force=true
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+    esac
+    shift
 done
 
-
-if [[ -e "$output_file" && $force == false ]]; then 
+if [[ -e "$output_file" && $force == false ]]; then
     echo "File already exists: $output_file"
     exit 1
 fi
 
 # Create the license content
 if [[ "$license" == "MIT" ]]; then
-  license_text="
+    license_text="
 MIT License
 
 Copyright (c) $year $author
@@ -68,7 +89,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE."
 elif [[ "$license" == "GNU" ]]; then
-  license_text="GNU GENERAL PUBLIC LICENSE
+    license_text="GNU GENERAL PUBLIC LICENSE
 Version 3, 29 June 2007
 
 Copyright (C) $year $author
@@ -92,10 +113,10 @@ your programs, too.
 
 (Full text of the GNU General Public License can be found at https://www.gnu.org/licenses/gpl-3.0.txt)"
 else
-  echo "Unsupported license type: $license"
-  exit 1
+    echo "Unsupported license type: $license"
+    exit 1
 fi
 
 # Write the license content to the output file
-echo "$license_text" > "$output_file"
+echo "$license_text" >"$output_file"
 echo "License file created: $output_file"

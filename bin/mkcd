@@ -1,0 +1,10 @@
+#!/bin/sh
+# Make directory and change into it
+# Usage: mkcd <directory>
+
+if [ -z "$1" ]; then
+    echo "Usage: mkcd <directory>"
+    exit 1
+fi
+
+mkdir -p "$1" && cd "$1"
