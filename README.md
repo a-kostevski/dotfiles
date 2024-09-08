@@ -31,10 +31,9 @@ Todo
 ## Scripts
 
 The `bin/` directory contains various scripts for automating tasks:
-
-- **geoip**: Geographical info on IPv4
-- **macos_config**: Load macOS config files.
+- **mac_clock_toggle**: Toggle analog clock
 - **mk_license**: Generate GNU or MIT license.
+- **mkcd**: Creates dir and cds into it
 - **mkx**: Create executable file
 
 
