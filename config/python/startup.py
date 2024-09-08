@@ -1,4 +1,3 @@
-import sys
 import os
 import atexit
 import readline
