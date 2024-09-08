@@ -33,7 +33,6 @@ Todo
 The `bin/` directory contains various scripts for automating tasks:
 - **mac_clock_toggle**: Toggle analog clock
 - **mk_license**: Generate GNU or MIT license.
-- **mkcd**: Creates dir and cds into it
 - **mkx**: Create executable file
 
 
