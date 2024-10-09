@@ -9,5 +9,6 @@ append_path /usr/local/bin
 append_path /opt/homebrew/opt/postgresql@16/bin
 append_path /opt/homebrew/opt/ruby/bin
 append_path /opt/homebrew/opt/curl/bin
+append_path /opt/homebrew/opt/openjdk/bin
 append_path /Users/antonkostevski/.local/bin
 
