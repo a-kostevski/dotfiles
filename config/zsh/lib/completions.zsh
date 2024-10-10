@@ -1,97 +1,87 @@
+# --- Completion options ---
+setopt always_last_prompt   # Always put the prompt on the last line.
+setopt always_to_end        # Move the cursor to the end of the line when accepting a completion.
+setopt auto_menu            # Automatically use menu completion.
+setopt auto_param_slash     # When completing a directory name, add a slash.
+setopt auto_remove_slash    # Intelligently remove the trailing slash from a completed directory name.
+setopt complete_aliases     # Complete aliases when the _expand_alias completer is used.
+setopt complete_in_word     # Complete from both ends of a word.
+setopt no_case_glob           # Perform case-insensitive globbing.
+setopt no_flow_control      # Disable flow control.
+setopt no_list_beep         # Don't beep.
+setopt list_packed          # Packed list.
+setopt list_types           # List all types when listing completions.
+setopt path_dirs            # Perform path search even for command names with slashes.
+
+unsetopt menu_complete      # Do not autoselect the first completion entry.
+
+
 zmodload zsh/complist
 autoload -Uz compinit
 
 ZSH_COMPDUMP=$XDG_CACHE_HOME/zsh/zcompdump
+
 if [ $(date +'%j') != $(stat -f '%Sm' -t '%j' $ZSH_COMPDUMP) ]; then
     compinit -d $ZSH_COMPDUMP
 else
-    compinit -d $ZSH_COMPDUMP -C
+    compinit -C -d $ZSH_COMPDUMP
 fi
 unset ZSH_COMPDUMP
-_comp_options+=(globdots) # With hidden files
+_comp_options+=(globdots) 
 
-# Use cache for commands using cache
+# --- Set up ---
+# Define completers
+zstyle ':completion:*' completer _expand _complete _match _approximate
+
+# General completion settings
+zstyle ':completion:*' menu select
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path $XDG_CACHE_HOME/zsh/zcompcache
 
-# Complete the alias when _expand_alias is used as a function
-zstyle ':completion:*' complete true
+# --- Style ---
+# Colors
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS:-}"
 
-# Define completers
-zstyle ':completion:*' completer _extensions _complete _approximate
+# Groups
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:matches' group true
+zstyle ':completion:*:*:-command-:*:*' group-order aliases commands builtins functions 
 
-# Always show menu
-zstyle ':completion:*' menu yes select
-
-# Case insensitive completion
-zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
-
-# Autocomplete options for cd instead of directory stack
-zstyle ':completion:*' complete-options true
-
-zstyle ':completion:*' file-sort modification
-
-# Ignore completion for functions starting with _
-zstyle ':completion:*:functions' ignored-patterns '_*'
-
-zle -C alias-expension complete-word _generic
-
-zstyle ':completion:alias-expension:*' completer _expand_alias
-
-# Separate matches into groups
-zstyle ':completion:*:matches' group 'yes'
-
-# Describe each match group.
-zstyle ':completion:*:descriptions' format "%B---- %d%b"
-
-# Messages/warnings format
-zstyle ':completion:*:messages' format '%B%U---- %d%u%b' 
-zstyle ':completion:*:warnings' format '%B%U---- no match for: %d%u%b'
- 
-# Describe options in full
-zstyle ':completion:*:options' description 'yes'
-zstyle ':completion:*:options' auto-description '%d'
-
+# Descriptions
+zstyle ':completion:*:descriptions' format '%B-- %d --%b'
 zstyle ':completion:*:*:*:*:corrections' format '%F{yellow}!- %d (errors: %e) -!%f'
 zstyle ':completion:*:*:*:*:descriptions' format '%F{blue}-- %D %d --%f'
 zstyle ':completion:*:*:*:*:messages' format ' %F{purple} -- %d --%f'
 zstyle ':completion:*:*:*:*:warnings' format ' %F{red}-- no matches found --%f'
-# zstyle ':completion:*:default' list-prompt '%S%M matches%s'
-# Colors for files and directory
-zstyle ':completion:*' list-colors ''
-zstyle ':completion:*:*:cd:*' tag-order local-directories directory-stack path-directories
-# zstyle ':completion:*:complete:git:argument-1:' tag-order !aliases
 
-# Required for completion to be in good groups (named after the tags)
-zstyle ':completion:*' group-name ''
-zstyle ':completion:*:*:-command-:*:*' group-order aliases builtins functions commands
-
+# --- Behavior ---
+# Case-insensitive matching
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
 zstyle ':completion:*' keep-prefix true
 
-# Expand the context to show the full path
-zstyle ':completion:*' expand 'yes'
-zstyle ':completion:*' squeeze-slashes 'yes'
+# Filtering unavailable commands.
+zstyle ':completion:*:functions' ignored-patterns '(_*|pre(cmd|exec))'
+# Filter duplicate entries
+zstyle ':completion:*' ignore-duplicates true
+# Filter junk files
+zstyle ':completion:*' file-ignore '*.o' '*.pyc' '*~' '#*#' '.DS_Store' '*.class' '*.jar' '*.war' '*.ear' '*.zip' '*.tar' '*.gz' '*.tgz' '*.rar' '*.7z' '*.exe' '*.dll' '*.so' '*.dylib' '*.a' '*.lib' '*.obj' '*.o' '*.obj' '*.pdb' '*.idb' '*.ilk' '*.exp' '*.suo' '*.sdf' '*.opensdf' '*.ncb' '*.plg' '*.bsc' '*.aps' '*.res' '*.opt' '*.pch' '*.ipch' '*.iobj' '*.ilk' '*.log' '*.tlog' '*.lastbuildstate' '*.bin' '*.bak' '*.tmp' '*.temp' '*.old' '*.orig' '*.swp' '*.bak' '*.BAK' '*.tmp' '*.TMP' '*.temp' '*.TEMP' '*.old' '*.OLD' '*.orig' '*.ORIG' '*.swp' '*.swo' '*.swn'
+# Approximate completion
+zstyle ':completion:*:approximate:*' max-errors 1 numeric
 
-zstyle ':completion:*:*:*:*:default' list-colors ${(s.:.)LS_COLORS}
+# -- Directories --
+# Dont display all tags
+zstyle ':completion:*:*:cd:*' tag-order local-directories directory-stack path-directories
+# Group ordering
+zstyle ':completion:*:-tilde-:*' group-order 'named-directories' 'path-directories' 'users' 'expand'
+# Expand tilde
+zstyle ':completion:*' expand true
+# Squeeze multiple slashes
+zstyle ':completion:*' squeeze-slashes true
 
-# Don't complete uninteresting users
-zstyle ':completion:*:*:*:users' ignored-patterns \
-        adm amanda apache avahi beaglidx bin cacti canna clamav daemon \
-        dbus distcache dovecot fax ftp games gdm gkrellmd gopher \
-        hacluster haldaemon halt hsqldb ident junkbust ldap lp mail \
-        mailman mailnull mldonkey mysql nagios \
-        named netdump news nfsnobody nobody nscd ntp nut nx openvpn \
-        operator pcap postfix postgres privoxy pulse pvm quagga radvd \
-        rpc rpcuser rpm shutdown squid sshd sync uucp vcsa xfs
+# Autocomplete options for cd instead of directory stack
+zstyle ':completion:*' complete-options true
+zstyle ':completion:*' file-sort modification
 
-# ... unless we really want to.
-zstyle '*' single-ignored show
+# --- Users ---
+zstyle ':completion:*:*:*:users' ignored-patterns adm daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody systemd-timesync systemd-network systemd-resolve systemd-bus-proxy syslog messagebus _apt uuidd tcpdump avahi-autoipd usbmux dnsmasq rtkit cups-pk-helper speech-dispatcher colord saned hplip pulse geoclue gnome-initial-setup gdm flatpak
 
-# Processes
-zstyle ':completion:*:*:*:*:processes' menu yes select
-zstyle ':completion:*:*:*:*:processes' force-list always
-
-# SSH / SCP / RSYNC
-zstyle ':completion:*:(scp|rsync):*' tag-order ' hosts:-ipaddr:ip\ address hosts:-host:host files'
-zstyle ':completion:*:(ssh|scp|rsync):*:hosts-host' ignored-patterns '*(.|:)*' loopback ip6-loopback localhost ip6-localhost broadcasthost
-zstyle ':completion:*:(ssh|scp|rsync):*:hosts-ipaddr' ignored-patterns '^(<->.<->.<->.<->|(|::)([[:xdigit:].]##:(#c,2))##(|%*))' '127.0.0.<->' '255.255.255.255' '::1' 'fe80::*'

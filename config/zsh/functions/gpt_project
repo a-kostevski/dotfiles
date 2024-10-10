@@ -1,0 +1,176 @@
+#!/usr/bin/env zsh
+gpt_project() {
+    # Initialize variables
+    local target_path="$(pwd)"
+    local extensions=()
+    local exclude_dirs=()
+    local output="/dev/stdout"
+    local verbose=0
+    local max_file_size=0  # in kilobytes, 0 means no limit
+    local max_files=0      # 0 means no limit
+
+    # Function to display help
+    show_help() {
+        echo "Usage: gpt_project [-p path] -e extension1[,extension2,...] [-x dir1[,dir2,...]]"
+        echo "                   [-o output_file] [-m max_file_size_kb] [-n max_files] [-v] [-h]"
+        echo "Options:"
+        echo "  -p path              Specify the path to the project directory (default is current directory)"
+        echo "  -e extensions        Comma-separated list of file extensions to include (required)"
+        echo "  -x directories       Comma-separated list of directory names to exclude"
+        echo "  -o output_file       Specify output file (default is stdout)"
+        echo "  -m max_file_size_kb  Maximum file size to include (in kilobytes), 0 means no limit"
+        echo "  -n max_files         Maximum number of files to include, 0 means no limit"
+        echo "  -v                   Enable verbose output"
+        echo "  -h                   Show this help message"
+    }
+    
+    # Parse options using getopts
+    while getopts ":p:e:o:x:m:n:vh" opt; do
+        case $opt in
+            p)
+                target_path="$OPTARG"
+                ;;
+            e)
+                # Split the comma-separated extensions into an array
+                IFS=',' read -r -A extensions <<< "$OPTARG"
+                ;;
+            x)
+                # Split the comma-separated directory names into an array
+                IFS=',' read -r -A exclude_dirs <<< "$OPTARG"
+                ;;
+            o)
+                output="$OPTARG"
+                ;;
+            m)
+                max_file_size="$OPTARG"
+                ;;
+            n)
+                max_files="$OPTARG"
+                ;;
+            v)
+                verbose=1
+                ;;
+            h)
+                show_help
+                return 0
+                ;;
+            \?)
+                echo "Invalid option: -$OPTARG" >&2
+                show_help
+                return 1
+                ;;
+            :)
+                echo "Option -$OPTARG requires an argument." >&2
+                show_help
+                return 1
+                ;;
+        esac
+    done
+
+    # Shift off the options and arguments processed by getopts
+    shift $((OPTIND -1))
+
+    # Check if extensions are provided
+    if [ ${#extensions[@]} -eq 0 ]; then
+        echo "Error: At least one extension must be specified with -e" >&2
+        show_help
+        return 1
+    fi
+
+    # Open the output file descriptor
+    exec 3>"$output"
+
+    # Verbose output
+    if [[ $verbose -eq 1 ]]; then
+        echo "Path: $target_path" >&2
+        echo "Extensions: ${extensions[*]}" >&2
+        echo "Exclude directories: ${exclude_dirs[*]}" >&2
+        echo "Max file size (KB): $max_file_size" >&2
+        echo "Max files: $max_files" >&2
+        echo "Output: $output" >&2
+    fi
+
+   echo "# Directory Structure" >&3
+echo '```' >&3
+if command -v tree >/dev/null 2>&1; then
+    if [ ${#exclude_dirs[@]} -gt 0 ]; then
+        # Build the tree exclude options
+        local exclude_pattern
+        exclude_pattern=$(IFS='|'; echo "${exclude_dirs[*]}")
+
+        # Verbose output of the exclude pattern
+        if [[ $verbose -eq 1 ]]; then
+            echo "Exclude pattern: $exclude_pattern" >&2
+        fi
+
+        # Call tree with the exclude pattern
+        tree -I "$exclude_pattern" "$target_path" >&3
+    else
+        tree "$target_path" >&3
+    fi
+else
+    # Build the find command for directory structure
+    if [ ${#exclude_dirs[@]} -gt 0 ]; then
+        find "$target_path" $(printf "! -path '*%s*' " "${exclude_dirs[@]}") -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g' >&3
+    else
+        find "$target_path" -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g' >&3
+    fi
+fi
+echo '```' >&3
+echo >&3
+
+    # Build the find command to search for files with specified extensions
+    local find_cmd
+    if [ ${#exclude_dirs[@]} -gt 0 ]; then
+        find_cmd=(find "$target_path" '(')
+        # Exclude directories
+        find_cmd+=(-type d '(')
+        for dir in "${exclude_dirs[@]}"; do
+            find_cmd+=(-name "$dir" -o)
+        done
+        find_cmd[-1]=")"  # Replace last -o with )
+        find_cmd+=(-prune -o)
+    else
+        find_cmd=(find "$target_path")
+    fi
+
+    # Match files
+    find_cmd+=(-type f '(')
+    for ext in "${extensions[@]}"; do
+        find_cmd+=(-name "*.$ext" -o)
+    done
+    find_cmd[-1]=")"  # Replace the last -o with )
+    # Apply max file size if specified
+    if [ "$max_file_size" -gt 0 ]; then
+        find_cmd+=(-size -"${max_file_size}"k)
+    fi
+    find_cmd+=(')' '-print0')
+
+    # Verbose output of the find command
+    if [[ $verbose -eq 1 ]]; then
+        echo "Find command: ${find_cmd[@]}" >&2
+    fi
+
+    # Initialize file counter
+    local file_count=0
+
+    # Execute the find command and process each file
+    "${find_cmd[@]}" | while IFS= read -r -d '' file; do
+        # Check max files limit
+        if [ "$max_files" -gt 0 ] && [ "$file_count" -ge "$max_files" ]; then
+            break
+        fi
+        file_count=$((file_count + 1))
+        # Get file extension for syntax highlighting
+        local file_ext="${file##*.}"
+        echo "## File: $file" >&3
+        echo '```'"$file_ext" >&3
+        cat "$file" >&3
+        echo '```' >&3
+        echo >&3
+    done
+
+    # Close the output file descriptor
+    exec 3>&-
+}
+

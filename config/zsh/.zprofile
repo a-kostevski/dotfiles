@@ -22,4 +22,3 @@ export MANPATH
 [ -x $HOMEBREW_PREFIX/bin/brew ] && eval "$($HOMEBREW_PREFIX/bin/brew shellenv)"
 source $ZDOTDIR/lib/fpath.zsh
 source $ZDOTDIR/lib/path.zsh
-

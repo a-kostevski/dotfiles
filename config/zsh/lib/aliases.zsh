@@ -24,9 +24,9 @@ alias urlencode="python -c 'import sys, urllib.parse as parse; print(parse.quote
 alias urldecode="python -c 'import sys, urllib.parse as parse; print(parse.unquote(sys.argv[1]));'"
 
 # --- Config editing ---
-alias dotconfig="$EDITOR $XDG_CONFIG_HOME"
-alias zshconfig="$EDITOR $ZDOTDIR"
-alias nvimconfig="$EDITOR $XDG_CONFIG_HOME/nvim"
+alias dotconfig="cd $XDG_CONFIG_HOME && $EDITOR ."
+alias zshconfig="cd $ZDOTDIR && $EDITOR ."
+alias nvimconfig="cd $XDG_CONFIG_HOME/nvim && $EDITOR ."
 
 # --- Macos bins ---
 alias plistbuddy="/usr/libexec/PlistBuddy"

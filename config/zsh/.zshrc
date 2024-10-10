@@ -13,6 +13,8 @@ fi
 unset ZSH_FUNCTIONS
 
 ZLIB=$ZDOTDIR/lib
+ZTHEME=$ZDOTDIR/theme
+
 source $ZLIB/config.zsh
 source $ZLIB/history.zsh
 source $ZLIB/exports.zsh
@@ -23,10 +25,11 @@ source $ZLIB/plugins.zsh
 source $ZLIB/prompt.zsh
 source $ZLIB/window.zsh
 
-test -r $ZLIB/dir_colors && eval $(gdircolors -b $ZLIB/dir_colors)
+[ -f $ZTHEME/dir_colors ] && eval $(gdircolors -b $ZTHEME/dir_colors)
 unset ZLIB
 
 if [[ -n $ZSH_PROFILING ]]; then
     zprof
     unset ZSH_PROFILING
 fi
+

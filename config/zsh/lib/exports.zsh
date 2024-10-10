@@ -12,7 +12,9 @@ export PAGER='less'
 export MANPAGER='less'
 
 export CLICOLOR=1
-export TERM=xterm-256color
+export TERM=${TERM:-xterm-256color}
+
+export HOMEBREW_PREFIX='/opt/homebrew'
 
 export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/zlib/lib -L${HOMEBREW_PREFIX}/opt/bzip2/lib -L${HOMEBREW_PREFIX}/opt/readline/lib"
 export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/zlib/include -I${HOMEBREW_PREFIX}/opt/bzip3/include -I${HOMEBREW_PREFIX}/opt/readline/include"
@@ -25,6 +27,9 @@ export PYTHON_CFLAGS='-march=native -mtune=native'
 # Avoid issues with `gpg` as installed via Homebrew.
 export GPG_TTY=$(tty)
 export ITERM2_SQUELCH_MARK=0
+
+# Homebrew settings that require parameter expansion. 
+export HOMEBREW_LOGS="$XDG_STATE_HOME/Homebrew/Logs"
 
 export NULLCMD='cat'
 export REPORTTIME=10
