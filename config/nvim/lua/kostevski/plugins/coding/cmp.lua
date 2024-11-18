@@ -1,0 +1,199 @@
+return {
+   -- {
+   --    "hrsh7th/nvim-cmp",
+   --    event = "InsertEnter",
+   --    enabled = false,
+   --    dependencies = {
+   --       "hrsh7th/cmp-buffer",
+   --       "hrsh7th/cmp-path",
+   --       "hrsh7th/cmp-nvim-lsp",
+   --       "onsails/lspkind.nvim",
+   --       "saadparwaiz1/cmp_luasnip",
+   --       {
+   --          -- https://ejmastnak.com/tutorials/vim-latex/luasnip/
+   --          "L3MON4D3/LuaSnip",
+   --          lazy = true,
+   --          build = "make install_jsregexp",
+   --          dependencies = {
+   --             {
+   --                "rafamadriz/friendly-snippets",
+   --                config = function()
+   --                   require("luasnip.loaders.from_vscode").lazy_load()
+   --                end,
+   --             },
+   --          },
+   --          opts = {
+   --             history = false,
+   --             region_check_events = "CursorMoved",
+   --             delete_check_events = "TextChanged",
+   --          },
+   --       },
+   --       {
+   --          "doxnit/cmp-luasnip-choice",
+   --          config = function()
+   --             require("cmp_luasnip_choice").setup({
+   --                auto_open = true, -- Automatically open nvim-cmp on choice node (default: true)
+   --             })
+   --          end,
+   --       },
+   --    },
+   --    keys = {
+   --       {
+   --          "<tab>",
+   --          function()
+   --             return require("luasnip").jumpable(1) and "<Plug>luasnip-jump-next" or "<tab>"
+   --          end,
+   --          expr = true,
+   --          silent = true,
+   --          mode = "i",
+   --       },
+   --       {
+   --          "<tab>",
+   --          function()
+   --             require("luasnip").jump(1)
+   --          end,
+   --          mode = "s",
+   --       },
+   --       {
+   --          "<s-tab>",
+   --          function()
+   --             require("luasnip").jump(-1)
+   --          end,
+   --          mode = { "i", "s" },
+   --       },
+   --    },
+   --    opts = function(_, opts)
+   --       vim.api.nvim_set_hl(0, "CmpGhostText", { link = "Comment", default = true })
+   --       local cmp = require("cmp")
+   --       local defaults = require("cmp.config.default")()
+   --       local luasnip = require("luasnip")
+   --       opts = vim.tbl_deep_extend("force", defaults, opts or {})
+   --       local auto_select = true
+   --       opts.snippet = {
+   --          expand = function(args)
+   --             luasnip.lsp_expand(args.body)
+   --          end,
+   --       }
+   --       opts.preselect = auto_select and cmp.PreselectMode.Item or cmp.PreselectMode.None
+   -- opts.mapping = cmp.mapping.preset.insert({
+   --    ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+   --    ["<C-f>"] = cmp.mapping.scroll_docs(4),
+   --    ["<C-n>"] = cmp.mapping.select_next_item({ behavior = cmp.SelectBehavior.Insert }),
+   --    ["<C-p>"] = cmp.mapping.select_prev_item({ behavior = cmp.SelectBehavior.Insert }),
+   --    ["<C-Space>"] = cmp.mapping.complete({}),
+   --    ["<C-y>"] = Utils.cmp.confirm({ select = true }),
+   --    ["<S-CR>"] = Utils.cmp.confirm({ behavior = cmp.ConfirmBehavior.Replace }),
+   --    ["<CR>"] = Utils.cmp.confirm({ select = true }),
+   --    ["<Tab>"] = cmp.mapping(function(fallback)
+   --       if cmp.visible() then
+   --          cmp.select_next_item()
+   --       elseif luasnip.locally_jumpable(1) then
+   --          luasnip.jump(1)
+   --       else
+   --          fallback()
+   --       end
+   --    end, { "i", "s" }),
+   --
+   --    ["<S-Tab>"] = cmp.mapping(function(fallback)
+   --       if cmp.visible() then
+   --          cmp.select_prev_item()
+   --       elseif luasnip.locally_jumpable(-1) then
+   --          luasnip.jump(-1)
+   --       else
+   --          fallback()
+   --       end
+   -- end, { "i", "s" }),
+   -- ["<Tab>"] = cmp.mapping(function(fallback)
+   --    if cmp.visible() then
+   --       cmp.select_next_item()
+   --    elseif luasnip.expandable() then
+   --       luasnip.expand()
+   --    elseif luasnip.expand_or_jumpable() then
+   --       luasnip.expand_or_jump()
+   --    elseif Utils.cmp.has_words_before_cursor() then
+   --       fallback()
+   --    else
+   --       fallback()
+   --    end
+   -- end, {
+   --    "i",
+   --    "s",
+   -- }),
+   -- ["<S-Tab>"] = cmp.mapping(function(fallback)
+   --    if cmp.visible() then
+   --       cmp.select_prev_item()
+   --    elseif luasnip.jumpable(-1) then
+   --       luasnip.jump(-1)
+   --    else
+   --       fallback()
+   --    end
+   -- end, {
+   --    "i",
+   --    "s",
+   -- }),
+   -- })
+   --          opts.sources = cmp.config.sources(vim.tbl_extend("force", opts.sources or {}, {
+   --             { name = "nvim_lsp" },
+   --             { name = "luasnip" },
+   --             { name = "luasnip_choice" },
+   --             { name = "buffer" },
+   --             { name = "path" },
+   --             { name = "buffer", keyword_length = 2 },
+   --          }))
+   --          opts.window = {
+   --             completion = cmp.config.window.bordered(),
+   --             documentation = cmp.config.window.bordered(),
+   --          }
+   --
+   --          opts.formatting = {
+   --             expandable_indicator = true,
+   --             fields = { "menu", "abbr", "kind" },
+   --             format = require("lspkind").cmp_format({
+   --                mode = "symbol_text",
+   --                maxwidth = 50,
+   --                symbol_map = Utils.ui.icons.kinds,
+   --                -- local icons = Utils.ui.icons.kinds
+   --                -- if icons[item.kind] then
+   --                --    item.kind = icons[item.kind] .. item.kind
+   --                -- end
+   --                -- local widths = {
+   --                --    abbr = vim.g.cmp_widths and vim.g.cmp_widths.abbr or 40,
+   --                --    menu = vim.g.cmp_widths and vim.g.cmp_widths.menu or 30,
+   --                -- }
+   --                -- for key, width in pairs(widths) do
+   --                --    if item[key] and vim.fn.strdisplaywidth(item[key]) > width then
+   --                --       item[key] = vim.fn.strcharpart(item[key], 0, width - 1) .. "…"
+   --                --    end
+   --                -- end:wqa
+   --                --
+   --
+   --                -- return item
+   --             }),
+   --          }
+   --          opts.experimental = {
+   --             ghost_text = {
+   --                hl_group = "CmpGhostText",
+   --             },
+   --          }
+   --
+   --          return opts
+   --       end,
+   --       config = function(_, opts)
+   --          for _, source in ipairs(opts.sources) do
+   --             source.group_index = source.group_index or 2
+   --          end
+   --
+   --          local cmp = require("cmp")
+   --          cmp.setup(opts)
+   --
+   --          cmp.event:on("confirm_done", function(event)
+   --             if vim.tbl_contains(opts.auto_brackets or {}, vim.bo.filetype) then
+   --                Utils.cmp.auto_brackets(event.entry)
+   --             end
+   --          end)
+   --          cmp.event:on("menu_opened", function(event)
+   --             Utils.cmp.add_missing_snippet_docs(event.window)
+   --          end)
+   --       end,
+   --    },
+}
