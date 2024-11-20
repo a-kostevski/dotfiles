@@ -5,6 +5,7 @@ return {
       version = "*",
       event = "InsertEnter",
       dependencies = {
+         "saghen/blink.compat",
          "rafamadriz/friendly-snippets",
       },
       opts_extend = {
@@ -68,16 +69,16 @@ return {
                direction_priority = { "s", "n" },
                draw = function(ctx)
                   local icon = ctx.kind_icon
-
                   local icon_hl = vim.api.nvim_get_hl(0, { name = "BlinkCmpKind" }) and "BlinkCmpKind" .. ctx.kind
                      or "BlinkCmpKind"
-
                   local source, client = ctx.item.source_id, ctx.item.client_id
+
                   if client and vim.lsp.get_client_by_id(client).name then
                      source = vim.lsp.get_client_by_id(client).name
                   else
                      source = ctx.item.source_name
                   end
+
                   return {
                      {
                         " " .. ctx.item.label .. " ",
@@ -97,13 +98,6 @@ return {
                         hl_group = ctx.deprecated and "BlinkCmpLabelDeprecated" or "CmpItemMenu",
                         max_width = 15,
                      },
-                     -- {
-                     --
-                     --    " " .. ctx.item.detail .. " ",
-                     --    fill = true,
-                     --    hl_group = "CmpItemDetail",
-                     --    max_width = 20,
-                     -- },
                   }
                end,
                winblend = vim.o.pumblend,
@@ -111,6 +105,9 @@ return {
             documentation = {
                auto_show = true,
                auto_show_delay_ms = 100,
+            },
+            signature_help = {
+               border = "rounded",
             },
          },
       },
