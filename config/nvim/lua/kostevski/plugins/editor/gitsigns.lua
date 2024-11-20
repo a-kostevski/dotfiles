@@ -47,7 +47,5 @@ return {
       map("n", "<leader>ghD", function() gs.diffthis("~") end, "Diff This ~")
       map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "GitSigns Select Hunk")
    end,
-   config = function(_, opts)
-      require("gitsigns").setup(opts)
-   end,
 }
+
