@@ -6,15 +6,22 @@ local icons = {
       Info = " ",
    },
    git = {
-      signs = {
-         add = { text = "▎" },
-         change = { text = "▎" },
-         delete = { text = "" },
-         topdelete = { text = "" },
-         changedelete = { text = "▎" },
-         untracked = { text = "▎" },
-      },
-      added = " ",
+      branch = "",
+      commit = "",
+      add = " ",
+      change = "▕",
+      mod = "",
+      remove = "",
+      delete = "🮉",
+      topdelete = "🮉",
+      changedelete = "🮉",
+      untracked = "▕",
+      ignore = "",
+      rename = "",
+      diff = "",
+      repo = "",
+      symbol = "",
+      unstaged = "󰛄",
       modified = " ",
       removed = " ",
    },
@@ -24,6 +31,36 @@ local icons = {
       BreakpointCondition = " ",
       BreakpointRejected = { " ", "DiagnosticError" },
       LogPoint = ".>",
+   },
+   keys = {
+      Up = " ",
+      Down = " ",
+      Left = " ",
+      Right = " ",
+      C = "󰘴 ",
+      M = "󰘵 ",
+      D = "󰘳 ",
+      S = "󰘶 ",
+      CR = "󰌑 ",
+      Esc = "󱊷 ",
+      ScrollWheelDown = "󱕐 ",
+      ScrollWheelUp = "󱕑 ",
+      NL = "󰌑 ",
+      BS = "󰁮",
+      Space = "󱁐 ",
+      Tab = "󰌒 ",
+      F1 = "󱊫",
+      F2 = "󱊬",
+      F3 = "󱊭",
+      F4 = "󱊮",
+      F5 = "󱊯",
+      F6 = "󱊰",
+      F7 = "󱊱",
+      F8 = "󱊲",
+      F9 = "󱊳",
+      F10 = "󱊴",
+      F11 = "󱊵",
+      F12 = "󱊶",
    },
    kinds = {
       Array = " ",
@@ -100,7 +137,12 @@ local icons = {
       },
    },
    misc = {
+      breadcrumb = "»",
+      separator = "➜",
+      group = ">",
+      ellipsis = "…",
       dots = "󰇘",
+      spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
    },
 }
 
@@ -116,7 +158,6 @@ function icons.get_kind_filter(buf)
    if type(icons.kind_filter[ft]) == "table" then
       return icons.kind_filter[ft]
    end
-   ---@diagnostic disable-next-line: return-type-mismatch
    return type(icons.kind_filter) == "table"
          and type(icons.kind_filter.default) == "table"
          and icons.kind_filter.default
