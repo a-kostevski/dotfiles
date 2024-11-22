@@ -45,15 +45,13 @@ return {
    },
    opts = {
       options = {
-         close_command = function(b)
-            require("mini.bufremove").delete(b, false)
+         close_command = function(buf)
+            Utils.ui.bufremove(buf)
          end,
-         right_mouse_command = function(b)
-            require("mini.bufremove").delete(b, false)
+         right_mouse_command = function(buf)
+            Utils.ui.bufremove(buf)
          end,
-
          diagnostics = "nvim_lsp",
-
          always_show_bufferline = false,
          offsets = {
             {
@@ -65,6 +63,9 @@ return {
       },
    },
    config = function(_, opts)
+      if (vim.g.colors_name or ""):find("catppuccin") then
+         opts.highlights = require("catppuccin.groups.integrations.bufferline").get()
+      end
       require("bufferline").setup(opts)
       vim.api.nvim_create_autocmd({ "BufAdd", "BufDelete" }, {
          callback = function()
