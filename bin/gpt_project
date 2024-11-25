@@ -1,5 +1,4 @@
 #!/usr/bin/env zsh
-gpt_project() {
     # Initialize variables
     local target_path="$(pwd)"
     local extensions=()
@@ -119,40 +118,44 @@ fi
 echo '```' >&3
 echo >&3
 
-    # Build the find command to search for files with specified extensions
-    local find_cmd
-    if [ ${#exclude_dirs[@]} -gt 0 ]; then
-        find_cmd=(find "$target_path" '(')
-        # Exclude directories
-        find_cmd+=(-type d '(')
-        for dir in "${exclude_dirs[@]}"; do
-            find_cmd+=(-name "$dir" -o)
-        done
-        find_cmd[-1]=")"  # Replace last -o with )
-        find_cmd+=(-prune -o)
-    else
-        find_cmd=(find "$target_path")
-    fi
+   # Build the find command to search for files with specified extensions
+local find_cmd
+find_cmd=(find "$target_path")
 
-    # Match files
-    find_cmd+=(-type f '(')
-    for ext in "${extensions[@]}"; do
-        find_cmd+=(-name "*.$ext" -o)
+# Exclude directories if specified
+if [ ${#exclude_dirs[@]} -gt 0 ]; then
+    for dir in "${exclude_dirs[@]}"; do
+        find_cmd+=(-path "*/$dir/*" -prune -o)
     done
-    find_cmd[-1]=")"  # Replace the last -o with )
-    # Apply max file size if specified
-    if [ "$max_file_size" -gt 0 ]; then
-        find_cmd+=(-size -"${max_file_size}"k)
-    fi
-    find_cmd+=(')' '-print0')
+fi
 
-    # Verbose output of the find command
+# Add file matching conditions
+find_cmd+=(
+    -type f
+    '('
+)
+
+# Match files with specified extensions
+for ext in "${extensions[@]}"; do
+    find_cmd+=(-name "*.$ext" -o)
+done
+
+# Replace the last -o with )
+find_cmd[-1]=")"
+
+# Apply max file size if specified
+if [ "$max_file_size" -gt 0 ]; then
+    find_cmd+=(-size -"${max_file_size}"k)
+fi
+
+# Add the print action
+find_cmd+=(-print0)    # Verbose output of the find command
     if [[ $verbose -eq 1 ]]; then
         echo "Find command: ${find_cmd[@]}" >&2
     fi
 
     # Initialize file counter
-    local file_count=0
+       local file_count=0
 
     # Execute the find command and process each file
     "${find_cmd[@]}" | while IFS= read -r -d '' file; do
@@ -172,5 +175,4 @@ echo >&3
 
     # Close the output file descriptor
     exec 3>&-
-}
 
