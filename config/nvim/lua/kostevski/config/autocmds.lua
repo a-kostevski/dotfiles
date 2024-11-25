@@ -16,7 +16,6 @@ vim.api.nvim_create_autocmd("FileType", {
    group = augroup("close_with_q"),
    pattern = {
       "grug-far",
-      "noice",
       "help",
       "lspinfo",
       "notify",
