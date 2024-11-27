@@ -20,6 +20,8 @@ alias localip="localip4"
 alias publicip4="curl http://ipinfo.io/ip"
 alias publicip="publicip4"
 alias routerip="ipconfig getoption en0 router"
+
+
 alias urlencode="python -c 'import sys, urllib.parse as parse; print(parse.quote_plus(sys.argv[1]));'"
 alias urldecode="python -c 'import sys, urllib.parse as parse; print(parse.unquote(sys.argv[1]));'"
 
@@ -46,18 +48,19 @@ for p in path fpath manpath infopath; do
 done
 
 # --- Utils ---
-alias afk="/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend"
-alias emptytrash="sudo rm -rfv ~/.Trash; sudo rm -rfv /private/var/log/asl/*.asl; sqlite3 ~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV* 'delete from LSQuarantineEvent'"
 alias finder='cd $(osascript -e "tell application 'Finder' to POSIX path of (target of window 1 as alias)")'
 alias mergepdf="gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=_merged.pdf"
 
 alias getpassword="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | pbcopy && echo \"Password copied to clipboard\""
-alias reload="exec ${SHELL}"
+
+alias reload='[[ $SHLVL -eq 1 ]] && exec $SHELL || echo "Warning: Not reloading in subshell (level $SHLVL)"'
+
 alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
 alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
 
 alias brewgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
 alias macos_config="source $XDG_CONFIG_HOME/macos/defaults && source $XDG_CONFIG_HOME/macos/harden"
+
 # --- Profiling ---
 alias zshtimeprofile="time ZSH_PROFILING=true zsh -i -c exit;"
-alias zshtime="for i in $(seq 1 10); do time zsh -i -c exit; done"
+alias zshtime='for i in {1..10}; do time zsh -i -c exit; done'
