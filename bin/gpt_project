@@ -1,178 +1,922 @@
-#!/usr/bin/env zsh
-    # Initialize variables
-    local target_path="$(pwd)"
-    local extensions=()
-    local exclude_dirs=()
-    local output="/dev/stdout"
-    local verbose=0
-    local max_file_size=0  # in kilobytes, 0 means no limit
-    local max_files=0      # 0 means no limit
+#!/bin/bash
+#
+# GPT Project Directory Processor
+# =========================
+# Securely processes and formats project files for GPT analysis
+#
+# Features:
+# - Secure file processing with strict permissions
+# - Parallel processing support
+# - Comprehensive error handling
+# - File type validation
+# - Directory traversal protection
+#
+# Usage:
+#   gpt_project [-p path] -e ext1,ext2 [-x dir1,dir2] [-o out] [-m size] [-n max] [-v] [-d]
+#
+# Author: kostevski
+# License: MIT
+# Version: 0.1.0
+# Platform: Darwin/macOS
+# Requirements:
+#   - bash 4.0+
+set -o errexit
+set -o nounset
+set -o pipefail
 
-    # Function to display help
-    show_help() {
-        echo "Usage: gpt_project [-p path] -e extension1[,extension2,...] [-x dir1[,dir2,...]]"
-        echo "                   [-o output_file] [-m max_file_size_kb] [-n max_files] [-v] [-h]"
-        echo "Options:"
-        echo "  -p path              Specify the path to the project directory (default is current directory)"
-        echo "  -e extensions        Comma-separated list of file extensions to include (required)"
-        echo "  -x directories       Comma-separated list of directory names to exclude"
-        echo "  -o output_file       Specify output file (default is stdout)"
-        echo "  -m max_file_size_kb  Maximum file size to include (in kilobytes), 0 means no limit"
-        echo "  -n max_files         Maximum number of files to include, 0 means no limit"
-        echo "  -v                   Enable verbose output"
-        echo "  -h                   Show this help message"
-    }
-    
-    # Parse options using getopts
-    while getopts ":p:e:o:x:m:n:vh" opt; do
-        case $opt in
-            p)
-                target_path="$OPTARG"
-                ;;
-            e)
-                # Split the comma-separated extensions into an array
-                IFS=',' read -r -A extensions <<< "$OPTARG"
-                ;;
-            x)
-                # Split the comma-separated directory names into an array
-                IFS=',' read -r -A exclude_dirs <<< "$OPTARG"
-                ;;
-            o)
-                output="$OPTARG"
-                ;;
-            m)
-                max_file_size="$OPTARG"
-                ;;
-            n)
-                max_files="$OPTARG"
-                ;;
-            v)
-                verbose=1
-                ;;
-            h)
-                show_help
-                return 0
-                ;;
-            \?)
-                echo "Invalid option: -$OPTARG" >&2
-                show_help
-                return 1
-                ;;
-            :)
-                echo "Option -$OPTARG requires an argument." >&2
-                show_help
-                return 1
-                ;;
-        esac
-    done
-
-    # Shift off the options and arguments processed by getopts
-    shift $((OPTIND -1))
-
-    # Check if extensions are provided
-    if [ ${#extensions[@]} -eq 0 ]; then
-        echo "Error: At least one extension must be specified with -e" >&2
-        show_help
-        return 1
-    fi
-
-    # Open the output file descriptor
-    exec 3>"$output"
-
-    # Verbose output
-    if [[ $verbose -eq 1 ]]; then
-        echo "Path: $target_path" >&2
-        echo "Extensions: ${extensions[*]}" >&2
-        echo "Exclude directories: ${exclude_dirs[*]}" >&2
-        echo "Max file size (KB): $max_file_size" >&2
-        echo "Max files: $max_files" >&2
-        echo "Output: $output" >&2
-    fi
-
-   echo "# Directory Structure" >&3
-echo '```' >&3
-if command -v tree >/dev/null 2>&1; then
-    if [ ${#exclude_dirs[@]} -gt 0 ]; then
-        # Build the tree exclude options
-        local exclude_pattern
-        exclude_pattern=$(IFS='|'; echo "${exclude_dirs[*]}")
-
-        # Verbose output of the exclude pattern
-        if [[ $verbose -eq 1 ]]; then
-            echo "Exclude pattern: $exclude_pattern" >&2
-        fi
-
-        # Call tree with the exclude pattern
-        tree -I "$exclude_pattern" "$target_path" >&3
-    else
-        tree "$target_path" >&3
-    fi
-else
-    # Build the find command for directory structure
-    if [ ${#exclude_dirs[@]} -gt 0 ]; then
-        find "$target_path" $(printf "! -path '*%s*' " "${exclude_dirs[@]}") -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g' >&3
-    else
-        find "$target_path" -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g' >&3
-    fi
-fi
-echo '```' >&3
-echo >&3
-
-   # Build the find command to search for files with specified extensions
-local find_cmd
-find_cmd=(find "$target_path")
-
-# Exclude directories if specified
-if [ ${#exclude_dirs[@]} -gt 0 ]; then
-    for dir in "${exclude_dirs[@]}"; do
-        find_cmd+=(-path "*/$dir/*" -prune -o)
-    done
+if [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
+   echo "Error: This script requires bash version 3 or higher" >&2
+   exit 1
 fi
 
-# Add file matching conditions
-find_cmd+=(
-    -type f
-    '('
+#######################################
+# Constants and Configuration
+#######################################
+readonly VERSION="0.1.0"
+readonly SCRIPT_NAME="${0##*/}"
+
+# Memory units for readable configuration
+readonly KB=$((1024))
+readonly MB=$((KB * 1024))
+
+# System limits and defaults
+readonly DEFAULT_MAX_DEPTH=3
+readonly DEFAULT_MAX_SIZE=$((50 * MB))
+readonly DEFAULT_MAX_FILES=1000
+readonly DEFAULT_JOBS=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu || echo 4)
+
+# Output formatting
+readonly MARKDOWN_FENCE="\`\`\`"
+readonly MARKDOWN_HEADER_PREFIX="##"
+
+readonly ALLOWED_PATHS=(
+   "${PWD}"          # Current working directory
+   "${TMPDIR:-/tmp}" # Temporary directory
+   "${HOME}"         # User's home directory
 )
 
-# Match files with specified extensions
-for ext in "${extensions[@]}"; do
-    find_cmd+=(-name "*.$ext" -o)
-done
+# Default excluded directories
+readonly -a DEFAULT_EXCLUDES=(
+   '.git'
+   'venv'
+   '.venv'
+   'env'
+   '.env'
+   'dist'
+   'build'
+   '.idea'
+   '.vscode'
+   'tmp'
+   'temp'
+   'log'
+   'logs'
+   'cache'
+   '.cache'
+   '.output'
+   'out'
+   'test'
+)
 
-# Replace the last -o with )
-find_cmd[-1]=")"
+# Error codes
+readonly E_PERMISSION=85 # Permission denied
+readonly E_RESOURCE=86   # Resource allocation failure
+readonly E_SECURITY=87   # Security violation
+readonly E_IO=88         # I/O operation failure
+readonly E_USAGE=89      # Invalid usage
+readonly E_PATH=92       # Path not available
 
-# Apply max file size if specified
-if [ "$max_file_size" -gt 0 ]; then
-    find_cmd+=(-size -"${max_file_size}"k)
+#######################################
+# Global state configuration
+#######################################
+declare INPUT_PATH="${PWD}"
+declare OUTPUT="/dev/stdout"
+declare -a EXCLUDE_DIRS=("${DEFAULT_EXCLUDES[@]}")
+
+declare -a EXTENSIONS=()
+declare MAX_SIZE="${DEFAULT_MAX_SIZE}"
+declare MAX_FILES="${DEFAULT_MAX_FILES}"
+declare MAX_DEPTH="${DEFAULT_MAX_DEPTH}"
+declare MAX_JOBS="${DEFAULT_JOBS}"
+
+# Runtime flags
+declare -i DRY_RUN=0
+declare -i VERBOSE=0
+declare -i DEBUG=0
+
+# Stats
+declare -i STATS_PROCESSED=0
+declare -i STATS_FAILED=0
+
+declare TEMP_DIR
+declare -a TMP_FILES=()
+
+function usage() {
+   echo
+   echo "Usage: ${SCRIPT_NAME} [options] [path]"
+   echo
+   echo "Process and format project files for GPT analysis."
+   echo
+   echo "Options:"
+   echo "    -h, --help          Show this help message"
+   echo "    -v, --verbose       Enable verbose output"
+   echo "    -d, --debug         Enable debug output"
+   echo "    -n, --dry-run       Show what would be done without doing it"
+   echo "    -o, --output FILE   Output file (default: stdout)"
+   echo "    -m, --max-size N    Maximum file size in bytes (0 for unlimited)"
+   echo "    -j, --jobs N        Maximum number of parallel jobs"
+   echo "    -x, --exclude DIRS  Comma-separated list of directories to exclude"
+   echo
+
+   echo "Examples:"
+   echo "    ${SCRIPT_NAME} .                    # Process current directory"
+   echo "    ${SCRIPT_NAME} -o out.txt src/      # Process src directory to out.txt"
+   echo "    ${SCRIPT_NAME} -m 1048576 lib/      # Process files under 1MB in lib/"
+   echo
+   echo "Version: ${VERSION}"
+}
+
+#######################################
+# Output and logging functions
+#######################################
+
+if [[ -t 1 ]]; then
+   readonly RED=$'\033[0;31m'
+   readonly GREEN=$'\033[0;32m'
+   readonly YELLOW=$'\033[0;33m'
+   readonly BLUE=$'\033[0;34m'
+   readonly RESET=$'\033[0m'
+else
+   readonly RED=""
+   readonly GREEN=""
+   readonly YELLOW=""
+   readonly BLUE=""
+   readonly RESET=""
 fi
 
-# Add the print action
-find_cmd+=(-print0)    # Verbose output of the find command
-    if [[ $verbose -eq 1 ]]; then
-        echo "Find command: ${find_cmd[@]}" >&2
-    fi
+# Log a message with the specified level and formatting
+# Args:
+#   $1 - Log level (error, warn, info, debug)
+#   $2 - Message to log
+# Returns:
+#   0 on success, non-zero on error
 
-    # Initialize file counter
-       local file_count=0
+function log() {
+   local -r level="$1"
+   local -r message="$2"
+   local -r timestamp="$(date -u +'%Y-%m-%d %H:%M:%S')"
+   local color
+   local symbol
 
-    # Execute the find command and process each file
-    "${find_cmd[@]}" | while IFS= read -r -d '' file; do
-        # Check max files limit
-        if [ "$max_files" -gt 0 ] && [ "$file_count" -ge "$max_files" ]; then
-            break
-        fi
-        file_count=$((file_count + 1))
-        # Get file extension for syntax highlighting
-        local file_ext="${file##*.}"
-        echo "## File: $file" >&3
-        echo '```'"$file_ext" >&3
-        cat "$file" >&3
-        echo '```' >&3
-        echo >&3
-    done
+   [[ "$level" == "debug" && $DEBUG -eq 0 ]] && return 0
 
-    # Close the output file descriptor
-    exec 3>&-
+   case "${level}" in
+   error)
+      color="${RED}"
+      symbol="✖"
+      ;;
+   warn)
+      color="${YELLOW}"
+      symbol="⚠"
+      ;;
+   info)
+      color="${GREEN}"
+      symbol="ℹ"
+      ;;
+   debug)
+      color="${BLUE}"
+      symbol="⚙"
+      ;;
+   *)
+      color="${RESET}"
+      symbol="•"
+      ;;
+   esac
 
+   # Format and output the log message
+   printf "${color}%s[%-5s]${RESET} [%s] %s\n" \
+      "${symbol}" "${level}" "${timestamp}" "${message}" \
+      >&2
+}
+
+function log_debug() {
+   [[ $DEBUG ]] && log "debug" "$1"
+}
+
+function log_info() { log "info" "$1"; }
+
+function log_warn() { log "warn" "$1"; }
+
+function log_error() {
+   local message="$1"
+   local code="${2:-1}"
+
+   log "error" "${message}"
+
+   [[ $DEBUG ]] && log_stack_trace 1
+
+   return "${code}"
+}
+
+# Print stack trace for debugging
+# Args:
+#   $1 - Starting frame number (default: 1)
+function log_stack_trace() {
+   local start_frame="${1:-1}"
+   local i
+
+   echo "Stack trace:" >&2
+   for ((i = start_frame; i < ${#BASH_SOURCE[@]}; i++)); do
+      printf "  at %s() in %s:%s\n" \
+         "${FUNCNAME[i]}" \
+         "${BASH_SOURCE[i]}" \
+         "${BASH_LINENO[i - 1]}" >&2
+   done
+}
+
+# Creates a secure temporary file with restricted permissions
+# The file path is added to TMP_FILES array for cleanup
+# Returns:
+#   Path to temporary file on stdout
+#   E_IO on file creation failure
+#   E_PERMISSION on chmod failure
+function create_temp_file() {
+
+   local temp_file
+   temp_file=$(mktemp -t "temp" -p "${TEMP_DIR}") || return ${E_IO}
+
+   chmod 600 "${temp_file}" || {
+      rm -f "${temp_file}"
+      log_error "Failed to set permissions on temporary file"
+      return ${E_PERMISSION}
+   }
+
+   TMP_FILES[${#TMP_FILES[@]}]="${temp_file}"
+   echo "${temp_file}"
+   return 0
+}
+
+#######################################
+# File validation and processing
+#######################################
+
+# Validates if a file has one of the allowed extensions
+# Args:
+#   $1 - File path to check
+# Returns:
+#   0 if file extension matches allowed list
+#   1 if extension is not in allowed list
+function is_valid_extension() {
+   local -r file="$1"
+   local -r ext="${file##*.}"
+
+   [[ " ${EXTENSIONS[*]} " == *" ${ext} "* ]]
+}
+
+# Validates file for processing
+# Args:
+#   $1 - File path to validate
+# Returns:
+#   0 if valid, non-zero otherwise
+function is_valid_file() {
+   local -r file="$1"
+   local -r basename="$(basename "${file}")"
+
+   # Skip hidden files
+   [[ "${basename}" == .* ]] && return 1
+
+   # Basic checks
+   [[ ! -f "${file}" ]] && return "${E_IO}"
+   [[ ! -r "${file}" ]] && return "${E_PERMISSION}"
+
+   # Size check if configured
+   if ((MAX_SIZE > 0)); then
+      local size
+      size=$(stat -f %z "${file}" 2>/dev/null) || return ${E_IO}
+      ((size > MAX_SIZE)) && return 1
+   fi
+
+   return 0
+}
+
+# Detects and returns the appropriate file type/language based on extension
+# Args:
+#   $1 - File path
+# Returns:
+#   Language identifier string on stdout
+function detect_file_type() {
+   local -r file="$1"
+   local -r extension="${file##*.}"
+
+   # Map common extensions to their language/type
+   case "${extension}" in
+   sh | bash) echo "bash" ;;
+   py | pyw) echo "python" ;;
+   js | jsx) echo "javascript" ;;
+   ts | tsx) echo "typescript" ;;
+   rb) echo "ruby" ;;
+   php) echo "php" ;;
+   java) echo "java" ;;
+   cpp | cc | cxx) echo "cpp" ;;
+   c) echo "c" ;;
+   go) echo "go" ;;
+   rs) echo "rust" ;;
+   md | markdown) echo "markdown" ;;
+   yml | yaml) echo "yaml" ;;
+   json) echo "json" ;;
+   xml) echo "xml" ;;
+   sql) echo "sql" ;;
+   *) echo "text" ;;
+   esac
+}
+
+# Generates and writes the project analysis header to output file
+# Including project info and directory structure
+# Args:
+#   $1 - Output file path
+# Returns:
+#   0 on success, non-zero on error
+function output_header() {
+   local output="$1"
+   local title="GPT Project Analysis"
+   local path="${INPUT_PATH}"
+   {
+      echo
+      echo "# ${title}"
+      echo
+      echo "${MARKDOWN_HEADER_PREFIX} Project Information "
+      echo
+      echo "- **Path:** \`${path}\`"
+      echo
+      echo "- **Extensions:** \`${EXTENSIONS[*]}\`"
+   } >>"${output}"
+
+   # Get directory structure using tree command
+   local tree_output
+   if ! tree_output=$(print_tree "${INPUT_PATH}"); then
+      log_error "Failed to generate directory structure"
+      return ${E_IO}
+   fi
+   {
+      echo
+      echo "${MARKDOWN_HEADER_PREFIX} Directory Structure"
+      echo "${MARKDOWN_FENCE}"
+      echo "${tree_output}"
+      echo "${MARKDOWN_FENCE}"
+   } >>"${output}"
+
+   return 0
+}
+
+# prints directory tree structure using 'tree' command if available
+# falls back to 'ls' if tree is not installed
+# args:
+#   $1 - target directory path (defaults to input_path)
+# returns:
+#   directory structure as formatted string
+function print_tree() {
+
+   local target="${1:-${INPUT_PATH}}"
+   local max_depth="${MAX_DEPTH:-3}"
+
+   if command -v tree >/dev/null 2>&1; then
+      local exclude_pattern
+      local IFS='|'
+      exclude_pattern="${DEFAULT_EXCLUDES[*]}"
+      unset IFS
+
+      tree \
+         -I "${exclude_pattern}" \
+         --noreport \
+         --charset utf-8 \
+         -L "${max_depth}" \
+         "${target}"
+   else
+      log_debug "tree command not found, using internal implementation"
+      ls -a "${target}"
+   fi
+}
+
+# Main entry point for processing a target path (file or directory)
+# Args:
+#   $1 - Target path to process
+#   $2 - Output file path
+# Returns:
+#   0 on success, non-zero on error
+function process_target() {
+   local target="$1"
+   local output="$2"
+   local exit_code=0
+
+   if ! output_header "${output}"; then
+      log_error "Failed creating output header"
+      return 1
+   fi
+
+   if [[ -d "${target}" ]]; then
+      process_directory "${target}" "${output}"
+      exit_code=$?
+   elif [[ -f "${target}" ]]; then
+      process_file "${target}" "${output}"
+      exit_code=$?
+   else
+      log_error "Target path not found: ${target}"
+      exit_code=${E_PATH}
+   fi
+
+   return ${exit_code}
+}
+
+# Process all valid files in a directory recursively
+# Args:
+#   $1 - Directory path to process
+#   $2 - Output file path
+# Returns:
+#   Number of errors encountered (0 on success)
+function process_directory() {
+   local dir="$1"
+   local output="$2"
+   local -i errors=0
+   local files=()
+
+   log_debug "Processing directory: ${dir}"
+
+   local -a find_cmd=(
+      find
+      "${dir}"
+      -type f
+   )
+
+   for exclude in "${EXCLUDE_DIRS[@]}"; do
+      find_cmd+=(-not -path "\"*/${exclude}/*\"")
+   done
+
+   # Add extension filters
+   if ((${#EXTENSIONS[@]} > 0)); then
+      find_cmd+=("(")
+      local first=true
+      for ext in "${EXTENSIONS[@]}"; do
+         if $first; then
+            find_cmd+=(-name "*.${ext}")
+            first=false
+         else
+            find_cmd+=(-o -name "*.${ext}")
+         fi
+      done
+      find_cmd+=(")")
+   fi
+   find_cmd+=("-print0")
+   log_debug "Executing find command: ${find_cmd[*]}"
+
+   while IFS= read -r -d '' file; do
+      if is_valid_file "${file}"; then
+         files+=("$file")
+      fi
+   done < <("${find_cmd[@]}")
+
+   log_debug "Found ${#files[@]} matching files"
+   if ((DRY_RUN)); then
+      log_info "Would process files: ${files[*]}"
+      return 0
+   fi
+
+   if ((${#files[@]} > 0)); then
+      # Process files in parallel
+      if ! process_files_parallel "${files[@]}" "${output}"; then
+         log_error "Failed to process some files"
+         ((errors++))
+      fi
+   else
+      log_warn "No matching files found in ${dir}"
+   fi
+
+   return ${errors}
+}
+
+# Processes multiple files in parallel using job control
+# Args:
+#   Files to process as array elements
+#   Last argument is output file path
+# Returns:
+#   0 on success, non-zero if any file processing failed
+function process_files_parallel() {
+   local pids=()
+   local output="${!#}"
+   local -i max_jobs="${MAX_JOBS}"
+   local -i failed=0
+
+   local -a files=("${@:1:$#-1}")
+
+   for file in "${files[@]}"; do
+      while ((${#pids[@]} >= max_jobs)); do
+
+         wait -n 2>/dev/null || true
+         pids=()
+         for pid in $(jobs -p); do
+            pids+=("${pid}")
+         done
+      done
+
+      (process_file "${file}" "${output}") &
+      pids+=($!)
+   done
+
+   for pid in "${pids[@]}"; do
+      wait "${pid}" || ((failed++))
+   done
+
+   return $((failed > 0 ? 1 : 0))
+}
+
+# Process a single file and format it for GPT analysis
+# Includes file metadata and content in markdown format
+# Args:
+#   $1 - Input file path
+#   $2 - Output file path
+# Returns:
+#   0 on success, non-zero on error
+function process_file() {
+   local input="$1"
+   local output="$2"
+   local -i ret=0
+
+   log_debug "Processing file: ${input}"
+
+   local tmp_output
+   tmp_output=$(create_temp_file) || return ${E_IO}
+
+   {
+      echo
+      echo "${MARKDOWN_HEADER_PREFIX} File: \`${input}\`"
+      echo
+      echo "${MARKDOWN_FENCE} $(detect_file_type "${input}")"
+      cat "${input}" || ret=${E_IO}
+      echo "${MARKDOWN_FENCE}"
+   } >"${tmp_output}" || {
+      log_error "Failed to write to temporary file"
+      ret=${E_IO}
+   }
+   if ((ret == 0)); then
+      if ! cat "${tmp_output}" >>"${output}"; then
+         log_error "Failed to write output for: ${input}"
+         ret=${E_IO}
+      else
+         ((STATS_PROCESSED++))
+         log_debug "Successfully processed: ${input}"
+      fi
+   else
+      ((STATS_FAILED++))
+      log_error "Failed to process: ${input}"
+   fi
+   return ${ret}
+}
+
+#######################################
+# Command line argument parsing
+#######################################
+# Print current configuration settings for debugging
+# No args
+# No return value
+function print_debug_info() {
+   log_debug "Configuration:"
+   log_debug "  Input path: ${INPUT_PATH}"
+   log_debug "  Output: ${OUTPUT}"
+   log_debug "  Extensions: ${EXTENSIONS[*]}"
+   log_debug "  Exclude dirs: ${EXCLUDE_DIRS[*]}"
+   log_debug "  Max size: ${MAX_SIZE}"
+   log_debug "  Max files: ${MAX_FILES}"
+   log_debug "  Max depth: ${MAX_DEPTH}"
+   log_debug "  Max jobs: ${MAX_JOBS}"
+   log_debug "  Debug: ${DEBUG}"
+   log_debug "  Verbose: ${VERBOSE}"
+   log_debug "  Dry run: ${DRY_RUN}"
+   log_debug "  Temp dir: ${TEMP_DIR}"
+}
+
+# Parses and validates excluded directories
+# Combines user-specified excludes with defaults
+# Args:
+#   $1 - Comma-separated list of directories
+# Returns:
+#   0 on success, non-zero on error
+function parse_exclude_dirs() {
+   local dir_list="$1"
+   [[ -z "${dir_list}" ]] && return 0
+
+   local IFS=','
+   read -ra dir_array <<<"${dir_list}"
+   unset IFS
+
+   local -a combined_excludes=("${DEFAULT_EXCLUDES[@]}")
+
+   local dir
+   for dir in "${dir_array[@]}"; do
+      [[ "${dir}" =~ ^[a-zA-Z0-9_.-]+$ ]] || {
+         log_error "Invalid directory name format: ${dir}"
+         return ${E_USAGE}
+      }
+      combined_excludes+=("${dir}")
+   done
+
+   EXCLUDE_DIRS=("${combined_excludes[@]}")
+   return 0
+}
+
+# Parses and validates file extensions
+# Args:
+#   $1 - Comma-separated list of extensions
+# Returns:
+#   0 on success, non-zero on error
+function parse_extensions() {
+   local ext_list="$1"
+   [[ -z "${ext_list}" ]] && {
+      log_error "Extensions list cannot be empty"
+      return ${E_USAGE}
+   }
+
+   # Create array from comma-separated list
+   local IFS=','
+   read -ra ext_array <<<"${ext_list}"
+   unset IFS
+   # Validate each extension
+   local ext
+   for ext in "${ext_array[@]}"; do
+      [[ "${ext}" =~ ^[a-zA-Z0-9]+$ ]] || {
+         log_error "Invalid extension format: ${ext}"
+         return ${E_USAGE}
+      }
+   done
+
+   EXTENSIONS=("${ext_array[@]}")
+   return 0
+}
+
+# Validates numeric parameters against allowed ranges
+# Args:
+#   $1 - Parameter name for error messages
+#   $2 - Parameter value to validate
+#   $3 - Minimum allowed value (optional)
+#   $4 - Maximum allowed value (optional)
+# Returns:
+#   0 on success, E_USAGE on validation failure
+function parse_numeric() {
+   local param_name="$1"
+   local param_value="$2"
+
+   local min_value="${3:-0}"
+   local max_value="${4:-0}"
+
+   if [[ ! "${param_value}" =~ ^[0-9]+$ ]]; then
+      log_error "Invalid ${param_name}: ${param_value} (must be numeric)"
+      return "${E_USAGE}"
+   fi
+
+   if ((param_value < min_value)); then
+      log_error "Invalid ${param_name}: ${param_value} (must be >= ${min_value})"
+      return "${E_USAGE}"
+   fi
+
+   if ((param_value > max_value)); then
+      log_error "Invalid ${param_name}: ${param_value} (must be <= ${max_value})"
+      return "${E_USAGE}"
+   fi
+
+   return 0
+}
+
+# Validates and normalizes input path
+# Ensures path exists, is readable, and is within allowed directories
+# Args:
+#   $1 - Path to validate
+# Returns:
+#   Absolute path on success, non-zero error code on failure
+function parse_path() {
+   local path="$1"
+   local abs_path
+
+   [[ -z "${path}" ]] && return ${E_USAGE}
+
+   if ! abs_path=$(realpath -P -q "${path}" 2>/dev/null); then
+      log_error "Cannot resolve path: ${path}"
+      return ${E_SECURITY}
+   fi
+
+   # Path exists
+   [[ ! -e "${abs_path}" ]] && {
+      log_error "Path does not exist: ${path}"
+      return ${E_IO}
+   }
+
+   # Path is readable
+   [[ ! -r "${abs_path}" ]] && {
+      log_error "Permission denied: ${path}"
+      return ${E_PERMISSION}
+   }
+
+   local allowed
+   for allowed in "${ALLOWED_PATHS[@]}"; do
+      [[ "${abs_path}" = "${allowed}"/* ]] && {
+         echo "${abs_path}"
+         return 0
+      }
+   done
+   return ${E_SECURITY}
+}
+
+# Parses command line arguments and sets global configuration
+# Args:
+#   All command line arguments ($@)
+# Returns:
+#   0 on success, non-zero on error
+function parse_args() {
+   local OPTIND opt
+
+   while getopts ":de:hj:m:no:p:vx:" opt; do
+      case "${opt}" in
+      d) # Debug
+         DEBUG=1
+         ;;
+      e) # Extensions
+         parse_extensions "${OPTARG}" || return ${E_USAGE}
+         ;;
+      h) # Help
+         usage
+         exit
+         ;;
+      j) # Max parallel jobs
+         parse_numeric "jobs" "${OPTARG}" 1 || return ${E_USAGE}
+         MAX_JOBS="${OPTARG}"
+         ;;
+      m) # Max file size
+         parse_numeric "max-size" "${OPTARG}" || return ${E_USAGE}
+         MAX_SIZE="${OPTARG}"
+         ;;
+      n) # Dry run
+         DRY_RUN=1
+         ;;
+      o) # Output path
+         OUTPUT=$(parse_path "${OPTARG}") || return ${E_USAGE}
+         ;;
+      p) # Input path
+         INPUT_PATH=$(parse_path "${OPTARG}") || return ${E_USAGE}
+         ;;
+      v) # Verbose mode
+         VERBOSE=1
+         ;;
+      x)
+         parse_exclude_dirs "${OPTARG}" || return ${E_USAGE}
+         ;;
+      :) # Missing argument
+         log_error "Option -${OPTARG} requires an argument"
+         return ${E_USAGE}
+
+         ;;
+      *) # Unknown option
+         log_error "Invalid option: -${OPTARG}"
+         return ${E_USAGE}
+         ;;
+      esac
+   done
+
+   shift $((OPTIND - 1))
+
+   return 0
+}
+
+# Validates the final configuration settings
+# Ensures all required parameters are set and valid
+# Returns:
+#   0 if valid, non-zero otherwise
+function validate_config() {
+   # Ensure we have at least one extension if not in dry-run mode
+   if ((DRY_RUN == 0)) && ((${#EXTENSIONS[@]} == 0)); then
+      log_error "No file extensions specified"
+      return "${E_USAGE}"
+   fi
+
+   # Todo: Implement
+
+   return 0
+}
+
+function process_output() {
+   local -r output_buffer="$1"
+   local -r final_output="$2"
+
+   if [[ "${final_output}" == "/dev/stdout" ]]; then
+      # Output the content
+      cat "${output_buffer}" || {
+         log_error "Failed to read output buffer"
+         return ${E_IO}
+      }
+   else
+      cp "${output_buffer}" "${final_output}" || {
+         log_error "Failed to write to output file: ${final_output}"
+         return ${E_IO}
+      }
+   fi
+}
+
+#######################################
+# Main execution
+#######################################
+
+# Initialize script environment and parse arguments
+# Args:
+#   Command line arguments ($@)
+# Returns:
+#   0 on success, non-zero on error
+function init() {
+
+   parse_args "$@" || return $?
+   validate_config || return $?
+
+   if ! TEMP_DIR=$(mktemp -d); then
+      log_error "Failed to create temp directory: ${TEMP_DIR}"
+      return "${E_IO}"
+   fi
+
+   if [[ "${OUTPUT}" != "/dev/stdout" ]]; then
+      mkdir -p "$(dirname "${OUTPUT}")" || {
+         log_error "Failed to create output directory"
+         return ${E_IO}
+      }
+   fi
+   return 0
+}
+
+# cleanup handler for exit trap
+# removes temporary files and kills background processes
+# args:
+#   none (uses global state)
+# returns:
+#   original exit code
+function cleanup() {
+   local -r exit_code=$?
+   local -i ret=0
+   local tmp_file
+
+   log_debug "Running cleanup handlers (exit code: ${exit_code})"
+
+   # Kill any remaining background jobs
+   jobs -p | xargs -r timeout 5 kill -15 2>/dev/null
+   sleep 1
+   jobs -p | xargs -r kill -9 2>/dev/null
+
+   # Check if array has elements before iterating
+   if ((${#TMP_FILES[@]} > 0)); then
+      for tmp_file in "${TMP_FILES[@]}"; do
+         if [[ -f "${tmp_file}" ]]; then
+            if ! rm -f "${tmp_file}"; then
+               log_warn "Failed to remove temporary file: ${tmp_file}"
+               ret=1
+            fi
+         fi
+      done
+   fi
+
+   [[ -d "${TEMP_DIR}" ]] && rm -rf "${TEMP_DIR}" 2>/dev/null
+
+   exit "${exit_code}"
+}
+
+trap cleanup EXIT INT TERM
+
+# Main execution function of the script
+# Args:
+#   Command line arguments ($@)
+# Returns:
+#   0 on success, error code on failure
+function main() {
+
+   if ! init "$@"; then
+      log_error "Initialization failed"
+      exit ${E_RESOURCE}
+   fi
+
+   ((DEBUG)) && print_debug_info
+
+   if ((DRY_RUN)); then
+      log_info "Dry run mode - no changes will be made"
+      return 0
+   fi
+
+   local output_buffer
+   output_buffer=$(create_temp_file) || exit ${E_IO}
+
+   if ! process_target "${INPUT_PATH}" "${output_buffer}"; then
+      log_error "Processing failed"
+      exit ${E_IO}
+   fi
+
+   if ! process_output "${output_buffer}" "${OUTPUT}"; then
+      exit ${E_IO}
+   fi
+
+   log_info "Successfully processed ${STATS_PROCESSED} files (${STATS_FAILED} failed)"
+   return 0
+
+}
+# Execute main function if script is not being sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+   main "$@"
+fi

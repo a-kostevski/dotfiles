@@ -1,2 +1,0 @@
-#!/bin/zsh
-defaults write com.apple.menuextra.clock.plist IsAnalog -int $(defaults read com.apple.menuextra.clock.plist IsAnalog | grep -q '1' && echo '0' || echo '1')
