@@ -33,6 +33,7 @@ function Utils.merge(...)
    end
    return ret
 end
+
 function Utils.norm(path)
    -- Replace ~ with the home directory
    if path:sub(1, 1) == "~" then
@@ -79,7 +80,7 @@ function Utils.setup()
    Utils.plugin = require("kostevski.utils.plugin")
    Utils.toggle = require("kostevski.utils.toggle")
    Utils.root = require("kostevski.utils.root")
-
+   Utils.debug = require("kostevski.utils.debug")
    Utils.format.setup()
    Utils.root.setup()
 end

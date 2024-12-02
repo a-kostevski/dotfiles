@@ -111,6 +111,30 @@ function root.detect(opts)
    return ret
 end
 
+root.cache = {}
+
+function root.get(opts)
+   opts = opts or {}
+   local buf = opts.buf or vim.api.nvim_get_current_buf()
+   local ret = root.cache[buf]
+   if not ret then
+      local roots = root.detect({ all = false, buf = buf })
+      ret = roots[1] and roots[1].paths[1] or vim.uv.cwd()
+      root.cache[buf] = ret
+   end
+   if opts and opts.normalize then
+      return ret
+   end
+   return ret
+end
+
+function root.git()
+   local local_root = root.get()
+   local git_root = vim.fs.find(".git", { path = local_root, upward = true })[1]
+   local ret = git_root and vim.fn.fnamemodify(git_root, ":h") or local_root
+   return ret
+end
+
 function root.info()
    local spec = type(vim.g.root_spec) == "table" and vim.g.root_spec or root.spec
 
@@ -134,8 +158,6 @@ function root.info()
    return roots[1] and roots[1].paths[1] or vim.uv.cwd()
 end
 
-root.cache = {}
-
 function root.setup()
    vim.api.nvim_create_user_command("Root", function()
       Utils.root.info()
@@ -150,28 +172,10 @@ function root.setup()
          root.cache[event.buf] = nil
       end,
    })
-end
 
-function root.get(opts)
-   opts = opts or {}
-   local buf = opts.buf or vim.api.nvim_get_current_buf()
-   local ret = root.cache[buf]
-   if not ret then
-      local roots = root.detect({ all = false, buf = buf })
-      ret = roots[1] and roots[1].paths[1] or vim.uv.cwd()
-      root.cache[buf] = ret
-   end
-   if opts and opts.normalize then
-      return ret
-   end
-   return ret
-end
-
-function root.git()
-   local local_root = root.get()
-   local git_root = vim.fs.find(".git", { path = local_root, upward = true })[1]
-   local ret = git_root and vim.fn.fnamemodify(git_root, ":h") or local_root
-   return ret
+   vim.api.nvim_create_user_command("RootInfo", function()
+      root.info()
+   end, { desc = "Show info about the formatters for the current buffer" })
 end
 
 return root

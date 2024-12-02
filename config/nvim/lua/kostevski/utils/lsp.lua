@@ -1,22 +1,44 @@
-local Lsp = {}
+---@class Lsp
+---@field private _supports_method table<string, table>
+---@field private _cache table<string, any>
+local Lsp = {
+   _supports_method = {},
+   _cache = {},
+   words = {
+      enabled = false,
+      ns = vim.api.nvim_create_namespace("vim_lsp_references"),
+   },
+}
 
+---@param opts table|nil Options for client filtering
+---@return table[] Array of LSP clients
 function Lsp.get_clients(opts)
    opts = opts or {}
-   local bufnr = opts.bufnr or vim.api.nvim_get_current_buf()
-   local clients = vim.lsp.get_clients({ bufnr = bufnr })
-
-   if opts.filter then
-      clients = vim.tbl_filter(opts.filter, clients)
-   end
-
-   return clients
+   local clients = vim.lsp.get_clients(opts)
+   return opts and opts.filter and vim.tbl_filter(opts.filter, clients) or clients
 end
 
--- Function to check if any LSP client attached to the buffer supports a specific method
-function Lsp.has(buffer, method)
+--- Prints debug information about LSP clients and their capabilities
+function Lsp.debug_capabilities()
+   local clients = Lsp.get_clients()
+   for _, client in ipairs(clients) do
+      print("Client: " .. client.name)
+      print("  ID: " .. client.id)
+      print("  Root Directory: " .. (client.config.root_dir or "N/A"))
+      print("  Capabilities:")
+      print(vim.inspect(client.server_capabilities))
+      print("  Attached Buffers: " .. vim.inspect(client.attached_buffers))
+      print("  Workspace Folders: " .. vim.inspect(client.workspace_folders))
+   end
+end
+
+---@param buf number Buffer number
+---@param method string|string[] LSP method or array of methods
+---@return boolean True if any specified method is supported
+function Lsp.has(buf, method)
    if type(method) == "table" then
       for _, m in ipairs(method) do
-         if Lsp.has(buffer, m) then
+         if Lsp.has(buf, m) then
             return true
          end
       end
@@ -24,7 +46,7 @@ function Lsp.has(buffer, method)
    end
 
    method = method:find("/") and method or "textDocument/" .. method
-   local clients = Lsp.get_clients({ bufnr = buffer })
+   local clients = Lsp.get_clients({ bufnr = buf })
 
    for _, client in ipairs(clients) do
       if client.supports_method(method) then
@@ -34,51 +56,52 @@ function Lsp.has(buffer, method)
    return false
 end
 
--- Function to set up an autocmd that triggers when an LSP client attaches to a buffer
+---@param on_attach function
+---@param name string|nil
+---@return number Autocmd
 function Lsp.on_attach(on_attach, name)
    return vim.api.nvim_create_autocmd("LspAttach", {
       callback = function(args)
-         local buffer = args.buf
+         local buf = args.buf
          local client = vim.lsp.get_client_by_id(args.data.client_id)
 
          if client and (not name or client.name == name) then
-            return on_attach(client, buffer)
+            return on_attach(client, buf)
          end
       end,
    })
 end
-function Lsp._check_methods(client, buffer)
-   -- Don't trigger on invalid buffers
-   if not vim.api.nvim_buf_is_valid(buffer) then
+
+---@param client table LSP client
+---@param buf number Buffer number
+function Lsp._check_methods(client, buf)
+   if not vim.api.nvim_buf_is_valid(buf) then
       return
    end
 
-   -- Don't trigger on non-listed buffers
-   if not vim.bo[buffer].buflisted then
+   if not vim.bo[buf].buflisted then
       return
    end
 
-   -- Don't trigger on 'nofile' buffers
-   if vim.bo[buffer].buftype == "nofile" then
+   if vim.bo[buf].buftype == "nofile" then
       return
    end
 
-   -- Iterate over the methods tracked in Lsp._supports_method
    for method, clients in pairs(Lsp._supports_method) do
       clients[client] = clients[client] or {}
-      if not clients[client][buffer] then
-         if client.supports_method and client.supports_method(method, { bufnr = buffer }) then
-            clients[client][buffer] = true
-            -- Trigger a custom autocommand when the client supports a method
+      if not clients[client][buf] then
+         if client.supports_method and client.supports_method(method, { bufnr = buf }) then
+            clients[client][buf] = true
             vim.api.nvim_exec_autocmds("User", {
                pattern = "LspSupportsMethod",
-               data = { client_id = client.id, buffer = buffer, method = method },
+               data = { client_id = client.id, buffer = buf, method = method },
             })
          end
       end
    end
 end
-Lsp._supports_method = {}
+
+--- Sets up LSP functionality and handlers
 function Lsp.setup()
    local register_capability = vim.lsp.handlers["client/registerCapability"]
    vim.lsp.handlers["client/registerCapability"] = function(err, res, ctx)
@@ -94,12 +117,14 @@ function Lsp.setup()
       end
       return ret
    end
-   -- Setup LSP default keymaps
-   --   Lsp.default_keymaps()
-   -- Attach to LSP events
+
    Lsp.on_attach(Lsp._check_methods)
    Lsp.on_dynamic_capability(Lsp._check_methods)
 end
+
+---@param fn function
+---@param opts table|nil
+---@return number Autocmd
 function Lsp.on_dynamic_capability(fn, opts)
    return vim.api.nvim_create_autocmd("User", {
       pattern = "LspDynamicCapability",
@@ -113,6 +138,24 @@ function Lsp.on_dynamic_capability(fn, opts)
       end,
    })
 end
+
+---@param method string
+---@param fn function
+---@return number Autocmd ID
+function Lsp.on_supports_method(method, fn)
+   Lsp._supports_method[method] = Lsp._supports_method[method] or setmetatable({}, { __mode = "k" })
+   return vim.api.nvim_create_autocmd("User", {
+      pattern = "LspSupportsMethod",
+      callback = function(args)
+         local client = vim.lsp.get_client_by_id(args.data.client_id)
+         local buffer = args.data.buffer
+         if client and method == args.data.method then
+            return fn(client, buffer)
+         end
+      end,
+   })
+end
+
 function Lsp.rename_file()
    local buf = vim.api.nvim_get_current_buf()
    local old = vim.api.nvim_buf_get_name(buf)
@@ -138,23 +181,33 @@ function Lsp.rename_file()
    end)
 end
 
-function Lsp.on_rename(from, to, rename)
-   local changes = { files = { {
-      oldUri = vim.uri_from_fname(from),
-      newUri = vim.uri_from_fname(to),
-   } } }
+--- Handles LSP file rename operations
+---@param from string Original file path
+---@param to string New file path
+---@param callback function|nil Optional callback after rename
+function Lsp.on_rename(from, to, callback)
+   local changes = {
+      files = {
+         {
+            oldUri = vim.uri_from_fname(from),
+            newUri = vim.uri_from_fname(to),
+         },
+      },
+   }
    local clients = Lsp.get_clients()
    for _, client in ipairs(clients) do
       if client.supports_method("workspace/willRenameFiles") then
-         local resp = client.request_sync("workspace/willRenameFiles", changes, 1000, 0)
-         if resp and resp.result ~= nil then
+         local resp = client.request_sync("workspace/willRenameFiles", changes, 1000)
+         if resp and resp.result then
             vim.lsp.util.apply_workspace_edit(resp.result, client.offset_encoding)
          end
       end
    end
-   if rename then
-      rename()
+
+   if callback then
+      callback()
    end
+
    for _, client in ipairs(clients) do
       if client.supports_method("workspace/didRenameFiles") then
          client.notify("workspace/didRenameFiles", changes)
@@ -162,7 +215,9 @@ function Lsp.on_rename(from, to, rename)
    end
 end
 
--- Function to check and trigger autocommands for supported LSP methods
+--- Gets default LSP capabilities with optional extensions
+---@param opts table Configuration options
+---@return table LSP capabilities
 function Lsp.default_capabilities(opts)
    local has_blink, blink = pcall(require, "blink.cmp")
    local capabilities = vim.tbl_deep_extend(
@@ -175,41 +230,29 @@ function Lsp.default_capabilities(opts)
    return capabilities
 end
 
+--- Gets LSP server configuration
+---@param server string Server name
+---@return table|nil Server configuration
 function Lsp.get_config(server)
    local configs = require("lspconfig.configs")
    return rawget(configs, server)
 end
 
-function Lsp.get_raw_config(server)
-   local ok, ret = pcall(require, "lspconfig.configs." .. server)
-   if ok then
-      return ret
-   end
-   return require("lspconfig.server_configurations." .. server)
-end
+--- Checks if an LSP
+---@param server string Server name
+---@return boolean True if server is enabled
 function Lsp.is_enabled(server)
    local c = Lsp.get_config(server)
    return c and c.enabled ~= false
 end
 
-function Lsp.on_supports_method(method, fn)
-   Lsp._supports_method[method] = Lsp._supports_method[method] or setmetatable({}, { __mode = "k" })
-   return vim.api.nvim_create_autocmd("User", {
-      pattern = "LspSupportsMethod",
-      callback = function(args)
-         local client = vim.lsp.get_client_by_id(args.data.client_id)
-         local buffer = args.data.buffer ---@type number
-         if client and method == args.data.method then
-            return fn(client, buffer)
-         end
-      end,
-   })
-end
+--- Namespace for word highlighting functionality
 Lsp.words = {}
 Lsp.words.enabled = false
 Lsp.words.ns = vim.api.nvim_create_namespace("vim_lsp_references")
 
--- Function to set up word highlighting based on LSP document highlights
+--- Sets up word highlighting functionality
+---@param opts table|nil Configuration options
 function Lsp.words.setup(opts)
    opts = opts or {}
    if not opts.enabled then
@@ -217,7 +260,6 @@ function Lsp.words.setup(opts)
    end
    Lsp.words.enabled = true
 
-   -- Override the default LSP handler for document highlights
    local handler = vim.lsp.handlers["textDocument/documentHighlight"]
    vim.lsp.handlers["textDocument/documentHighlight"] = function(err, result, ctx, config)
       if not vim.api.nvim_buf_is_loaded(ctx.bufnr) then
@@ -226,7 +268,7 @@ function Lsp.words.setup(opts)
       vim.lsp.buf.clear_references()
       return handler(err, result, ctx, config)
    end
-   -- Set up autocmds to trigger document highlights
+
    Lsp.on_supports_method("textDocument/documentHighlight", function(_, buf)
       vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI", "CursorMoved", "CursorMovedI" }, {
          group = vim.api.nvim_create_augroup("lsp_word_" .. buf, { clear = true }),
@@ -244,6 +286,9 @@ function Lsp.words.setup(opts)
       })
    end)
 end
+
+--- Gets current word highlights and cursor position
+---@return table, number|nil List of highlighted words and current word index
 function Lsp.words.get()
    local cursor = vim.api.nvim_win_get_cursor(0)
    local current, ret = nil, {}
@@ -260,6 +305,10 @@ function Lsp.words.get()
    end
    return ret, current
 end
+
+--- Jumps between highlighted words
+---@param count number Number of words to jump
+---@param cycle boolean|nil Whether to cycle through words
 function Lsp.words.jump(count, cycle)
    local words, idx = Lsp.words.get()
    if not idx then
@@ -279,7 +328,9 @@ function Lsp.words.jump(count, cycle)
    end
 end
 
--- Function to create a formatter configuration for LSP formatting
+--- Creates a formatter configuration
+---@param opts table|nil Formatter options
+---@return table Formatter configuration
 function Lsp.formatter(opts)
    opts = opts or {}
    local filter = opts.filter or {}
@@ -305,6 +356,8 @@ function Lsp.formatter(opts)
    return Utils.merge(ret, opts)
 end
 
+--- Formats buffer using LSP or conform.nvim
+---@param opts table|nil Formatting options
 function Lsp.format(opts)
    opts = vim.tbl_deep_extend(
       "force",
@@ -322,6 +375,7 @@ function Lsp.format(opts)
    end
 end
 
+--- Metatable for LSP code actions
 Lsp.action = setmetatable({}, {
    __index = function(_, action)
       return function()
@@ -335,20 +389,23 @@ Lsp.action = setmetatable({}, {
       end
    end,
 })
+
+--- Executes LSP command
+---@param opts table Command options including command name and arguments
+---@return any Command result
 function Lsp.execute(opts)
    local params = {
       command = opts.command,
       arguments = opts.arguments,
    }
    if opts.open then
-      -- If 'open' is true, use the 'trouble' plugin to display the results
       require("trouble").open({
          mode = "lsp_command",
          params = params,
       })
    else
-      -- Otherwise, send a 'workspace/executeCommand' request to the LSP server
       return vim.lsp.buf_request(0, "workspace/executeCommand", params, opts.handler)
    end
 end
+
 return Lsp
