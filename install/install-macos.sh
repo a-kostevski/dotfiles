@@ -28,7 +28,7 @@ fi
 
 check_install "$brew_prefix/bin/brew" "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
 
-eval $($brew_prefix/bin/brew shellenv)
+eval "$(brew_prefix/bin/brew shellenv)"
 unset brew_prefix
 
 dot_header "Checking for zsh"
@@ -52,4 +52,7 @@ fi
 
 export HOMEBREW_NO_ANALYTICS=1
 export HOMEBREW_NO_INSECURE_REDIRECT=1
+dot_header "Installing Homebrew packages"
 brew bundle --file=$dot_root/config/homebrew/Brewfile-min --no-upgrade
+dot_success "Installed Homebrew packages"
+
