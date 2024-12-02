@@ -6,7 +6,6 @@ vim.g.python3_host_prog = os.getenv("PYENV_ROOT") .. "/versions/py3nvim/bin/pyth
 vim.g.python_host_prog = os.getenv("PYENV_ROOT") .. "/versions/py3nvim/bin/python"
 
 -- Perl interpreter
-
 vim.g.loaded_ruby_provider = 0
 vim.g.loaded_perl_provider = 0
 
@@ -21,7 +20,6 @@ opt.mouse = "a"
 -- Sync clipboard between OS and Neovim.
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
---  See `:help 'clipboard'`
 vim.schedule(function()
    opt.clipboard = "unnamedplus"
 end)
@@ -94,4 +92,5 @@ opt.foldmethod = "expr"
 opt.foldexpr = "v:lua.Utils.ui.foldexpr()"
 opt.foldtext = ""
 
+opt.termguicolors = true
 opt.syntax = "on"
