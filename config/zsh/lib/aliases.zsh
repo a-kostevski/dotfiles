@@ -48,6 +48,7 @@ for p in path fpath manpath infopath; do
 done
 
 # --- Utils ---
+alias cpwd='pwd | tr -d "\n" | pbcopy'
 alias finder='cd $(osascript -e "tell application 'Finder' to POSIX path of (target of window 1 as alias)")'
 alias mergepdf="gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=_merged.pdf"
 
