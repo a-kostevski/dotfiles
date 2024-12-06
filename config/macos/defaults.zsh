@@ -1,8 +1,14 @@
+#!/bin/zsh
+
 osascript -e 'tell application "System Preferences" to quit'
 echo "Configuring macOS"
 
 sudo -v
-while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+while true; do
+   sudo -n true
+   sleep 60
+   kill -0 "$$" || exit
+done 2>/dev/null &
 
 ###############################################################################
 # General UI/UX                                                               #
@@ -26,16 +32,16 @@ defaults write com.apple.CrashReporter DialogType -string "none"
 
 # Disable Notification Center and remove the menu bar icon
 sudo launchctl unload -w \
-  /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null
+   /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null
 
 # Enable full keyboard access for all controls (e.g. enable Tab in modal dialogs)
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
 
-# Reveal IP address, hostname, OS version, etc. when clicking the clock in the 
+# Reveal IP address, hostname, OS version, etc. when clicking the clock in the
 # login window
 sudo defaults write /Library/Preferences/com.apple.loginwindow \
-    AdminHostInfo HostName
-    
+   AdminHostInfo HostName
+
 ###############################################################################
 # Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
 ###############################################################################
@@ -69,7 +75,7 @@ defaults write NSGlobalDomain AppleMeasurementUnits -string "Centimeters"
 defaults write NSGlobalDomain AppleMetricUnits -bool true
 
 # Stop iTunes from responding to the keyboard media keys
-launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist 2> /dev/null
+launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist 2>/dev/null
 
 ###############################################################################
 # Energy saving                                                               #
@@ -134,13 +140,12 @@ defaults write com.apple.finder WarnOnEmptyTrash -bool false
 # Expand the following File Info panes:
 # “General”, “Open with”, and “Sharing & Permissions”
 defaults write com.apple.finder FXInfoPanesExpanded -dict \
-	General -bool true \
-	OpenWith -bool true \
-	Privileges -bool true
+   General -bool true \
+   OpenWith -bool true \
+   Privileges -bool true
 
 # Show the ~/Library folder.
 chflags nohidden ~/Library
-
 # Show the /Volumes folder
 sudo chflags nohidden /Volumes
 
@@ -219,6 +224,18 @@ defaults write com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
 # Check for software updates daily, not just once per week
 defaults write com.apple.SoftwareUpdate ScheduleFrequency -int 1
 
+# Download newly available updates in background
+defaults write com.apple.SoftwareUpdate AutomaticDownload -int 1
+
+# Install System data files & security updates
+defaults write com.apple.SoftwareUpdate CriticalUpdateInstall -int 1
+
+# Automatically download apps purchased on other Macs
+defaults write com.apple.SoftwareUpdate ConfigDataInstall -int 1
+
+# Turn on app auto-update
+defaults write com.apple.commerce AutoUpdate -bool true
+
 ###############################################################################
 # Terminal & iTerm 2                                                          #
 ###############################################################################
@@ -233,6 +250,18 @@ defaults write com.apple.terminal ShowLineMarks -int 0
 defaults write com.apple.terminal FocusFollowsMouse -bool true
 defaults write org.x.X11 wm_ffm -bool true
 
+# Enable “focus follows mouse” for Terminal.app and all X11 apps
+# i.e. hover over a window and start typing in it without clicking first
+#defaults write com.apple.terminal FocusFollowsMouse -bool true
+#defaults write org.x.X11 wm_ffm -bool true
+
+# Enable Secure Keyboard Entry in Terminal.app
+# See: https://security.stackexchange.com/a/47786/8918
+# defaults write com.apple.terminal SecureKeyboardEntry -bool true
+
+# Disable the annoying line marks
+# defaults write com.apple.Terminal ShowLineMarks -int 0
+
 ###############################################################################
 # TouchID for sudo                                                            #
 ###############################################################################
@@ -242,13 +271,13 @@ defaults write org.x.X11 wm_ffm -bool true
 
 ###############################################################################
 # Time Machine                                                                #
-############################################################################### 
+###############################################################################
 # Prevent Time Machine from prompting to use new hard drives as backup volume
 defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
 
 ###############################################################################
 # Safari                                                                      #
-############################################################################### 
+###############################################################################
 # Don’t send search queries to Apple
 defaults write com.apple.Safari UniversalSearchEnabled -bool false
 defaults write com.apple.Safari SuppressSearchSuggestions -bool true
@@ -280,40 +309,33 @@ defaults write com.apple.ActivityMonitor SortDirection -int 0
 
 ###############################################################################
 # Harden                                                                      #
-############################################################################### 
+###############################################################################
 # source ./harden.zsh
 ###############################################################################
 # Kill affected applications                                                  #
 ###############################################################################
 
 for app in "Activity Monitor" \
-    "Address Book" \
-    "Calendar" \
-    "cfprefsd" \
-    "Contacts" \
-    "Dock" \
-    "Finder" \
-    "Google Chrome Canary" \
-    "Google Chrome" \
-    "Mail" \
-    "Messages" \
-    "Opera" \
-    "Photos" \
-    "Safari" \
-    "SizeUp" \
-    "Spectacle" \
-    "SystemUIServer" \
-    "Terminal" \
-    "Transmission" \
-    "iCal"; do
-    killall "${app}" &>/dev/null
+   "Address Book" \
+   "Calendar" \
+   "cfprefsd" \
+   "Contacts" \
+   "Dock" \
+   "Finder" \
+   "Google Chrome Canary" \
+   "Google Chrome" \
+   "Mail" \
+   "Messages" \
+   "Opera" \
+   "Photos" \
+   "Safari" \
+   "SizeUp" \
+   "Spectacle" \
+   "SystemUIServer" \
+   "Terminal" \
+   "Transmission" \
+   "iCal"; do
+   killall "${app}" &>/dev/null
 done
 
 echo "Done. Note that some of these changes require a logout/restart to take effect."
-
-
-
-
-
-
-
