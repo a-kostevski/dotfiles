@@ -76,7 +76,7 @@ toggle.create({
    set = function(state)
       vim.lsp.inlay_hint.enable(state, { bufnr = 0 })
    end,
-   keymap = "<leader>uh",
+   keymap = "<leader>th",
    desc = "Inline hints",
 })
 
@@ -88,7 +88,7 @@ toggle.create({
    set = function(state)
       vim.opt_local.relativenumber = state
    end,
-   keymap = "<leader>ul",
+   keymap = "<leader>tl",
    desc = "Relative line numbers",
 })
 
@@ -100,7 +100,7 @@ toggle.create({
    set = function(state)
       require("ibl").setup_buffer(0, { enabled = state })
    end,
-   keymap = "<leader>ui",
+   keymap = "<leader>ti",
    desc = "Indent guides",
 })
 
@@ -112,7 +112,7 @@ toggle.create({
    set = function(state)
       vim.opt_local.spell = state
    end,
-   keymap = "<leader>um",
+   keymap = "<leader>tm",
    desc = "Spell check",
 })
 
@@ -124,7 +124,7 @@ toggle.create({
    set = function(state)
       vim.opt_local.wrap = state
    end,
-   keymap = "<leader>uw",
+   keymap = "<leader>tw",
    desc = "Line wrap",
 })
 
@@ -136,7 +136,7 @@ toggle.create({
    set = function(state)
       vim.opt_local.syntax = state and "on" or "off"
    end,
-   keymap = "<leader>ux",
+   keymap = "<leader>tx",
    desc = "Syntax highlighting",
 })
 
@@ -148,7 +148,7 @@ toggle.create({
    set = function(state)
       vim.diagnostic.enable(state)
    end,
-   keymap = "<leader>ud",
+   keymap = "<leader>td",
    desc = "Vim diagnostics",
 })
 
@@ -178,7 +178,7 @@ toggle.create({
          })
       end
    end,
-   keymap = "<leader>us",
+   keymap = "<leader>ts",
    desc = "Signature help",
 })
 
