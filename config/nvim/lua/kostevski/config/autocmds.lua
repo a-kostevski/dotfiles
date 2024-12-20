@@ -40,3 +40,11 @@ vim.api.nvim_create_autocmd("FileType", {
       vim.bo[event.buf].buflisted = false
    end,
 })
+
+vim.api.nvim_create_autocmd("FileType", {
+   group = augroup("markdown-editor"),
+   pattern = { "markdown" },
+   callback = function(event)
+      require("no-neck-pain").enable()
+   end,
+})
