@@ -1,0 +1,110 @@
+# Taps
+tap "homebrew/core"
+tap "homebrew/cask"
+tap "homebrew/bundle"
+tap "homebrew/services"
+
+# System and Core Dependencies
+brew "openssl@3"
+brew "pcre"
+brew "readline"
+brew "sqlite"
+brew "xz"
+brew "zlib"
+brew "gettext"
+brew "libssh2"
+brew "libusb"
+brew "libxml2"
+brew "libxslt"
+brew "libzip"
+
+# Essential Command Line Tools
+brew "git"
+brew "curl"
+brew "wget"
+brew "zsh"
+brew "zsh-autosuggestions"
+brew "zsh-completions"
+brew "zsh-syntax-highlighting"
+brew "coreutils"
+brew "findutils"
+brew "gnu-sed"
+brew "grep"
+brew "ripgrep"
+brew "fd"
+brew "fzf"
+brew "jq"
+brew "tree"
+brew "bat"
+brew "eza"
+brew "htop"
+brew "colordiff"
+brew "make"
+
+# Development Tools
+brew "neovim"
+brew "tmux"
+brew "gh"
+brew "git-delta"
+brew "cmake"
+brew "cmake-docs"
+brew "clang-format"
+brew "llvm"
+
+# Languages and Package Managers
+brew "node"
+brew "python"
+brew "python@3.12"
+brew "ruby"
+brew "rust"
+brew "go"
+brew "openjdk"
+brew "perl"
+
+# Development Environment
+brew "pyenv"
+brew "pyenv-virtualenv"
+brew "pipx"
+brew "pnpm"
+
+# Network Tools
+brew "nmap"
+brew "netcat"
+brew "nghttp2"
+brew "aria2"
+brew "wget"
+
+# Security Tools
+brew "gnupg"
+brew "lynis"
+
+# Media Tools
+brew "ffmpeg"
+brew "imagemagick"
+brew "ghostscript"
+
+# GUI Applications
+cask "rectangle"
+cask "1password"
+cask "1password-cli"
+cask "alfred"
+cask "appcleaner"
+cask "brave-browser"
+cask "daisydisk"
+cask "flux"
+cask "font-hack-nerd-font"
+cask "little-snitch"
+cask "the-unarchiver"
+cask "transmission"
+cask "vlc"
+
+cask "wireshark"
+cask "docker"
+cask "postman"
+
+cask "mullvadvpn"
+cask "tor-browser"
+
+cask "knockknock"
+cask "launchcontrol"
+cask "taskexplorer"
