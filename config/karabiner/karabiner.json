@@ -39,7 +39,7 @@
                 },
                 "to": [
                   {
-                    "key_code": "period",
+                    "key_code": "comma",
                     "modifiers": [
                       "shift"
                     ]
@@ -67,7 +67,7 @@
                 },
                 "to": [
                   {
-                    "key_code": "comma",
+                    "key_code": "period",
                     "modifiers": [
                       "shift"
                     ]

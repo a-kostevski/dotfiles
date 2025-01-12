@@ -1,13 +1,19 @@
+---@class Root
+---@field spec table
+---@field detectors table
+---@field cache table
 local root = setmetatable({}, {
-   __call = function(root)
-      return root.get()
+   __call = function(self)
+      return self.get()
    end,
 })
 
 root.spec = { "lsp", { ".git", "lua" }, "cwd" }
-
 root.detectors = {}
+root.cache = {}
 
+---Detector for cwd
+---@return table
 function root.detectors.cwd()
    return { vim.uv.cwd() }
 end
@@ -17,15 +23,18 @@ function root.detectors.lsp(buf)
    if not bufpath then
       return {}
    end
+
    local roots = {}
    local clients = Utils.lsp.get_clients({ bufnr = buf })
    clients = vim.tbl_filter(function(client)
       return not vim.tbl_contains(vim.g.root_lsp_ignore or {}, client.name)
    end, clients)
+
    for _, client in pairs(clients) do
-      local workspace = client.config.workspace_folders
-      for _, ws in pairs(workspace or {}) do
-         roots[#roots + 1] = vim.uri_to_fname(ws.uri)
+      if client.config and client.config.workspace_folders then
+         for _, ws in pairs(client.config.workspace_folders) do
+            roots[#roots + 1] = vim.uri_to_fname(ws.uri)
+         end
       end
       if client.root_dir then
          roots[#roots + 1] = client.root_dir
@@ -40,6 +49,7 @@ end
 function root.detectors.pattern(buf, patterns)
    patterns = type(patterns) == "string" and { patterns } or patterns
    local path = root.bufpath(buf) or vim.uv.cwd()
+
    local pattern = vim.fs.find(function(name)
       for _, p in ipairs(patterns) do
          if name == p then
@@ -51,25 +61,35 @@ function root.detectors.pattern(buf, patterns)
       end
       return false
    end, { path = path, upward = true })[1]
+
    return pattern and { vim.fs.dirname(pattern) } or {}
 end
 
+---Get buffer path
+---@param buf number Buffer number
+---@return string? path Normalized buffer path
 function root.bufpath(buf)
    return root.realpath(vim.api.nvim_buf_get_name(assert(buf)))
 end
 
+---@return string
 function root.cwd()
    return root.realpath(vim.uv.cwd()) or ""
 end
 
+---Get real path by resolving symlinks
+---@param path string? Path to resolve
+---@return string? normalized_path Normalized absolute path
 function root.realpath(path)
-   if path == "" or path == nil then
+   if path == nil or path == "" then
       return nil
    end
    path = vim.uv.fs_realpath(path) or path
    return Utils.norm(path)
 end
 
+---@param spec string|string[]|function Detection specification
+---@return function detector Root detector function
 function root.resolve(spec)
    if root.detectors[spec] then
       return root.detectors[spec]
@@ -81,12 +101,15 @@ function root.resolve(spec)
    end
 end
 
+---Detect root directory
+---@param opts? table Options for root detection
+---@return string[] roots List of detected root directories
 function root.detect(opts)
    opts = opts or {}
    opts.spec = opts.spec or type(vim.g.root_spec) == "table" and vim.g.root_spec or root.spec
    opts.buf = (opts.buf == nil or opts.buf == 0) and vim.api.nvim_get_current_buf() or opts.buf
-
    local ret = {}
+
    for _, spec in ipairs(opts.spec) do
       local paths = root.resolve(spec)(opts.buf)
       paths = paths or {}
@@ -111,8 +134,9 @@ function root.detect(opts)
    return ret
 end
 
-root.cache = {}
-
+---Get root directory
+---@param opts? table Options for root detection
+---@return string
 function root.get(opts)
    opts = opts or {}
    local buf = opts.buf or vim.api.nvim_get_current_buf()
@@ -128,25 +152,29 @@ function root.get(opts)
    return ret
 end
 
+---Get git root directory
+---@return string? git_root Git root directory
 function root.git()
-   local local_root = root.get()
-   local git_root = vim.fs.find(".git", { path = local_root, upward = true })[1]
-   local ret = git_root and vim.fn.fnamemodify(git_root, ":h") or local_root
+   local root = root.get()
+   local git_root = vim.fs.find(".git", { path = root, upward = true })[1]
+   local ret = git_root and vim.fn.fnamemodify(git_root, ":h") or root
    return ret
 end
 
+---Get root directory information
+---@return table info Root directory information
 function root.info()
    local spec = type(vim.g.root_spec) == "table" and vim.g.root_spec or root.spec
 
    local roots = root.detect({ all = true })
    local lines = {} ---@type string[]
    local first = true
-   for _, root_local in ipairs(roots) do
-      for _, path in ipairs(root_local.paths) do
+   for _, root in ipairs(roots) do
+      for _, path in ipairs(root.paths) do
          lines[#lines + 1] = ("- [%s] `%s` **(%s)**"):format(
             first and "x" or " ",
             path,
-            type(root_local.spec) == "table" and table.concat(root_local.spec, ", ") or root_local.spec
+            type(root.spec) == "table" and table.concat(root.spec, ", ") or root.spec
          )
          first = false
       end
@@ -154,28 +182,22 @@ function root.info()
    lines[#lines + 1] = "```lua"
    lines[#lines + 1] = "vim.g.root_spec = " .. vim.inspect(spec)
    lines[#lines + 1] = "```"
-   Utils.notify.info(lines, {})
+   Utils.notify.info(lines, { title = "Roots" })
    return roots[1] and roots[1].paths[1] or vim.uv.cwd()
 end
 
-function root.setup()
-   vim.api.nvim_create_user_command("Root", function()
+function root.setup(opts)
+   vim.api.nvim_create_user_command("Root", function(_)
       Utils.root.info()
-   end, { desc = "Roots for the current buffer" })
+   end, { desc = "Root info" })
+   opts = opts or {}
 
-   -- FIX: doesn't properly clear cache in neo-tree `set_root` (which should happen presumably on `DirChanged`),
-   -- probably because the event is triggered in the neo-tree buffer, therefore add `BufEnter`
-   -- Maybe this is too frequent on `BufEnter` and something else should be done instead??
    vim.api.nvim_create_autocmd({ "LspAttach", "BufWritePost", "DirChanged", "BufEnter" }, {
       group = vim.api.nvim_create_augroup("root_cache", { clear = true }),
       callback = function(event)
          root.cache[event.buf] = nil
       end,
    })
-
-   vim.api.nvim_create_user_command("RootInfo", function()
-      root.info()
-   end, { desc = "Show info about the formatters for the current buffer" })
 end
 
 return root

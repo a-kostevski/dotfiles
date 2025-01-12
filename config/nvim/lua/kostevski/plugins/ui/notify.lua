@@ -1,30 +1,35 @@
 return {
    {
       "rcarriga/nvim-notify",
+      name = "notify",
       init = function()
          vim.notify = require("notify")
       end,
       keys = {
          {
-            "<leader>un",
+            "<leader>nd",
             function()
                require("notify").dismiss({ silent = true, pending = true })
             end,
             desc = "Dismiss All Notifications",
          },
       },
-      opts = {
-         stages = "static",
-         timeout = 3000,
-         max_height = function()
-            return math.floor(vim.o.lines * 0.75)
-         end,
-         max_width = function()
-            return math.floor(vim.o.columns * 0.75)
-         end,
-         on_open = function(win)
-            vim.api.nvim_win_set_config(win, { zindex = 100 })
-         end,
+      opts = Utils.notify.default_config,
+      config = function(_, opts)
+         require("notify").setup(opts)
+      end,
+   },
+   {
+      "nvim-telescope/telescope.nvim",
+      optional = true,
+      keys = {
+         {
+            "<leader>sn",
+            function()
+               require("telescope").extensions.notify.notify({})
+            end,
+            desc = "Notifications",
+         },
       },
    },
 }

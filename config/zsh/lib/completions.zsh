@@ -6,15 +6,14 @@ setopt auto_param_slash     # When completing a directory name, add a slash.
 setopt auto_remove_slash    # Intelligently remove the trailing slash from a completed directory name.
 setopt complete_aliases     # Complete aliases when the _expand_alias completer is used.
 setopt complete_in_word     # Complete from both ends of a word.
-setopt no_case_glob           # Perform case-insensitive globbing.
+setopt no_case_glob         # Perform case-insensitive globbing.
 setopt no_flow_control      # Disable flow control.
 setopt no_list_beep         # Don't beep.
 setopt list_packed          # Packed list.
 setopt list_types           # List all types when listing completions.
 setopt path_dirs            # Perform path search even for command names with slashes.
 
-unsetopt menu_complete      # Do not autoselect the first completion entry.
-
+setopt menu_complete      # Do not autoselect the first completion entry.
 
 zmodload zsh/complist
 autoload -Uz compinit
@@ -23,6 +22,7 @@ ZSH_COMPDUMP=$XDG_CACHE_HOME/zsh/zcompdump
 
 if [ $(date +'%j') != $(stat -f '%Sm' -t '%j' $ZSH_COMPDUMP) ]; then
     compinit -d $ZSH_COMPDUMP
+    touch $ZSH_COMPDUMP
 else
     compinit -C -d $ZSH_COMPDUMP
 fi
@@ -64,7 +64,8 @@ zstyle ':completion:*:functions' ignored-patterns '(_*|pre(cmd|exec))'
 # Filter duplicate entries
 zstyle ':completion:*' ignore-duplicates true
 # Filter junk files
-zstyle ':completion:*' file-ignore '*.o' '*.pyc' '*~' '#*#' '.DS_Store' '*.class' '*.jar' '*.war' '*.ear' '*.zip' '*.tar' '*.gz' '*.tgz' '*.rar' '*.7z' '*.exe' '*.dll' '*.so' '*.dylib' '*.a' '*.lib' '*.obj' '*.o' '*.obj' '*.pdb' '*.idb' '*.ilk' '*.exp' '*.suo' '*.sdf' '*.opensdf' '*.ncb' '*.plg' '*.bsc' '*.aps' '*.res' '*.opt' '*.pch' '*.ipch' '*.iobj' '*.ilk' '*.log' '*.tlog' '*.lastbuildstate' '*.bin' '*.bak' '*.tmp' '*.temp' '*.old' '*.orig' '*.swp' '*.bak' '*.BAK' '*.tmp' '*.TMP' '*.temp' '*.TEMP' '*.old' '*.OLD' '*.orig' '*.ORIG' '*.swp' '*.swo' '*.swn'
+zstyle ':completion:*' file-ignore '*.o' '*.pyc' '*~' '#*#' '.DS_Store' '*.class' '*.jar' '*.war' '*.ear' '*.zip' '*.tar' '*.gz' '*.tgz' '*.rar' '*.7z' '*.exe' '*.dll' '*.so' '*.dylib' '*.a' '*.lib' '*.obj' '*.o' '*.obj' '*.pdb' '*.idb' '*.ilk' '*.exp' '*.suo' '*.sdf' '*.opensdf' '*.ncb' '*.plg' '*.bsc' '*.aps' '*.res' '*.opt' '*.pch' '*.ipch' '*.iobj' '*.ilk' '*.log' '*.tlog' '*.lastbuildstate' '*.bin' '*.bak' '*.tmp' '*.temp' '*.old' '*.orig' '*.swp' '*.bak' '*.BAK' '*.tmp' '*.TMP' '*.temp' '*.TEMP' '*.old' '*.OLD' '*.orig' '*.ORIG' '*.swp' '*.swo' '*.swn' '*.DS_Store'
+
 # Approximate completion
 zstyle ':completion:*:approximate:*' max-errors 1 numeric
 

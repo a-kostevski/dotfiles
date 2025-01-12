@@ -1,29 +1,30 @@
+local icons = Utils.ui.icons
+
 return {
    "neovim/nvim-lspconfig",
    name = "nvim-lspconfig",
    event = { "BufReadPre", "BufNewFile" },
    dependencies = {
-
       { "williamboman/mason-lspconfig.nvim", config = function() end },
-      -- "hrsh7th/cmp-nvim-lsp",
    },
    opts = function()
       local ret = {
          diagnostics = {
+            -- float = false,
             underline = true,
             update_in_insert = false,
             virtual_text = {
-               spacing = 2,
+               spacing = 4,
                source = "if_many",
                prefix = "●",
             },
             severity_sort = true,
             signs = {
                text = {
-                  [vim.diagnostic.severity.ERROR] = " ",
-                  [vim.diagnostic.severity.WARN] = " ",
-                  [vim.diagnostic.severity.HINT] = " ",
-                  [vim.diagnostic.severity.INFO] = " ",
+                  [vim.diagnostic.severity.ERROR] = icons.diagnostics.ERROR,
+                  [vim.diagnostic.severity.WARN] = icons.diagnostics.WARN,
+                  [vim.diagnostic.severity.HINT] = icons.diagnostics.HINT,
+                  [vim.diagnostic.severity.INFO] = icons.diagnostics.INFO,
                },
             },
          },
@@ -50,13 +51,10 @@ return {
             formatting_options = nil,
             timeout_ms = nil,
          },
-         setup = {
-            rust_analyzer = function()
-               return true
-            end,
-         },
-
          servers = {
+            bashls = {
+               filetypes = { "sh", "bash", "zsh" },
+            },
             lua_ls = {
                settings = {
                   Lua = {
@@ -84,6 +82,11 @@ return {
                },
             },
          },
+         setup = {
+            rust_analyzer = function()
+               return true
+            end,
+         },
       }
       return ret
    end,
@@ -100,16 +103,16 @@ return {
 
       -- inlay hints
       if opts.inlay_hints.enabled then
-         Utils.lsp.on_supports_method("textDocument/inlayHint", function(client, buffer)
-            if vim.api.nvim_buf_is_valid(buffer) and vim.bo[buffer].buftype == "" then
-               vim.lsp.inlay_hint.enable(true, { bufnr = buffer })
+         Utils.lsp.on_supports_method("textDocument/inlayHint", function(client, buf)
+            if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "" then
+               vim.lsp.inlay_hint.enable(true, { bufnr = buf })
             end
          end)
       end
 
       -- code lens
       if opts.codelens.enable then
-         Utils.lsp.on_supports_method("textDocument/codeLens", function(client, buffer)
+         Utils.lsp.on_supports_method("textDocument/codeLens", function(_, buffer)
             vim.lsp.codelens.refresh()
             vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
                buffer = buffer,
@@ -121,8 +124,7 @@ return {
       if type(opts.diagnostics.virtual_text) == "table" and opts.diagnostics.virtual_text.prefix == "icons" then
          opts.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0 and "●"
             or function(diagnostic)
-               local icons = Utils.ui.icons.diagnostics
-               for d, icon in pairs(icons) do
+               for d, icon in pairs(icons.diagnostics) do
                   if diagnostic.severity == vim.diagnostic.severity[d:upper()] then
                      return icon
                   end
@@ -131,11 +133,13 @@ return {
       end
 
       vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
-      -- vim.api.nvim_create_autocmd("CursorHold", {
-      --    callback = function()
-      --       vim.diagnostic.open_float(nil, { focus = false })
-      --    end,
-      -- })
+      if opts.diagnostics.float == true then
+         vim.api.nvim_create_autocmd("CursorHold", {
+            callback = function()
+               vim.diagnostic.open_float(nil, { focus = false })
+            end,
+         })
+      end
 
       local servers = opts.servers
       local capabilities = Utils.lsp.default_capabilities(opts)
@@ -170,7 +174,6 @@ return {
          if server_opts then
             server_opts = server_opts == true and {} or server_opts
             if server_opts.enabled ~= false then
-               -- run manual setup if mason=false or if this is a server that cannot be installed with mason-lspconfig
                if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
                   setup(server)
                else
@@ -182,9 +185,48 @@ return {
 
       if have_mason then
          mlsp.setup({
-            ensure_installed = vim.tbl_deep_extend("force", ensure_installed or {}, mlsp.ensure_installed or {}),
+            ensure_installed = vim.tbl_deep_extend(
+               "force",
+               ensure_installed or {},
+               Utils.plugin.opts("mason-lspconfig").ensure_installed or {}
+            ),
             handlers = { setup },
          })
       end
+      --
+      -- LSP Signature Help
+      -- vim.api.nvim_create_autocmd("CursorHoldI", {
+      --    callback = function()
+      --       vim.lsp.buf.signature_help()
+      --    end,
+      -- })
+      --
+      -- -- LSP Hover
+      -- vim.api.nvim_create_autocmd("CursorHold", {
+      --    callback = function()
+      --       vim.lsp.buf.hover()
+      --    end,
+      -- })
+      --
+      -- -- LSP Diagnostics in Floating Window
+      -- vim.api.nvim_create_autocmd("CursorHold", {
+      --    callback = function()
+      --       vim.diagnostic.open_float(nil, { focus = false })
+      --    end,
+      -- })
+      --
+      -- -- LSP Formatting on Save
+      -- vim.api.nvim_create_autocmd("BufWritePre", {
+      --    callback = function()
+      --       vim.lsp.buf.format({ async = true })
+      --    end,
+      -- })
+
+      --    -- LSP Code Actions
+      --    vim.api.nvim_create_autocmd("CursorHold", {
+      --       callback = function()
+      --          vim.lsp.buf.code_action()
+      --       end,
+      --    })
    end,
 }

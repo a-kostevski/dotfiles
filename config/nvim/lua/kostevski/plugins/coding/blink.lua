@@ -2,12 +2,8 @@ return {
    {
       "saghen/blink.cmp",
       build = "cargo build --release",
-      version = "*",
+      version = "0.5.1",
       event = "InsertEnter",
-      dependencies = {
-         "saghen/blink.compat",
-         "rafamadriz/friendly-snippets",
-      },
       opts_extend = {
          "sources.completion.enabled_providers",
          "sources.compat",
@@ -41,14 +37,14 @@ return {
                enabled_providers = {
                   "lsp",
                   "path",
-                  "snippets",
                   "buffer",
+                  "snippets",
                },
             },
          },
          highlight = {
             ns = vim.api.nvim_create_namespace("blink_cmp"),
-            use_nvim_cmp_as_default = true,
+            use_nvim_cmp_as_default = false,
          },
          trigger = {
             completion = {
@@ -119,9 +115,7 @@ return {
                { name = source, module = "blink.compat.source" },
                opts.sources.providers[source] or {}
             )
-            if type(enabled) == "table" and not vim.tbl_contains(enabled, source) then
-               table.insert(enabled, source)
-            end
+            if type(enabled) == "table" and not vim.tbl_contains(enabled, source) then table.insert(enabled, source) end
          end
          require("blink.cmp").setup(opts)
       end,

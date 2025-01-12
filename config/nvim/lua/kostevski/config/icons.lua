@@ -7,10 +7,10 @@ local icons = {
       blocky = { "▀", "▐", "▄", "▌", "▄", "▄", "▓", "▀" },
    },
    diagnostics = {
-      error = " ",
-      warn = " ",
-      hint = " ",
-      info = " ",
+      ERROR = " ",
+      WARN = " ",
+      HINT = " ",
+      INFO = " ",
    },
    git = {
       branch = "",

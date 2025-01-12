@@ -7,19 +7,20 @@ return {
       "williamboman/mason-lspconfig.nvim",
       "WhoIsSethDaniel/mason-tool-installer.nvim",
    },
-
-   opts = {
-      ensure_installed = {
+   main = true,
+   opts = function(_, opts)
+      opts.ensure_installed = opts.ensure_installed or {}
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed, {
          "bashls",
          "lua_ls",
          "luacheck",
+         "shellcheck",
          "stylua",
-         "shfmt",
-      },
-   },
-
+      })
+   end,
    config = function(_, opts)
       require("mason").setup(opts)
+      Utils.debug.dump(opts)
       require("mason-lspconfig").setup({})
       require("mason-tool-installer").setup({
          ensure_installed = opts.ensure_installed,

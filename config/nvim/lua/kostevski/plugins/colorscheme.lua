@@ -27,17 +27,31 @@ return {
             },
             neotree = true,
             notify = true,
+            render_markdown = true,
             telescope = true,
             treesitter = true,
             treesitter_context = true,
             which_key = true,
          },
       },
-      init = function() vim.cmd.colorscheme("catppuccin") end,
    },
    {
       "folke/tokyonight.nvim",
-      enabled = false,
+      lazy = false,
+      priority = 1000,
+      init = function()
+         vim.cmd.colorscheme("tokyonight")
+      end,
+      opts = {
+         style = "night",
+      },
+   },
+   {
+      "shaunsingh/nord.nvim",
+      priority = 1000,
+   },
+   {
+      "scottmckendry/cyberdream.nvim",
       priority = 1000,
    },
 }

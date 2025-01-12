@@ -28,19 +28,29 @@ return {
             lsp_format = "fallback",
          },
          formatters_by_ft = {
+            bash = { "shfmt" },
+            css = { "prettierd" },
             lua = { "stylua" },
-            python = { "isort", "black" },
+            html = { "prettierd" },
+            javascript = { "prettierd" },
             markdown = { "prettierd" },
             sh = { "shfmt" },
-            zsh = { "shfmt" },
-            rust = { "rustfmt", lsp_format = "fallback" },
          },
          formatters = {
             injected = {
-               ignore_errors = true,
+               ignore_errors = false,
+               lang_to_ext = {
+                  bash = "sh",
+                  latex = "tex",
+                  lua = "lua",
+                  markdown = "md",
+                  python = "py",
+                  javascript = "js",
+                  rust = "rs",
+               },
             },
             shfmt = {
-               prepend_args = { "-i", "2" },
+               prepend_args = { "-i", "2", "-ci" },
             },
          },
       },
@@ -53,12 +63,9 @@ return {
       "williamboman/mason.nvim",
       opts = {
          ensure_installed = {
-            "isort",
-            "black",
             "stylua",
             "selene",
             "prettierd",
-            "shfmt",
          },
       },
    },

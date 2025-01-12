@@ -33,7 +33,20 @@ function Utils.merge(...)
    end
    return ret
 end
-
+---@generic T
+---@param list T[]
+---@return T[]
+function Utils.dedup(list)
+   local ret = {}
+   local seen = {}
+   for _, v in ipairs(list) do
+      if not seen[v] then
+         table.insert(ret, v)
+         seen[v] = true
+      end
+   end
+   return ret
+end
 function Utils.norm(path)
    -- Replace ~ with the home directory
    if path:sub(1, 1) == "~" then
@@ -60,6 +73,20 @@ function Utils.create_undo()
    end
 end
 
+function Utils.P(value)
+   print(vim.inspect(value))
+   return value
+end
+
+function Utils.RELOAD(...)
+   return require("plenary.reload").reload_module(...)
+end
+
+function Utils.R(name)
+   Utils.RELOAD(name)
+   return require(name)
+end
+
 function Utils.debounce(ms, fn)
    local timer = vim.uv.new_timer()
    return function(...)
@@ -71,7 +98,34 @@ function Utils.debounce(ms, fn)
    end
 end
 
+---@generic R
+---@param fn fun():R?
+---@param opts? string|{msg:string, on_error:fun(msg)}
+---@return R
+function Utils.try(fn, opts)
+   -- Normalize opts
+   local options = type(opts) == "string" and { msg = opts } or opts or {}
+
+   -- Execute function in protected mode
+   local ok, result = pcall(fn)
+
+   if ok then
+      return result
+   end
+
+   -- Handle error case
+   local err_msg = options.msg or tostring(result)
+
+   if options.on_error then
+      options.on_error(err_msg)
+   else
+      vim.notify(err_msg, vim.log.levels.ERROR)
+   end
+   return nil
+end
+
 function Utils.setup()
+   Utils.debug = require("kostevski.utils.debug")
    Utils.notify = require("kostevski.utils.notify")
    Utils.lsp = require("kostevski.utils.lsp")
    Utils.format = require("kostevski.utils.format")
@@ -80,7 +134,6 @@ function Utils.setup()
    Utils.plugin = require("kostevski.utils.plugin")
    Utils.toggle = require("kostevski.utils.toggle")
    Utils.root = require("kostevski.utils.root")
-   Utils.debug = require("kostevski.utils.debug")
    Utils.format.setup()
    Utils.root.setup()
 end

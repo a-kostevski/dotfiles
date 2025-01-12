@@ -1,14 +1,12 @@
 source /etc/zshrc
 
-if [[ -n $ZSH_PROFILING ]]; then
-    zmodload zsh/zprof
-fi
+[[ -n $ZSH_PROFILING ]] && zmodload zsh/zprof
 
 ZSH_FUNCTIONS=$ZDOTDIR/functions
 if [[ -d "$ZSH_FUNCTIONS" ]]; then
-    for func in $ZSH_FUNCTIONS/*; do
-        autoload -Uz ${func:t}
-    done
+   for func in $ZSH_FUNCTIONS/*; do
+      autoload -Uz ${func:t}
+   done
 fi
 unset ZSH_FUNCTIONS
 
@@ -29,7 +27,6 @@ source $ZLIB/window.zsh
 unset ZLIB
 
 if [[ -n $ZSH_PROFILING ]]; then
-    zprof
-    unset ZSH_PROFILING
+   zprof
+   unset ZSH_PROFILING
 fi
-

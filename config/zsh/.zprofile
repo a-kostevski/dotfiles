@@ -9,11 +9,11 @@ export EDITOR="nvim"
 export VISUAL=$EDITOR
 
 if [ -z $HOMEBREW_PREFIX ]; then
-    if [[ $(uname -m)="arm64" ]]; then
-        HOMEBREW_PREFIX="/opt/homebrew"
-    else
-        HOMEBREW_PREFIX="/usr/local"
-    fi
+   if [[ $(uname -m)="arm64" ]]; then
+      HOMEBREW_PREFIX="/opt/homebrew"
+   else
+      HOMEBREW_PREFIX="/usr/local"
+   fi
 fi
 
 MANPATH=

@@ -1,8 +1,8 @@
 append_path() {
-    local dir=$1
-    if [[ -d $dir && ! " ${path[*]} " =~ " ${dir} " ]]; then
-        path=("$dir" "$path[@]")
-    fi
+   local dir=$1
+   if [[ -d $dir && ! " ${path[*]} " =~ " ${dir} " ]]; then
+      path=("$dir" "$path[@]")
+   fi
 }
 
 append_path /bin
@@ -18,5 +18,6 @@ append_path "$HOMEBREW_PREFIX/opt/ruby/bin"
 append_path "$HOMEBREW_PREFIX/opt/curl/bin"
 append_path "$HOMEBREW_PREFIX/opt/openjdk/bin"
 append_path "$HOMEBREW_PREFIX/opt/rustup/bin"
+append_path "$HOMEBREW_PREFIX/opt/homebrew/opt/ncurses/bin"
 
 typeset -U path

@@ -21,7 +21,7 @@ return {
       ft = { "markdown" },
       keys = {
          {
-            "<leader>um",
+            "<leader>tm",
             "<cmd>MarkdownPreviewToggle<cr>",
             ft = "markdown",
             desc = "Markdown Preview",
@@ -34,100 +34,107 @@ return {
          "nvim-treesitter/nvim-treesitter",
          "nvim-tree/nvim-web-devicons",
       },
-      opts = {
-         block_quotes = {
-            default = {
-               border = "▋",
-               hl = "NONE",
-            },
-            enable = true,
-         },
-         buf_ignore = { "nofile", "copilot-chat", "copilot-*" },
-         checkboxes = {
-            enable = true,
-            -- checked = { text = "✔" },
-            -- custom = {
-            --    {
-            --       match_string = "-",
-            --       icon = "◯",
-            --       hl = "CheckboxPending",
-            --    },
-            -- },
-         },
-         code_blocks = {
-            enable = true,
-            -- hl = "NONE",
-            -- info_hl = "NONE",
-            language_direction = "left",
-            language_names = {
-               ["txt"] = "Text",
-            },
-            min_width = 60,
-            pad_amount = 2,
-            pad_char = " ",
-            sign = true,
-            sign_hl = nil,
-            style = "language",
-         },
-         headings = {
-            enable = true,
-            shift_width = 1,
-            heading_1 = {
-               hl = "MarkviewHeading1",
-               icon = "",
-            },
-            heading_2 = {
-               hl = "MarkviewHeading2",
-               icon = "",
-            },
-            heading_3 = {
-               hl = "MarkviewHeading3",
-               icon = "",
-            },
-            heading_4 = {
-               hl = "MarkviewHeading4",
-               icon = "",
-            },
-            heading_5 = {
-               hl = "MarkviewHeading5",
-               icon = "",
-            },
-            heading_6 = {
-               hl = "MarkviewHeading6",
-               icon = "",
-            },
-         },
-         inline_codes = {
-            corner_left = nil,
-            corner_right = nil,
-            enable = true,
-            hl = "MarkviewInlineCode",
-            padding_left = nil,
-            padding_right = nil,
-         },
-         links = {
-            emails = {
+      opts = function()
+         -- local presets = require("markview.presets")
+         return {
+            block_quotes = {
+               default = {
+                  border = "▋",
+                  hl = "NONE",
+               },
                enable = true,
-               hl = "MarkviewLink",
-               icon = nil,
             },
-            enable = true,
-            hyperlinks = {
+            buf_ignore = { "nofile", "copilot-chat", "copilot-*" },
+            checkboxes = {
                enable = true,
-               hl = "MarkviewLink",
-               icon = nil,
+               -- checked = { text = "✔" },
+               custom = {
+                  {
+                     match_string = "-",
+                     icon = "◯",
+                     hl = "CheckboxPending",
+                  },
+               },
             },
-            images = {
+            code_blocks = {
                enable = true,
-               hl = "MarkviewLink",
-               icon = nil,
+               -- hl = "NONE",
+               -- info_hl = "NONE",
+               language_direction = "left",
+               language_names = {
+                  ["txt"] = "Text",
+               },
+               min_width = 60,
+               pad_amount = 2,
+               pad_char = " ",
+               sign = true,
+               sign_hl = nil,
+               style = "language",
             },
-         },
-      },
-      list_items = {
-         indent_size = 1,
-         shift_width = 2,
-      },
+            headings = {
+               enable = true,
+               shift_width = 1,
+               heading_1 = {
+                  hl = "MarkviewHeading1",
+                  icon = "",
+               },
+               heading_2 = {
+                  hl = "MarkviewHeading2",
+                  icon = "",
+               },
+               heading_3 = {
+                  hl = "MarkviewHeading3",
+                  icon = "",
+               },
+               heading_4 = {
+                  hl = "MarkviewHeading4",
+                  icon = "",
+               },
+               heading_5 = {
+                  hl = "MarkviewHeading5",
+                  icon = "",
+               },
+               heading_6 = {
+                  hl = "MarkviewHeading6",
+                  icon = "",
+               },
+            },
+            inline_codes = {
+               corner_left = nil,
+               corner_right = nil,
+               enable = true,
+               hl = "MarkviewInlineCode",
+               padding_left = nil,
+               padding_right = nil,
+            },
+            links = {
+               emails = {
+                  enable = true,
+                  hl = "MarkviewLink",
+                  icon = nil,
+               },
+               enable = true,
+               hyperlinks = {
+                  enable = true,
+                  hl = "MarkviewLink",
+                  icon = nil,
+               },
+               images = {
+                  enable = true,
+                  hl = "MarkviewLink",
+                  icon = nil,
+               },
+            },
+            list_items = {
+               indent_size = 1,
+               shift_width = 2,
+               markers = {
+                  { match = "-", text = "•", hl = "Comment" }, -- smaller bullet
+                  { match = "+", text = "·", hl = "Comment" }, -- even smaller bullet
+               },
+            },
+         }
+      end,
       config = function(_, opts)
          local colors = {
             heading1 = "#E06C75", -- Soft red

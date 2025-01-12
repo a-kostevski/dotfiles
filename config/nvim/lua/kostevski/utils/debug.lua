@@ -42,7 +42,7 @@ function Debug._dump(value, opts)
       msg = msg .. "\n" .. debug.traceback("", 2)
    end
 
-   Utils.notify.info(msg, {
+   vim.notify(msg, vim.log.levels.DEBUG, {
       title = "Debug: " .. opts.loc,
       on_open = function(win)
          vim.wo[win].conceallevel = 3
@@ -96,5 +96,64 @@ function Debug.get_upvalue(func, name)
       index = index + 1
    end
 end
+
+Debug._log = {
+   enabled = true, -- Control debug logging
+   entries = {},
+   max_entries = 1000,
+}
+
+function Debug.log(component, message, data)
+   local log = Debug._log
+
+   if not log.enabled then
+      return
+   end
+
+   local entry = {
+      timestamp = vim.fn.strftime("%Y-%m-%d %H:%M:%S"),
+      component = component,
+      message = message,
+      data = data,
+   }
+
+   table.insert(log.entries, 1, entry)
+   if #log.entries > log.max_entries then
+      table.remove(log.entries)
+   end
+
+   -- Write to log file if needed
+   if vim.g.notify_debug_file then
+      local log_line = string.format(
+         "[%s] %s: %s %s\n",
+         entry.timestamp,
+         entry.component,
+         entry.message,
+         vim.inspect(entry.data or {})
+      )
+      local f = io.open(vim.g.notify_debug_file, "a")
+      if f then
+         f:write(log_line)
+         f:close()
+      end
+   end
+end
+
+function Debug.enable()
+   Debug._log.debug = true
+   Debug._log("System", "Debug logging enabled")
+end
+
+function Debug.disable()
+   Debug._log("System", "Debug logging disabled")
+   Debug._log.debug = false
+end
+
+function Debug.get_log()
+   return Debug._log.entries
+end
+vim.api.nvim_create_user_command("DebugLog", function()
+   Debug.dump(Debug.get_log())
+end, { nargs = 0 })
 
 return Debug

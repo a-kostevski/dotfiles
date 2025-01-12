@@ -1,5 +1,20 @@
+---@class Keys
+---@field keys KeymapDefinition[]
 local Keys = {}
+
+---@alias LSPCapability string
+---@alias KeymapHandler function|string
+---@class KeymapDefinition
+---@field [1] string The keybinding
+---@field [2] KeymapHandler The handler
+---@field desc string Description
+---@field mode? string|string[] Vim modes
+---@field has? LSPCapability|LSPCapability[] Required capabilities
+---@field cond? function Optional condition function
+---@field nowait? boolean Don't wait for more keys
+
 Keys.keys = {
+
    { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp Info" },
    { "gd", vim.lsp.buf.definition, desc = "Goto Definition", has = "definition" },
    { "gr", vim.lsp.buf.references, desc = "References", nowait = true },
@@ -12,7 +27,6 @@ Keys.keys = {
          vim.lsp.buf.hover()
       end,
       desc = "Hover",
-      mode = { "i" },
    },
    {
       "gK",
@@ -87,13 +101,25 @@ Keys.keys = {
    },
 }
 
+---Normalize modes to array
+---@param mode? string|string[]
+---@return string[]
+local function normalize_modes(mode)
+   return type(mode) == "table" and mode or { mode or "n" }
+end
+
+---@param lhs string
+---@param rhs function|string
+---@param opts? table
 function Keys.map(lhs, rhs, opts)
-   if not lhs or not rhs then
-      error("lhs and rhs are required for mapping keys")
-   end
+   vim.validate({
+      lhs = { lhs, "string" },
+      rhs = { rhs, { "function", "string" } },
+      opts = { opts, "table", true },
+   })
 
    opts = opts or {}
-   local keymap = {
+   local keymap_def = {
       lhs,
       rhs,
       desc = opts.desc,
@@ -102,55 +128,98 @@ function Keys.map(lhs, rhs, opts)
       has = opts.has,
       cond = opts.cond,
    }
-   table.insert(Keys.keys, keymap)
+   table.insert(Keys.keys, keymap_def)
 end
 
-function Keys.on_attach(_, buffer)
-   for _, keymap in ipairs(Keys.keys) do
-      local mode = keymap.mode or "n"
-      local opts = { noremap = true, silent = true, buffer = buffer, desc = keymap.desc, nowait = keymap.nowait }
-
-      -- Check if the client has the required capability
-      local has = true
-      if keymap.has then
-         has = Utils.lsp.has(buffer, keymap.has)
-      end
-
-      -- Check any additional conditions
-      local cond = true
-      if keymap.cond then
-         cond = keymap.cond()
-      end
-
-      if has and cond then
-         vim.keymap.set(mode, keymap[1], keymap[2], opts)
+---Apply keymap safely with error handling
+---@param keymap KeymapDefinition
+---@param opts table
+---@return boolean
+local function apply_keymap(keymap, opts)
+   local modes = normalize_modes(keymap.mode)
+   for _, mode in ipairs(modes) do
+      local success, err = pcall(vim.keymap.set, mode, keymap[1], keymap[2], opts)
+      if not success then
+         vim.notify(string.format("Failed to map %s in mode %s: %s", keymap[1], mode, err), vim.log.levels.ERROR)
+         return false
       end
    end
+   return true
+end
+
+---Attach keymaps to buffer
+---@param client table LSP client
+---@param buffer number Buffer number
+function Keys.on_attach(client, buffer)
+   -- Use Utils.lsp.has for capability checking
+   for _, keymap in ipairs(Keys.keys) do
+      -- Check capabilities first
+      if keymap.has and not Utils.lsp.has(buffer, keymap.has) then
+         goto continue
+      end
+
+      -- Check conditions
+      if keymap.cond and not keymap.cond() then
+         goto continue
+      end
+
+      local opts = {
+         noremap = true,
+         silent = true,
+         buffer = buffer,
+         desc = keymap.desc,
+         nowait = keymap.nowait,
+      }
+
+      apply_keymap(keymap, opts)
+      ::continue::
+   end
+end
+
+---@param buffer number
+function Keys.detach(buffer)
+   if not vim.api.nvim_buf_is_valid(buffer) then
+      return
+   end
+
+   for _, keymap in ipairs(Keys.keys) do
+      local modes = normalize_modes(keymap.mode)
+      for _, mode in ipairs(modes) do
+         pcall(vim.keymap.del, mode, keymap[1], { buffer = buffer })
+      end
+   end
+end
+
+function Keys.setup()
+   Utils.lsp.on_attach(Keys.on_attach)
+
+   vim.api.nvim_create_autocmd("LspDetach", {
+      callback = function(args)
+         Keys.detach(args.buf)
+      end,
+   })
 end
 
 function Keys.debug()
    for _, client in pairs(Utils.lsp.get_clients()) do
-      print("LSP Client: " .. client.name)
+      print(string.format("LSP Client: %s (id: %d)", client.name, client.id))
       for _, keymap in ipairs(Keys.keys) do
-         local has = true
-         if keymap.has then
-            has = Utils.lsp.has(client.id, keymap.has)
-         end
-
-         local cond = true
-         if keymap.cond then
-            cond = keymap.cond()
-         end
-
-         if has and cond then
-            print(string.format("  Key: %s, Command: %s, Description: %s", keymap[1], keymap[2], keymap.desc or ""))
+         local has_cap = not keymap.has or Utils.lsp.has(client.id, keymap.has)
+         if has_cap then
+            print(
+               string.format(
+                  "  %s -> %s (%s)",
+                  keymap[1],
+                  type(keymap[2]) == "function" and "function" or keymap[2],
+                  keymap.desc or "no description"
+               )
+            )
          end
       end
    end
 end
 
-vim.api.nvim_create_user_command("DebugLspKeys", function()
-   Keys.debug()
-end, {})
+-- Create debug command
+vim.api.nvim_create_user_command("DebugLspKeys", Keys.debug, {})
 
 return Keys

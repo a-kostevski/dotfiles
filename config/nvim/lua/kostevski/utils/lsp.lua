@@ -14,8 +14,12 @@ local Lsp = {
 ---@return table[] Array of LSP clients
 function Lsp.get_clients(opts)
    opts = opts or {}
-   local clients = vim.lsp.get_clients(opts)
-   return opts and opts.filter and vim.tbl_filter(opts.filter, clients) or clients
+   local ok, clients = pcall(vim.lsp.get_clients, opts)
+   if not ok then
+      vim.notify("Failed to get LSP clients: " .. clients, vim.log.levels.ERROR)
+      return {}
+   end
+   return opts.filter and vim.tbl_filter(opts.filter, clients) or clients
 end
 
 --- Prints debug information about LSP clients and their capabilities

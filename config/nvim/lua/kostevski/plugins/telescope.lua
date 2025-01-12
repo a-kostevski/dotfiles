@@ -1,28 +1,3 @@
-local picker = {
-   name = "telescope",
-   commands = {
-      files = "find_files",
-   },
-   open = function(builtin, opts)
-      opts = opts or {}
-      opts.follow = opts.follow ~= false
-      if opts.cwd and opts.cwd ~= vim.uv.cwd() then
-         local function open_cwd_dir()
-            local action_state = require("telescope.actions.state")
-            local line = action_state.get_current_line()
-            require("telescope.builtin")[builtin](vim.tbl_deep_extend("force", {}, opts or {}, {
-               root = false,
-               default_text = line,
-            }))
-         end
-         opts.attach_mappings = function(_, map)
-            map("i", "<a-c>", open_cwd_dir, { desc = "Open cwd Directory" })
-            return true
-         end
-      end
-      require("telescope.builtin")[builtin](opts)
-   end,
-}
 return {
    {
       "nvim-telescope/telescope.nvim",
@@ -33,17 +8,9 @@ return {
          {
             "nvim-telescope/telescope-fzf-native.nvim",
             build = "make",
-
-            enabled = true,
-            config = function(plugin)
+            config = function(_)
                Utils.plugin.on_load("telescope.nvim", function()
-                  local ok, err = pcall(require("telescope").load_extension, "fzf")
-                  if not ok then
-                     local lib = plugin.dir .. "/build/libfzf.so"
-                     if not vim.uv.fs_stat(lib) then
-                        require("lazy").build({ plugins = { plugin }, show = false }):wait(function() end)
-                     end
-                  end
+                  require("telescope").load_extension("fzf")
                end)
             end,
          },
@@ -52,13 +19,12 @@ return {
          { "nvim-tree/nvim-web-devicons" },
       },
       keys = {
-      -- stylua: ignore
-      {
-        "<leader>,",
-        "<cmd>Telescope buffers sort_mru=true sort_lastused=true<cr>",
-        desc = "Switch Buffer",
-      },
-         -- { "<leader>/", LazyVim.pick("live_grep"), desc = "Grep (Root Dir)" },
+         {
+            "<leader>,",
+            "<cmd>Telescope buffers sort_mru=true sort_lastused=true<cr>",
+            desc = "Switch Buffer",
+         },
+         { "<leader>/", "<cmd>Telescope live_grep<cr>", desc = "Grep (Root Dir)" },
          { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command History" },
          { "<leader><leader>", "<cmd>Telescope find_files<cr>", desc = "Find Files (Root Dir)" },
          -- find
@@ -70,11 +36,35 @@ return {
             end,
             desc = "Config",
          },
-         { "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files (Root Dir)" },
-         -- { "<leader>fF", LazyVim.pick("files", { root = false }), desc = "Find Files (cwd)" },
-         { "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live grep" },
+         {
+            "<leader>ff",
+            function()
+               require("telescope.builtin").find_files({ cwd = Utils.root.get() })
+            end,
+            desc = "Find Files (Root Dir)",
+         },
+         {
+            "<leader>fF",
+            function()
+               require("telescope.builtin").find_files({ root = false })
+            end,
+            desc = "Find Files (cwd)",
+         },
+         {
+            "<leader>fg",
+            function()
+               require("telescope.builtin").live_grep({ cwd = Utils.root.get() })
+            end,
+            desc = "Live grep",
+         },
          { "<leader>fr", "<cmd>Telescope oldfiles<cr>", desc = "Recent" },
-         -- { "<leader>fR", LazyVim.pick("oldfiles", { cwd = vim.uv.cwd() }), desc = "Recent (cwd)" },
+         {
+            "<leader>fR",
+            function()
+               require("telescope.builtin").oldfiles({ cwd = vim.uv.cwd() })
+            end,
+            desc = "Recent (cwd)",
+         },
          -- git
          { "<leader>gc", "<cmd>Telescope git_commits<cr>", desc = "Commits" },
          { "<leader>gs", "<cmd>Telescope git_status<cr>", desc = "Status" },
@@ -86,8 +76,14 @@ return {
          { "<leader>sC", "<cmd>Telescope commands<cr>", desc = "Commands" },
          { "<leader>sd", "<cmd>Telescope diagnostics bufnr=0<cr>", desc = "Document Diagnostics" },
          { "<leader>sD", "<cmd>Telescope diagnostics<cr>", desc = "Workspace Diagnostics" },
-         { "<leader>sg", "<cmd>Telescope live_grep", desc = "Grep (Root Dir)" },
-         -- { "<leader>sG", LazyVim.pick("live_grep", { root = false }), desc = "Grep (cwd)" },
+         { "<leader>sg", "<cmd>Telescope live_grep<cr>", desc = "Grep (Root Dir)" },
+         {
+            "<leader>sG",
+            function()
+               require("telescope.builtin").live_grep({ root = false })
+            end,
+            desc = "Grep (cwd)",
+         },
          { "<leader>sh", "<cmd>Telescope help_tags<cr>", desc = "Help Pages" },
          { "<leader>sH", "<cmd>Telescope highlights<cr>", desc = "Search Highlight Groups" },
          { "<leader>sj", "<cmd>Telescope jumplist<cr>", desc = "Jumplist" },
@@ -98,11 +94,15 @@ return {
          { "<leader>so", "<cmd>Telescope vim_options<cr>", desc = "Options" },
          { "<leader>sR", "<cmd>Telescope resume<cr>", desc = "Resume" },
          { "<leader>sq", "<cmd>Telescope quickfix<cr>", desc = "Quickfix List" },
+         {
+            "<leader>fu",
+            "<cmd>Telescope colorscheme<cr>",
+            { enable_preview = true, desc = "Colorscheme with Preview" },
+         },
          -- { "<leader>sw", LazyVim.pick("grep_string", { word_match = "-w" }), desc = "Word (Root Dir)" },
          -- { "<leader>sW", LazyVim.pick("grep_string", { root = false, word_match = "-w" }), desc = "Word (cwd)" },
          -- { "<leader>sw", LazyVim.pick("grep_string"), mode = "v", desc = "Selection (Root Dir)" },
          -- { "<leader>sW", LazyVim.pick("grep_string", { root = false }), mode = "v", desc = "Selection (cwd)" },
-         -- { "<leader>uC", LazyVim.pick("colorscheme", { enable_preview = true }), desc = "Colorscheme with Preview" },
          {
             "<leader>ss",
             function()
@@ -140,26 +140,22 @@ return {
             local line = action_state.get_current_line()
             require("telescope.builtin").find_files({ hidden = true, default_text = line })()
          end
-         local function find_command()
-            if 1 == vim.fn.executable("rg") then
-               return { "rg", "--files", "--color", "never", "-g", "!.git" }
-            elseif 1 == vim.fn.executable("fd") then
-               return { "fd", "--type", "f", "--color", "never", "-E", ".git" }
-            elseif 1 == vim.fn.executable("fdfind") then
-               return { "fdfind", "--type", "f", "--color", "never", "-E", ".git" }
-            elseif 1 == vim.fn.executable("find") and vim.fn.has("win32") == 0 then
-               return { "find", ".", "-type", "f" }
-            elseif 1 == vim.fn.executable("where") then
-               return { "where", "/r", ".", "*" }
-            end
-         end
 
          return {
             defaults = {
+               -- Add trim option do defaults
+               vimgrep_arguments = {
+                  "rg",
+                  "--color=never",
+                  "--no-heading",
+                  "--with-filename",
+                  "--line-number",
+                  "--column",
+                  "--smart-case",
+                  "--trim",
+               },
                prompt_prefix = " ",
                selection_caret = " ",
-               -- open files in the first window that is an actual file.
-               -- use the current window if no other window is available.
                get_selection_window = function()
                   local wins = vim.api.nvim_list_wins()
                   table.insert(wins, 1, vim.api.nvim_get_current_win())
@@ -186,17 +182,32 @@ return {
                      ["q"] = actions.close,
                   },
                },
+               preview = {
+                  filesize_limit = 0.1, -- MB
+               },
             },
             pickers = {
                find_files = {
-                  find_command = find_command,
+                  find_command = { "rg", "--files", "--color=never", "--glob", "!**/.git/*", "-L" },
                   hidden = true,
+                  mappings = {
+                     n = {
+                        ["cd"] = function(prompt_bufnr)
+                           local selection = require("telescope.actions.state").get_selected_entry()
+                           local dir = vim.fn.fnamemodify(selection.path, ":p:h")
+                           require("telescope.actions").close(prompt_bufnr)
+                           -- Depending on what you want put `cd`, `lcd`, `tcd`
+                           vim.cmd(string.format("silent lcd %s", dir))
+                        end,
+                     },
+                  },
                },
             },
             extensions = {
                ["ui-select"] = {
                   require("telescope.themes").get_dropdown(),
                },
+               fzf = {},
             },
          }
       end,

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Create executable file with the specified name
+# Create executable file with the specified name and opens it for editing
 # Usage: mkx <file_name>
 
 file_name="$1"
@@ -21,3 +21,4 @@ fi
 
 touch "$file_name"
 chmod 755 "$file_name"
+"$EDITOR" "$file_name"

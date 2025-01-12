@@ -1,5 +1,5 @@
 vim.g.mapleader = " "
-vim.g.localleader = "§"
+vim.g.maplocalleader = ","
 
 -- Set default python interpreter to pyenv virtualenv shim named 'py3nvim'
 vim.g.python3_host_prog = os.getenv("PYENV_ROOT") .. "/versions/py3nvim/bin/python"
@@ -25,9 +25,9 @@ vim.schedule(function()
 end)
 
 -- Tabs to 2 spaces
-opt.tabstop = 3
-opt.softtabstop = 3
-opt.shiftwidth = 3
+opt.tabstop = 2
+opt.softtabstop = 2
+opt.shiftwidth = 2
 opt.expandtab = true
 
 -- Enable break indent
@@ -55,12 +55,12 @@ opt.splitright = true
 opt.splitbelow = true
 
 -- Sets how neovim will display certain whitespace characters in the editor.
-opt.list = true
-opt.listchars = {
-   tab = "» ",
-   trail = "·",
-   nbsp = "␣",
-}
+-- opt.list = true
+-- opt.listchars = {
+--    tab = " ",
+--    trail = "·",
+--    nbsp = "␣",
+-- }
 opt.fillchars = {
    vert = "│",
    fold = " ",
@@ -73,6 +73,7 @@ opt.cursorline = true
 
 -- Minimal number of screen lines to keep above and below the cursor.
 opt.scrolloff = 10
+opt.smoothscroll = true
 
 -- Insert visual separator att column width:
 opt.colorcolumn = "120"
@@ -86,8 +87,7 @@ opt.relativenumber = true
 opt.updatetime = 100
 opt.foldlevel = 99
 opt.formatexpr = "v:lua.Utils.format.formatexpr()"
-opt.formatoptions = "jcroqlnt" -- tcqj
-opt.smoothscroll = true
+opt.formatoptions = "jcroqlnt"
 opt.foldmethod = "expr"
 opt.foldexpr = "v:lua.Utils.ui.foldexpr()"
 opt.foldtext = ""

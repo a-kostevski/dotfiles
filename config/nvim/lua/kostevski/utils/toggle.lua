@@ -153,6 +153,17 @@ toggle.create({
 })
 
 toggle.create({
+   name = "noneckpain",
+   get = function()
+      return true
+   end,
+   set = function(_)
+      vim.cmd(":NoNeckPain")
+   end,
+   keymap = "<leader>tn",
+   desc = "No Neck Pain",
+})
+toggle.create({
    name = "signature_help",
    get = function()
       return vim.b.signature_help_enabled or false

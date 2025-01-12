@@ -119,4 +119,11 @@ function ui.get_kind_filter(buf)
       or nil
 end
 
+function ui.spinner(interval)
+   local spinner = ui.icons.misc.spinner_frames
+   local ms = (vim.uv or vim.loop).hrtime() / 1000000
+   local frame = math.floor(ms / interval) % #spinner.frames
+   return spinner.frames[frame + 1]
+end
+
 return ui

@@ -4,7 +4,6 @@ return {
       version = false,
       event = { "BufReadPre", "BufNewFile" },
       cmd = { "TSUpdateSync", "TSUpdate", "TSInstall" },
-      lazy = vim.fn.argc(-1) == 0,
       build = ":TSUpdate",
       keys = {
          { "<c-space>", desc = "Increment Selection" },
@@ -43,11 +42,17 @@ return {
          incremental_selection = {
             enable = true,
             keymaps = {
-               init_selection = "<C-space>",
-               node_incremental = "<C-space>",
-               scope_incremental = false,
-               node_decremental = "<bs>",
+               init_selection = "gnn",
+               node_incremental = "grn",
+               scope_incremental = "grc",
+               node_decremental = "grm",
             },
+            -- keymaps = {
+            --    init_selection = "<C-space>",
+            --    node_incremental = "<C-space>",
+            --    scope_incremental = false,
+            --    node_decremental = "<bs>",
+            -- },
          },
          textobjects = {
             move = {
@@ -134,7 +139,26 @@ return {
    {
       "nvim-treesitter/nvim-treesitter-context",
       event = "VeryLazy",
-      opts = { mode = "cursor", max_lines = 3 },
+      opts = {
+         mode = "cursor",
+         max_lines = 3,
+         trim_scope = "outer",
+         patterns = {
+            default = {
+               "class",
+               "function",
+               "method",
+               "for",
+               "while",
+               "if",
+               "switch",
+               "case",
+               "element",
+               "call",
+            },
+         },
+         zindex = 20,
+      },
    },
    {
       "windwp/nvim-ts-autotag",

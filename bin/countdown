@@ -1,0 +1,51 @@
+#!/bin/zsh
+
+countdown() {
+    local seconds=$1
+    local start=$SECONDS
+    
+    # Disable zle for normal execution
+    if [[ ! -o zle ]]; then
+        while [ $((SECONDS - start)) -lt $seconds ]; do
+            local remaining=$((seconds - (SECONDS - start)))
+            local hours=$((remaining / 3600))
+            local minutes=$(((remaining % 3600) / 60))
+            local secs=$((remaining % 60))
+            
+            printf "\r%02d:%02d:%02d" $hours $minutes $secs
+            sleep 1
+        done
+        printf "\rTime's up!\n"
+        afplay /System/Library/Sounds/Glass.aiff
+        return
+    fi
+
+    # ZLE-enabled execution for prompt modification
+    while [ $((SECONDS - start)) -lt $seconds ]; do
+        local remaining=$((seconds - (SECONDS - start)))
+        local hours=$((remaining / 3600))
+        local minutes=$(((remaining % 3600) / 60))
+        local secs=$((remaining % 60))
+        
+        PROMPT="%B[%02d:%02d:%02d]%b $DEFAULT_PROMPT" "$hours" "$minutes" "$secs"
+        zle reset-prompt
+        sleep 1
+    done
+    
+    PROMPT="$DEFAULT_PROMPT"
+    zle reset-prompt
+    printf "\rTime's up!\n"
+    afplay /System/Library/Sounds/Glass.aiff
+}
+
+# Store default prompt
+DEFAULT_PROMPT=${PROMPT:-'%~ %# '}
+
+# Check if argument is provided
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <seconds>"
+    exit 1
+fi
+
+countdown $1
+
