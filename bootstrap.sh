@@ -47,7 +47,7 @@ dot_header() {
 }
 
 dot_info() {
-  $verbose && printf "%2s\x1b[34m [Info]\x1b[0m$1\n"
+  ((verbose)) && printf "%2s\x1b[34m [Info]\x1b[0m$1\n"
 }
 
 dot_error() {
@@ -91,20 +91,28 @@ dot_link() {
 
   [[ ! -e "$src" ]] && dot_error "Source $src does not exist" && return 1
 
-  if [[ -L "${dest}" ]]; then
+  # If destination is a symlink
+  if [[ -L "$dest" ]]; then
     local current_target
-    current_target="$(readlink "${dest}")"
-    [[ "$current_target" == "$src" ]] && dot_info "Link already exists: $dest" && return 0
-    [[ -e "$dest" ]] && dot_error "Broken symlink detected: $dest" && return 1
+    current_target="$(readlink "$dest")"
 
+    # If it points to our source file, we're good
+    [[ "$current_target" == "$src" ]] && dot_info "Link already exists: $dest" && return 0
+
+    # If it's a broken symlink or points somewhere else, remove it
+    dot_info "Removing existing symlink: $dest"
+    $dry_run rm "$dest"
   fi
 
-  # Backup existing file/directory if it exists
-  if [[ -e "${dest}" ]]; then
+  # If destination exists and is not a symlink, back it up
+  if [[ -e "$dest" ]]; then
     local backup="${dest}.backup.$(date +%s)"
     dot_info "Backing up ${dest} to ${backup}"
     $dry_run mv "$dest" "$backup" || return 1
   fi
+
+  # Create parent directory if needed
+  dot_mk_parent "$dest"
 
   # Create new symlink
   dot_info "Linking ${src} to ${dest}"
@@ -204,14 +212,6 @@ parse_args() {
 }
 
 valid_env() {
-  # Check minimum required versions
-  local min_bash_version="3.2"
-  if ! version_check "${BASH_VERSION}" "${min_bash_version}"; then
-    dot_error "Bash version ${min_bash_version} or higher required"
-    exit 1
-  }
-  
-  # Validate required commands
   local required_commands=("git" "curl" "sudo")
   for cmd in "${required_commands[@]}"; do
     if ! command -v "$cmd" >/dev/null; then
@@ -219,6 +219,42 @@ valid_env() {
       exit 1
     fi
   done
+}
+
+find_broken_links() {
+  local dir="$1"
+  find "$dir" -type l ! -exec test -e {} \; -print
+}
+
+clean_broken_links() {
+  local dir="$1"
+  local broken_links=()
+
+  while IFS= read -r link; do
+    broken_links+=("$link")
+  done < <(find_broken_links "$dir")
+
+  if ((${#broken_links[@]} > 0)); then
+    echo "Found ${#broken_links[@]} broken symlinks:"
+    printf '%s\n' "${broken_links[@]}"
+
+    read -q "REPLY?Do you want to remove these broken symlinks? [y/N] "
+    echo
+
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+      for link in "${broken_links[@]}"; do
+        dot_info "Removing broken symlink: $link"
+        $dry_run rm "$link"
+      done
+      return 0
+    else
+      dot_info "Skipping cleanup of broken symlinks"
+      return 1
+    fi
+  else
+    dot_info "No broken symlinks found in $dir"
+    return 0
+  fi
 }
 
 # Main execution
@@ -232,9 +268,9 @@ main() {
   # Set default values
   config_dest=${config_dest:-$DEFAULT_CONFIG_DEST}
   bin_dest=${bin_dest:-$DEFAULT_BIN_DEST}
-  config_dest=$(realpath -m "$config_dest")
-  bin_dest=$(realpath -m "$bin_dest")
-  
+  config_dest=$(realpath "$config_dest")
+  bin_dest=$(realpath "$bin_dest")
+
   dry_run=${dry_run:-""}
   skip_install=${skip_install:-false}
 
@@ -242,6 +278,36 @@ main() {
   bin_src="${dot_root}/bin"
 
   valid_paths
+
+  # Check for broken symlinks before proceeding
+  dot_title "Broken symlinks check..."
+
+  read -q "REPLY?Do you want to check and clean broken symlinks? [y/N] "
+  echo
+
+  if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+    local dirs_to_check=("$config_dest" "$bin_dest")
+    local found_broken=false
+
+    for dir in "${dirs_to_check[@]}"; do
+      if [[ -d "$dir" ]]; then
+        if ! find_broken_links "$dir" | grep -q .; then
+          dot_info "No broken symlinks found in $dir"
+        else
+          found_broken=true
+          dot_header "Found broken symlinks in $dir:"
+          find_broken_links "$dir"
+          clean_broken_links "$dir"
+        fi
+      fi
+    done
+
+    if ! $found_broken; then
+      dot_success "No broken symlinks found in any directory"
+    fi
+  else
+    dot_info "Skipping broken symlinks check"
+  fi
 
   # Create necessary directories
   dot_mkdir "$config_dest" || exit 1
@@ -286,4 +352,3 @@ if ! main; then
   dot_error "Bootstrap failed"
   exit 1
 fi
-
