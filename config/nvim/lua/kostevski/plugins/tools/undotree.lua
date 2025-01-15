@@ -14,7 +14,7 @@ return {
          set = function(_)
             return vim.cmd.UndotreeToggle()
          end,
-         keymap = "<leader>uu",
+         keymap = "<leader>tu",
          desc = "Undotree",
       })
    end,

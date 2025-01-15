@@ -107,7 +107,7 @@ return {
                local tsc = require("treesitter-context")
                tsc.toggle()
             end,
-            keymap = "<leader>uc",
+            keymap = "<leader>tc",
             desc = "Treesitter context",
          })
 

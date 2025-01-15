@@ -8,14 +8,14 @@ local function notify_toggle(feature, state)
    Utils.notify.info(message, { title = "Toggle" })
 end
 
---- Create a new toggle.
--- @param opts A table containing the toggle options:
---   - name: The name of the toggle.
---   - get: A function that returns the current state of the feature.
---   - set: A function that sets the state of the feature.
---   - desc: (Optional) A description of the toggle.
---   - keymap: (Optional) A keymap to toggle the feature.
--- @return A table representing the toggle.
+---@class ToggleOptions
+---@field name string
+---@field get function
+---@field set function
+---@field desc? string
+---@field keymap? string
+
+---@param opts ToggleOptions
 local function create_toggle(opts)
    local desc = opts.desc or opts.name or ""
    local t = {

@@ -12,7 +12,7 @@ return {
             vim.cmd(":Hardtime toggle")
             vim.g.hardtime_enabled = state
          end,
-         keymap = "<leader>ut",
+         keymap = "<leader>tt",
          desc = "Hardtime",
       })
    end,
