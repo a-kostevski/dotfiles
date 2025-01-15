@@ -9,5 +9,3 @@ append_fpath "$HOMEBREW_PREFIX/share/zsh/site-functions"
 append_fpath "$HOMEBREW_PREFIX/share/zsh-completions"
 append_fpath "$ZDOTDIR/completions"
 append_fpath "$ZDOTDIR/functions"
-
-typeset -U fpath

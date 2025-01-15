@@ -75,6 +75,14 @@ export PSQL_HISTORY=$XDG_STATE_HOME/psql_history
 export PGPASSFILE=$XDG_CONFIG_HOME/pg/pgpass
 export PGSERVICEFILE=$XDG_CONFIG_HOME/pg/pg_service.conf
 
+export LANG="en_GB.UTF-8"
+export LC_ALL=${LANG}
+export EDITOR="nvim"
+export VISUAL=$EDITOR 
+
+# Add these environment variables
+export ARCHFLAGS="-arch $(/usr/bin/arch)"
+
 if [[ ! -o login ]]; then
   source $ZDOTDIR/.zprofile
 fi

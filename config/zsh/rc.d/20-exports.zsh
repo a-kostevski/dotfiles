@@ -4,10 +4,10 @@ export DEVDIR="$HOME/dev"
 export REPOS="$DEVDIR/repos"
 export GHDIR="$REPOS/github.com/a-kostevski"
 export DOTDIR="$GHDIR/dotfiles"
-export LIFE="$HOME/life"
+export EXO="$HOME/exo"
 export ZETDIR="$LIFE/0-inbox"
 
-export EXO_DATA_HOME="~/life"
+export EXO_DATA_HOME="~/exo"
 export EXO_EDITOR="nvim"
 
 export GOROOT="/opt/homebrew/opt/go/libexec"

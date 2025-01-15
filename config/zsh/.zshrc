@@ -1,5 +1,3 @@
-source /etc/zshrc
-
 [[ -n $ZSH_PROFILING ]] && zmodload zsh/zprof
 
 ZSH_FUNCTIONS=$ZDOTDIR/functions
@@ -10,21 +8,13 @@ if [[ -d "$ZSH_FUNCTIONS" ]]; then
 fi
 unset ZSH_FUNCTIONS
 
-ZLIB=$ZDOTDIR/lib
-ZTHEME=$ZDOTDIR/theme
+# Load interactive shell configurations
+for config_file ($ZDOTDIR/rc.d/*.zsh(N)); do
+    source $config_file
+done
 
-source $ZLIB/config.zsh
-source $ZLIB/history.zsh
-source $ZLIB/exports.zsh
-source $ZLIB/aliases.zsh
-source $ZLIB/completions.zsh
-source $ZLIB/keybindings.zsh
-source $ZLIB/plugins.zsh
-source $ZLIB/prompt.zsh
-source $ZLIB/window.zsh
-
-[ -f $ZTHEME/dir_colors ] && eval $(gdircolors -b $ZTHEME/dir_colors)
-unset ZLIB
+# Load theme
+[ -f $ZDOTDIR/theme/dir_colors ] && eval $(gdircolors -b $ZDOTDIR/theme/dir_colors)
 
 if [[ -n $ZSH_PROFILING ]]; then
    zprof

@@ -1,5 +1,9 @@
 # https://github.com/mattmc3/zsh_unplugged
+# A minimal zsh plugin manager implementation
 
+# _plug_clone: Clone zsh plugins from GitHub repositories
+# Usage: _plug_clone "owner/repo" [...]
+# Example: _plug_clone "zsh-users/zsh-autosuggestions"
 function _plug_clone {
   local repo plugdir initfile initfiles=()
   ZPLUGINDIR=${ZPLUGINDIR:-${ZDOTDIR:-$HOME/.config/zsh}/plugins}
@@ -17,6 +21,10 @@ function _plug_clone {
     fi
   done
 }
+
+# _plug_load: Clone and source zsh plugins
+# Usage: _plug_load "owner/repo" [...]
+# Example: _plug_load "zsh-users/zsh-syntax-highlighting"
 function _plug_load {
   local repo plugdir initfile initfiles=()
   : ${ZPLUGINDIR:=${ZDOTDIR:-~/.config/zsh}/plugins}
@@ -38,6 +46,8 @@ function _plug_load {
   done
 }
 
+# _plug_compile: Compile all plugin files for faster loading
+# Usage: _plug_compile
 function _plug_compile {
  ZPLUGINDIR=${ZPLUGINDIR:-$HOME/.config/zsh/plugins}
   autoload -U zrecompile
@@ -47,6 +57,9 @@ function _plug_compile {
   done
 }
 
+# _plug_source: Source local plugin files
+# Usage: _plug_source plugin_directory [...]
+# Example: _plug_source "custom-plugin"
 function _plug_source {
   local plugdir
   ZPLUGINDIR=${ZPLUGINDIR:-${ZDOTDIR:-$HOME/.config/zsh}/plugins}
@@ -58,6 +71,8 @@ function _plug_source {
   done
 }
 
+# _plug_update: Update all installed plugins
+# Usage: _plug_update
 function _plug_update {
   ZPLUGINDIR=${ZPLUGINDIR:-$HOME/.config/zsh/plugins}
   for d in $ZPLUGINDIR/*/.git(/); do
