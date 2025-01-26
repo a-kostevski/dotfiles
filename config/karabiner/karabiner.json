@@ -50,7 +50,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -78,7 +79,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -103,7 +105,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -131,7 +134,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -164,7 +168,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -197,7 +202,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -225,7 +231,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -258,7 +265,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
@@ -283,7 +291,8 @@
                     "type": "frontmost_application_if",
                     "bundle_identifiers": [
                       "^com\\.apple\\.Terminal$",
-                      "net.kovidgoyal.kitty"
+                      "net.kovidgoyal.kitty",
+                      "com.todesktop.230313mzl4w4u92"
                     ]
                   }
                 ]
