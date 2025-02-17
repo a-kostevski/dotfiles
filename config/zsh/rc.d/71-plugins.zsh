@@ -20,11 +20,14 @@ if command -v op >/dev/null 2>&1; then
 fi
 
 ## pyenv
-if command -v pyenv >/dev/null 2>&1; then
-  export PYENV_ROOT=$XDG_DATA_HOME/pyenv
-  eval "$(pyenv init -)"
-  [[ -z "${PYENV_VIRTUALENV_INIT}" ]] && eval "$(pyenv virtualenv-init -)"
-fi
+# if command -v pyenv >/dev/null 2>&1; then
+#   export PYENV_ROOT=$XDG_DATA_HOME/pyenv
+#   eval "$(pyenv init -)"
+#   [[ -z "${PYENV_VIRTUALENV_INIT}" ]] && eval "$(pyenv virtualenv-init -)"
+# fi
+
+eval "$(uv generate-shell-completion zsh)"
+eval "$(uvx --generate-shell-completion zsh)"
 
 ##
 _plug_load "zsh-users/zsh-completions"
