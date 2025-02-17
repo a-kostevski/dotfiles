@@ -40,7 +40,7 @@ readonly KB=$((1024))
 readonly MB=$((KB * 1024))
 
 # System limits and defaults
-readonly DEFAULT_MAX_DEPTH=3
+readonly DEFAULT_MAX_DEPTH=10
 readonly DEFAULT_MAX_SIZE=$((50 * MB))
 readonly DEFAULT_MAX_FILES=1000
 readonly DEFAULT_JOBS=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu || echo 4)
@@ -58,23 +58,24 @@ readonly ALLOWED_PATHS=(
 # Default excluded directories
 readonly -a DEFAULT_EXCLUDES=(
   '.git'
-  # 'venv'
-  # '.venv'
-  # 'env'
-  # '.env'
-  # 'dist'
-  # 'build'
-  # '.idea'
-  # '.vscode'
-  # 'tmp'
-  # 'temp'
-  # 'log'
-  # 'logs'
-  # 'cache'
-  # '.cache'
-  # '.output'
-  # 'out'
-  # 'test'
+  'bin'
+  'venv'
+  '.venv'
+  'env'
+  '.env'
+  'dist'
+  'build'
+  '.idea'
+  '.vscode'
+  'tmp'
+  'temp'
+  'log'
+  'logs'
+  'cache'
+  '.cache'
+  '.output'
+  'out'
+  'test'
 )
 
 # Error codes
@@ -83,20 +84,31 @@ readonly E_RESOURCE=86   # Resource allocation failure
 readonly E_SECURITY=87   # Security violation
 readonly E_IO=88         # I/O operation failure
 readonly E_USAGE=89      # Invalid usage
+readonly E_SYSTEM=90    # System command failure
 readonly E_PATH=92       # Path not available
 
 #######################################
 # Global state configuration
 #######################################
+# Environment variable overrides
+declare -r GPT_PROJECT_MAX_SIZE="${GPT_PROJECT_MAX_SIZE:-${DEFAULT_MAX_SIZE}}"
+declare -r GPT_PROJECT_MAX_FILES="${GPT_PROJECT_MAX_FILES:-${DEFAULT_MAX_FILES}}"
+declare -r GPT_PROJECT_MAX_DEPTH="${GPT_PROJECT_MAX_DEPTH:-${DEFAULT_MAX_DEPTH}}"
+declare -r GPT_PROJECT_MAX_JOBS="${GPT_PROJECT_MAX_JOBS:-${DEFAULT_JOBS}}"
+declare -r GPT_PROJECT_EXCLUDE_DIRS="${GPT_PROJECT_EXCLUDE_DIRS:-}"
+declare -r GPT_PROJECT_OUTPUT="${GPT_PROJECT_OUTPUT:-/dev/stdout}"
+
+# Runtime state
 declare INPUT_PATH="${PWD}"
-declare OUTPUT="/dev/stdout"
+declare OUTPUT="${GPT_PROJECT_OUTPUT}"
 declare -a EXCLUDE_DIRS=("${DEFAULT_EXCLUDES[@]}")
+[[ -n "${GPT_PROJECT_EXCLUDE_DIRS}" ]] && parse_exclude_dirs "${GPT_PROJECT_EXCLUDE_DIRS}"
 
 declare -a EXTENSIONS=()
-declare MAX_SIZE="${DEFAULT_MAX_SIZE}"
-declare MAX_FILES="${DEFAULT_MAX_FILES}"
-declare MAX_DEPTH="${DEFAULT_MAX_DEPTH}"
-declare MAX_JOBS="${DEFAULT_JOBS}"
+declare MAX_SIZE="${GPT_PROJECT_MAX_SIZE}"
+declare MAX_FILES="${GPT_PROJECT_MAX_FILES}"
+declare MAX_DEPTH="${GPT_PROJECT_MAX_DEPTH}"
+declare MAX_JOBS="${GPT_PROJECT_MAX_JOBS}"
 
 # Runtime flags
 declare -i DRY_RUN=0
@@ -106,131 +118,132 @@ declare -i DEBUG=0
 # Stats
 declare -i STATS_PROCESSED=0
 declare -i STATS_FAILED=0
+declare -i STATS_START_TIME
+declare -i STATS_END_TIME
 
 declare TEMP_DIR
 declare -a TMP_FILES=()
 
 function usage() {
-  echo
-  echo "Usage: ${SCRIPT_NAME} [options] [path]"
-  echo
-  echo "Process and format project files for GPT analysis."
-  echo
-  echo "Options:"
-  echo "    -h, --help          Show this help message"
-  echo "    -v, --verbose       Enable verbose output"
-  echo "    -d, --debug         Enable debug output"
-  echo "    -n, --dry-run       Show what would be done without doing it"
-  echo "    -o, --output FILE   Output file (default: stdout)"
-  echo "    -m, --max-size N    Maximum file size in bytes (0 for unlimited)"
-  echo "    -j, --jobs N        Maximum number of parallel jobs"
-  echo "    -x, --exclude DIRS  Comma-separated list of directories to exclude"
-  echo
+  cat <<EOF
 
-  echo "Examples:"
-  echo "    ${SCRIPT_NAME} .                    # Process current directory"
-  echo "    ${SCRIPT_NAME} -o out.txt src/      # Process src directory to out.txt"
-  echo "    ${SCRIPT_NAME} -m 1048576 lib/      # Process files under 1MB in lib/"
-  echo
-  echo "Version: ${VERSION}"
+Usage: ${SCRIPT_NAME} [OPTIONS] [PATH]
+
+Process and format project files for GPT analysis.
+
+Options:
+  -d, --debug              Enable debug output
+  -e, --extensions=LIST    Comma-separated list of file extensions to process
+  -h, --help              Display this help and exit
+  -j, --jobs=N            Number of parallel jobs (default: auto)
+  -m, --max-size=BYTES    Maximum file size in bytes (0 for unlimited)
+  -n, --dry-run           Show what would be done without doing it
+  -o, --output=FILE       Output file (default: stdout)
+  -q, --quiet             Suppress non-error messages
+  -v, --verbose           Enable verbose output
+  -x, --exclude=DIRS      Comma-separated list of directories to exclude
+      --version           Display version information and exit
+
+Examples:
+  ${SCRIPT_NAME} .                        Process current directory
+  ${SCRIPT_NAME} --output=out.txt src/    Process src directory to out.txt
+  ${SCRIPT_NAME} --max-size=1048576 lib/  Process files under 1MB in lib/
+
+Version: ${VERSION}
+EOF
+}
+
+function version() {
+  echo "${SCRIPT_NAME} ${VERSION}"
 }
 
 #######################################
 # Output and logging functions
 #######################################
 
-if [[ -t 1 ]]; then
-  readonly RED=$'\033[0;31m'
-  readonly GREEN=$'\033[0;32m'
-  readonly YELLOW=$'\033[0;33m'
-  readonly BLUE=$'\033[0;34m'
-  readonly RESET=$'\033[0m'
+# Log levels
+declare -r LOG_LEVEL_ERROR=0
+declare -r LOG_LEVEL_WARN=1
+declare -r LOG_LEVEL_INFO=2
+declare -r LOG_LEVEL_DEBUG=3
+
+# Environment variable overrides for logging
+declare LOG_LEVEL
+LOG_LEVEL=${LOG_LEVEL_INFO}
+
+# Terminal colors if output is a terminal
+if [[ -t 2 ]]; then
+    readonly RED=$'\033[0;31m'
+    readonly YELLOW=$'\033[0;33m'
+    readonly GREEN=$'\033[0;32m'
+    readonly BLUE=$'\033[0;34m'
+    readonly RESET=$'\033[0m'
 else
-  readonly RED=""
-  readonly GREEN=""
-  readonly YELLOW=""
-  readonly BLUE=""
-  readonly RESET=""
+    readonly RED=""
+    readonly YELLOW=""
+    readonly GREEN=""
+    readonly BLUE=""
+    readonly RESET=""
 fi
 
-# Log a message with the specified level and formatting
+# Central logging function with structured output
 # Args:
-#   $1 - Log level (error, warn, info, debug)
-#   $2 - Message to log
+#   $1 - Log level (numeric)
+#   $2 - Log level name (string)
+#   $3 - Message to log
+#   $4 - Context (optional JSON-like string)
 # Returns:
-#   0 on success, non-zero on error
+#   0 if message was logged, 1 if suppressed by level
+function _log() {
+    local -r level_num="$1"
+    local -r level_name="$2"
+    local -r message="$3"
+    local -r context="${4:-}"
 
-function log() {
-  local -r level="$1"
-  local -r message="$2"
-  local -r timestamp="$(date -u +'%Y-%m-%d %H:%M:%S')"
-  local color
-  local symbol
+    [[ ${level_num} -gt ${LOG_LEVEL} ]] && return 1
 
-  [[ "$level" == "debug" && $DEBUG -eq 0 ]] && return 0
+    local color=""
+    case "${level_name}" in
+        ERROR) color="${RED}" ;;
+        WARN)  color="${YELLOW}" ;;
+        INFO)  color="${GREEN}" ;;
+        DEBUG) color="${BLUE}" ;;
+        *)     color="${RESET}" ;;
+    esac
 
-  case "${level}" in
-    error)
-      color="${RED}"
-      symbol="✖"
-      ;;
-    warn)
-      color="${YELLOW}"
-      symbol="⚠"
-      ;;
-    info)
-      color="${GREEN}"
-      symbol="ℹ"
-      ;;
-    debug)
-      color="${BLUE}"
-      symbol="⚙"
-      ;;
-    *)
-      color="${RESET}"
-      symbol="•"
-      ;;
-  esac
+    local log_line="${color}${level_name}${RESET}"
+    log_line+=" [${SCRIPT_NAME}] ${message}"
+    [[ -n "${context}" ]] && log_line+=" ${context}"
 
-  # Format and output the log message
-  printf "${color}%s[%-5s]${RESET} [%s] %s\n" \
-    "${symbol}" "${level}" "${timestamp}" "${message}" \
-    >&2
+    printf "%s\n" "${log_line}" >&2
+    return 0
+}
+
+# Enhanced logging interfaces with context support
+function log_error() {
+    local -r message="$1"
+    local -r code="${2:-1}"
+    local -r context="${3:-}"
+    _log ${LOG_LEVEL_ERROR} "ERROR" "${message}" "${context}"
+    return "${code}"
+}
+
+function log_warn() {
+    local -r message="$1"
+    local -r context="${2:-}"
+    _log ${LOG_LEVEL_WARN} "WARN" "${message}" "${context}"
+}
+
+function log_info() {
+    local -r message="$1"
+    local -r context="${2:-}"
+    _log ${LOG_LEVEL_INFO} "INFO" "${message}" "${context}"
 }
 
 function log_debug() {
-  [[ $DEBUG ]] && log "debug" "$1"
-}
-
-function log_info() { log "info" "$1"; }
-
-function log_warn() { log "warn" "$1"; }
-
-function log_error() {
-  local message="$1"
-  local code="${2:-1}"
-
-  log "error" "${message}"
-
-  [[ $DEBUG ]] && log_stack_trace 1
-
-  return "${code}"
-}
-
-# Print stack trace for debugging
-# Args:
-#   $1 - Starting frame number (default: 1)
-function log_stack_trace() {
-  local start_frame="${1:-1}"
-  local i
-
-  echo "Stack trace:" >&2
-  for ((i = start_frame; i < ${#BASH_SOURCE[@]}; i++)); do
-    printf "  at %s() in %s:%s\n" \
-      "${FUNCNAME[i]}" \
-      "${BASH_SOURCE[i]}" \
-      "${BASH_LINENO[i - 1]}" >&2
-  done
+    local -r message="$1"
+    local -r context="${2:-}"
+    _log ${LOG_LEVEL_DEBUG} "DEBUG" "${message}" "${context}"
 }
 
 # Creates a secure temporary file with restricted permissions
@@ -302,43 +315,45 @@ function find_files() {
   local dir="$1"
   local -a find_cmd=(
     find
+    -L
     "${dir}"
     -type f
   )
 
-  # Add exclude patterns with proper quoting
+  # Add exclude patterns
   for exclude in "${EXCLUDE_DIRS[@]}"; do
     find_cmd+=(-not -path "\"*/${exclude}/*\"")
   done
 
-  # Add extension patterns
+  # Add extension patterns with -o (OR) operator
+  local first=true
   for ext in "${EXTENSIONS[@]}"; do
-    find_cmd+=(-name "\"*.${ext}\"")
+    if $first; then
+      find_cmd+=(-name "\"*.${ext}\"")
+      first=false
+    else
+      find_cmd+=(-o -name "\"*.${ext}\"")
+    fi
   done
 
   # Add max depth if specified
   if ((MAX_DEPTH > 0)); then
     find_cmd+=(-maxdepth "${MAX_DEPTH}")
   fi
-
   find_cmd+=(-print0)
 
   # Debug output
   if ((DEBUG)); then
-    log_debug "Executing find command: ${find_cmd[*]}"
+    log_debug "Find command: ${find_cmd[*]}"
   fi
 
   # Execute find command with proper error handling
-  local files
-  files=$("${find_cmd[@]}" 2>/dev/null) || {
+  eval "${find_cmd[*]}" 2>/dev/null || {
     log_error "Failed to execute find command"
     return ${E_SYSTEM}
   }
-
-  # Output files even if empty (for proper handling)
-  printf '%s' "${files}"
-  return 0
 }
+
 # Detects and returns the appropriate file type/language based on extension
 # Args:
 #   $1 - File path
@@ -473,84 +488,118 @@ function process_target() {
 #   $2 - Output file path
 # Returns:
 #   Number of errors encountered (0 on success)
-
 function process_directory() {
   local dir="$1"
   local output="$2"
   local -i errors=0
-  local files
+  declare -a file_array
 
-  log_debug "Processing directory: ${dir}"
+  local context="dir=${dir} output=${output}"
 
-  # Use appropriate error handling for find_files
-  files=$(find_files "${INPUT_PATH}") || return $?
+  while IFS= read -r -d $'\0' file; do
+    file_array+=("$file")
+  done < <(find_files "${INPUT_PATH}")
 
-  # Check if files is empty using parameter expansion
-  if [[ -z ${files:+x} ]]; then
-    log_warn "No matching files found in ${dir}"
+  if ((${#file_array[@]} == 0)); then
+    log_warn "No matching files found" "${context}"
     return 0
   fi
 
   if ((DRY_RUN)); then
-    # Convert null-terminated string to array for display
-    local -a file_array
-    while IFS= read -r -d '' file; do
-      file_array+=("$file")
-    done < <(printf '%s' "${files}")
-
-    log_info "Would process files: ${file_array[*]}"
+    log_info "Would process ${#file_array[@]} files" "${context}"
     return 0
   fi
 
-  # Process files in parallel if we have any
-  if [[ -n "${files}" ]]; then
-    # Convert null-terminated string to array
-    local -a file_array
-    while IFS= read -r -d '' file; do
-      file_array+=("$file")
-    done < <(printf '%s' "${files}")
-
-    if ! process_files_parallel "${file_array[@]}" "${output}"; then
-      log_error "Failed to process some files"
-      ((errors++))
-    fi
+  context+=" total_files=${#file_array[@]}"
+  if ! process_files_parallel "${file_array[@]}" "${output}"; then
+    log_error "Failed to process directory" "${context}"
+    ((errors++))
   fi
 
   return ${errors}
 }
-# Processes multiple files in parallel using job control
-# Args:
-#   Files to process as array elements
-#   Last argument is output file path
-# Returns:
-#   0 on success, non-zero if any file processing failed
+
+# Signal handlers
+function handle_interrupt() {
+    log_warn "Received interrupt signal" "signal=INT"
+    cleanup
+    exit 130  # Standard exit code for SIGINT
+}
+
+function handle_term() {
+    log_warn "Received termination signal" "signal=TERM"
+    cleanup
+    exit 143  # Standard exit code for SIGTERM
+}
+
+# Improved process_files_parallel with better job control
 function process_files_parallel() {
-  local pids=()
-  local output="${!#}"
-  local -i max_jobs="${MAX_JOBS}"
-  local -i failed=0
+    local -r output="${!#}"
+    local -i max_jobs="${MAX_JOBS}"
+    local -i active_jobs=0
+    local -i failed=0
+    local -i total=0
+    local -i processed=0
 
-  local -a files=("${@:1:$#-1}")
+    local -a files=("${@:1:$#-1}")
+    total=${#files[@]}
 
-  for file in "${files[@]}"; do
-    while ((${#pids[@]} >= max_jobs)); do
+    local -A pids=()
+    local context="total=${total} max_jobs=${max_jobs}"
+    log_debug "Starting parallel processing" "${context}"
 
-      wait -n 2>/dev/null || true
-      pids=()
-      for pid in $(jobs -p); do
-        pids+=("${pid}")
-      done
+    for file in "${files[@]}"; do
+        # Wait if we've reached max jobs
+        while ((active_jobs >= max_jobs)); do
+            wait -n 2>/dev/null || true
+            
+            # Update active jobs count and check results
+            for pid in "${!pids[@]}"; do
+                if ! kill -0 "${pid}" 2>/dev/null; then
+                    wait "${pid}" || {
+                        log_error "Failed processing: ${pids[${pid}]}"
+                        ((failed++))
+                    }
+                    unset "pids[${pid}]"
+                    ((active_jobs--))
+                    ((processed++))
+                fi
+            done
+        done
+
+        # Start new job
+        (process_file "${file}" "${output}") & 
+        local pid=$!
+        pids["${pid}"]="${file}"
+        ((active_jobs++))
+
+        context="processed=${processed}/${total} active=${active_jobs} failed=${failed}"
+        log_debug "Started job" "${context}"
     done
 
-    (process_file "${file}" "${output}") &
-    pids+=($!)
-  done
+    # Wait for remaining jobs
+    while ((active_jobs > 0)); do
+        wait -n 2>/dev/null || true
+        
+        for pid in "${!pids[@]}"; do
+            if ! kill -0 "${pid}" 2>/dev/null; then
+                wait "${pid}" || {
+                    log_error "Failed processing: ${pids[${pid}]}"
+                    ((failed++))
+                }
+                unset "pids[${pid}]"
+                ((active_jobs--))
+                ((processed++))
+                
+                context="processed=${processed}/${total} active=${active_jobs} failed=${failed}"
+                log_debug "Job completed" "${context}"
+            fi
+        done
+    done
 
-  for pid in "${pids[@]}"; do
-    wait "${pid}" || ((failed++))
-  done
-
-  return $((failed > 0 ? 1 : 0))
+    context="total=${total} processed=${processed} failed=${failed}"
+    log_info "Parallel processing completed" "${context}"
+    return $((failed > 0 ? 1 : 0))
 }
 
 # Process a single file and format it for GPT analysis
@@ -565,33 +614,42 @@ function process_file() {
   local output="$2"
   local -i ret=0
 
-  log_debug "Processing file: ${input}"
-
   local tmp_output
   tmp_output=$(create_temp_file) || return ${E_IO}
+
+  local size
+  size=$(stat -f %z "${input}" 2>/dev/null) || size="unknown"
+  local context="file=${input} size=${size}"
+
+  local file_type
+  file_type=$(detect_file_type "${input}")
+  context+=" type=${file_type}"
 
   {
     echo
     echo "${MARKDOWN_HEADER_PREFIX} File: \`${input}\`"
+    echo "Size: ${size} bytes"
+    echo "Type: ${file_type}"
     echo
-    echo "${MARKDOWN_FENCE} $(detect_file_type "${input}")"
+    echo "${MARKDOWN_FENCE}${file_type}"
     cat "${input}" || ret=${E_IO}
     echo "${MARKDOWN_FENCE}"
   } >"${tmp_output}" || {
-    log_error "Failed to write to temporary file"
+    log_error "Failed to write to temporary file" "${context}"
     ret=${E_IO}
   }
+  
   if ((ret == 0)); then
     if ! cat "${tmp_output}" >>"${output}"; then
-      log_error "Failed to write output for: ${input}"
+      log_error "Failed to write output" "${context}"
       ret=${E_IO}
     else
       ((STATS_PROCESSED++))
-      log_debug "Successfully processed: ${input}"
+      log_debug "Processed file successfully" "${context}"
     fi
   else
     ((STATS_FAILED++))
-    log_error "Failed to process: ${input}"
+    log_error "Failed to process file" "${context}"
   fi
   return ${ret}
 }
@@ -599,25 +657,6 @@ function process_file() {
 #######################################
 # Command line argument parsing
 #######################################
-# Print current configuration settings for debugging
-# No args
-# No return value
-function print_debug_info() {
-  log_debug "Configuration:"
-  log_debug "  Input path: ${INPUT_PATH}"
-  log_debug "  Output: ${OUTPUT}"
-  log_debug "  Extensions: ${EXTENSIONS[*]}"
-  log_debug "  Exclude dirs: ${EXCLUDE_DIRS[*]}"
-  log_debug "  Max size: ${MAX_SIZE}"
-  log_debug "  Max files: ${MAX_FILES}"
-  log_debug "  Max depth: ${MAX_DEPTH}"
-  log_debug "  Max jobs: ${MAX_JOBS}"
-  log_debug "  Debug: ${DEBUG}"
-  log_debug "  Verbose: ${VERBOSE}"
-  log_debug "  Dry run: ${DRY_RUN}"
-  log_debug "  Temp dir: ${TEMP_DIR}"
-}
-
 # Parses and validates excluded directories
 # Combines user-specified excludes with defaults
 # Args:
@@ -733,10 +772,8 @@ function parse_path() {
   fi
 
   # Try different realpath options
-  if ! abs_path=$(realpath -m "${path}" 2>/dev/null); then
-    # Try without -m flag
-    if ! abs_path=$(realpath "${path}" 2>/dev/null); then
-      # Try with readlink
+  if ! abs_path=$(realpath -L -m "${path}" 2>/dev/null); then
+    if ! abs_path=$(realpath -L "${path}" 2>/dev/null); then
       if ! abs_path=$(readlink -f "${path}" 2>/dev/null); then
         log_error "Cannot resolve path: ${path}"
         return ${E_PATH}
@@ -761,25 +798,51 @@ function parse_path() {
   log_error "Path not within allowed directories: ${path}"
   return ${E_SECURITY}
 }
+
 # Parses command line arguments and sets global configuration
 # Args:
 #   All command line arguments ($@)
 # Returns:
 #   0 on success, non-zero on error
 function parse_args() {
-  local OPTIND opt
+  local -a args=()
+  local arg opt
 
-  while getopts ":de:hj:m:no:p:vx:" opt; do
+  # Transform long options to short ones
+  for arg; do
+    case "$arg" in
+      --help)         args+=(-h) ;;
+      --debug)        args+=(-d) ;;
+      --verbose)      args+=(-v) ;;
+      --quiet)        args+=(-q) ;;
+      --dry-run)      args+=(-n) ;;
+      --version)      version; exit 0 ;;
+      --extensions=*) args+=(-e "${arg#*=}") ;;
+      --jobs=*)       args+=(-j "${arg#*=}") ;;
+      --max-size=*)   args+=(-m "${arg#*=}") ;;
+      --output=*)     args+=(-o "${arg#*=}") ;;
+      --exclude=*)    args+=(-x "${arg#*=}") ;;
+      --*=*)         log_error "Unknown option: ${arg}"; return ${E_USAGE} ;;
+      --*)           log_error "Unknown option: ${arg}"; return ${E_USAGE} ;;
+      *)             args+=("$arg") ;;
+    esac
+  done
+
+  # Reset the positional parameters to the short options
+  set -- "${args[@]}"
+
+  local OPTIND opt
+  while getopts ":de:hj:m:no:qvx:" opt; do
     case "${opt}" in
       d) # Debug
-        DEBUG=1
+        LOG_LEVEL=${LOG_LEVEL_DEBUG}
         ;;
       e) # Extensions
         parse_extensions "${OPTARG}" || return ${E_USAGE}
         ;;
       h) # Help
         usage
-        exit
+        exit 0
         ;;
       j) # Max parallel jobs
         parse_numeric "jobs" "${OPTARG}" 1 || return ${E_USAGE}
@@ -795,19 +858,18 @@ function parse_args() {
       o) # Output path
         OUTPUT=$(parse_path "${OPTARG}") || return ${E_USAGE}
         ;;
-      p) # Input path
-        INPUT_PATH=$(parse_path "${OPTARG}") || return ${E_USAGE}
+      q) # Quiet mode
+        LOG_LEVEL=${LOG_LEVEL_ERROR}
         ;;
-      v) # Verbose mode
-        VERBOSE=1
+      v) # Verbose
+        [[ ${LOG_LEVEL} -lt ${LOG_LEVEL_DEBUG} ]] && LOG_LEVEL=${LOG_LEVEL_INFO}
         ;;
-      x)
+      x) # Exclude directories
         parse_exclude_dirs "${OPTARG}" || return ${E_USAGE}
         ;;
       :) # Missing argument
         log_error "Option -${OPTARG} requires an argument"
         return ${E_USAGE}
-
         ;;
       *) # Unknown option
         log_error "Invalid option: -${OPTARG}"
@@ -818,6 +880,14 @@ function parse_args() {
 
   shift $((OPTIND - 1))
 
+  # Handle positional argument (path)
+  if [[ $# -gt 1 ]]; then
+    log_error "Too many arguments. Only one PATH argument is allowed."
+    return ${E_USAGE}
+  elif [[ $# -eq 1 ]]; then
+    INPUT_PATH=$(parse_path "$1") || return ${E_USAGE}
+  fi
+
   return 0
 }
 
@@ -826,15 +896,59 @@ function parse_args() {
 # Returns:
 #   0 if valid, non-zero otherwise
 function validate_config() {
-  # Ensure we have at least one extension if not in dry-run mode
-  if ((DRY_RUN == 0)) && ((${#EXTENSIONS[@]} == 0)); then
-    log_error "No file extensions specified"
-    return "${E_USAGE}"
-  fi
+    local -i errors=0
+    local context="input=${INPUT_PATH} output=${OUTPUT}"
 
-  # Todo: Implement
+    # Validate required extensions
+    if ((DRY_RUN == 0)) && ((${#EXTENSIONS[@]} == 0)); then
+        log_error "No file extensions specified" "${context}"
+        return "${E_USAGE}"
+    fi
 
-  return 0
+    # Validate numeric parameters
+    if ((MAX_SIZE < 0)); then
+        log_error "Invalid max size: ${MAX_SIZE}" "${context}"
+        ((errors++))
+    fi
+
+    if ((MAX_FILES < 0)); then
+        log_error "Invalid max files: ${MAX_FILES}" "${context}"
+        ((errors++))
+    fi
+
+    if ((MAX_DEPTH < 0)); then
+        log_error "Invalid max depth: ${MAX_DEPTH}" "${context}"
+        ((errors++))
+    fi
+
+    if ((MAX_JOBS < 1)); then
+        log_error "Invalid max jobs: ${MAX_JOBS}" "${context}"
+        ((errors++))
+    fi
+
+    # Validate input path
+    if [[ ! -e "${INPUT_PATH}" ]]; then
+        log_error "Input path does not exist: ${INPUT_PATH}" "${context}"
+        ((errors++))
+    elif [[ ! -r "${INPUT_PATH}" ]]; then
+        log_error "Input path is not readable: ${INPUT_PATH}" "${context}"
+        ((errors++))
+    fi
+
+    # Validate output path
+    if [[ "${OUTPUT}" != "/dev/stdout" ]]; then
+        local output_dir
+        output_dir="$(dirname "${OUTPUT}")"
+        if [[ ! -d "${output_dir}" ]] && ! mkdir -p "${output_dir}"; then
+            log_error "Cannot create output directory: ${output_dir}" "${context}"
+            ((errors++))
+        elif [[ -e "${OUTPUT}" && ! -w "${OUTPUT}" ]]; then
+            log_error "Output file exists but is not writable: ${OUTPUT}" "${context}"
+            ((errors++))
+        fi
+    fi
+
+    return $((errors > 0 ? E_USAGE : 0))
 }
 
 function process_output() {
@@ -883,42 +997,57 @@ function init() {
   return 0
 }
 
-# cleanup handler for exit trap
-# removes temporary files and kills background processes
-# args:
-#   none (uses global state)
-# returns:
-#   original exit code
+# Improved cleanup with better error handling
 function cleanup() {
-  local -r exit_code=$?
-  local -i ret=0
-  local tmp_file
+    local -r exit_code=$?
+    local -i ret=0
+    local context="exit_code=${exit_code}"
 
-  log_debug "Running cleanup handlers (exit code: ${exit_code})"
+    log_debug "Starting cleanup" "${context}"
 
-  # Kill any remaining background jobs
-  jobs -p | xargs -r timeout 5 kill -15 2>/dev/null
-  sleep 1
-  jobs -p | xargs -r kill -9 2>/dev/null
+    # Kill any remaining background jobs
+    local pids
+    pids=$(jobs -p)
+    if [[ -n "${pids}" ]]; then
+        log_debug "Terminating background jobs" "pids=${pids}"
+        kill -TERM ${pids} 2>/dev/null || true
+        sleep 1
+        kill -KILL ${pids} 2>/dev/null || true
+    fi
 
-  # Check if array has elements before iterating
-  if ((${#TMP_FILES[@]} > 0)); then
-    for tmp_file in "${TMP_FILES[@]}"; do
-      if [[ -f "${tmp_file}" ]]; then
-        if ! rm -f "${tmp_file}"; then
-          log_warn "Failed to remove temporary file: ${tmp_file}"
-          ret=1
+    # Clean up temporary files
+    if ((${#TMP_FILES[@]} > 0)); then
+        for tmp_file in "${TMP_FILES[@]}"; do
+            if [[ -f "${tmp_file}" ]]; then
+                if ! rm -f "${tmp_file}"; then
+                    log_warn "Failed to remove temporary file" "file=${tmp_file}"
+                    ((ret++))
+                fi
+            fi
+        done
+    fi
+
+    # Remove temporary directory
+    if [[ -d "${TEMP_DIR}" ]]; then
+        if ! rm -rf "${TEMP_DIR}" 2>/dev/null; then
+            log_warn "Failed to remove temporary directory" "dir=${TEMP_DIR}"
+            ((ret++))
         fi
-      fi
-    done
-  fi
+    fi
 
-  [[ -d "${TEMP_DIR}" ]] && rm -rf "${TEMP_DIR}" 2>/dev/null
+    context+=" cleanup_errors=${ret}"
+    log_debug "Cleanup completed" "${context}"
 
-  exit "${exit_code}"
+    # Only exit if called directly, not through trap
+    [[ "${FUNCNAME[1]}" != "handle_interrupt" ]] && \
+    [[ "${FUNCNAME[1]}" != "handle_term" ]] && \
+        exit $((exit_code + ret))
 }
 
-trap cleanup EXIT INT TERM
+# Set up signal handlers
+trap handle_interrupt INT
+trap handle_term TERM
+trap cleanup EXIT
 
 # Main execution function of the script
 # Args:
@@ -926,35 +1055,44 @@ trap cleanup EXIT INT TERM
 # Returns:
 #   0 on success, error code on failure
 function main() {
+    STATS_START_TIME=$(date +%s)
 
-  if ! init "$@"; then
-    log_error "Initialization failed"
-    exit ${E_RESOURCE}
-  fi
+    if ! init "$@"; then
+        log_error "Initialization failed" "args=$*"
+        exit ${E_RESOURCE}
+    fi
 
-  ((DEBUG)) && print_debug_info
+    local context="input=${INPUT_PATH} output=${OUTPUT} dry_run=${DRY_RUN}"
+    log_info "Starting processing" "${context}"
 
-  if ((DRY_RUN)); then
-    log_info "Dry run mode - no changes will be made"
+    if ((DRY_RUN)); then
+        log_info "Dry run mode enabled" "${context}"
+        return 0
+    fi
+
+    local output_buffer
+    output_buffer=$(create_temp_file) || exit ${E_IO}
+
+    if ! process_target "${INPUT_PATH}" "${output_buffer}"; then
+        log_error "Processing failed" "${context}"
+        exit ${E_IO}
+    fi
+
+    if ! process_output "${output_buffer}" "${OUTPUT}"; then
+        log_error "Failed to write final output" "${context}"
+        exit ${E_IO}
+    fi
+
+    STATS_END_TIME=$(date +%s)
+    local -i duration=$((STATS_END_TIME - STATS_START_TIME))
+    
+    context+=" processed=${STATS_PROCESSED}"
+    context+=" failed=${STATS_FAILED}"
+    context+=" duration=${duration}s"
+    log_info "Processing completed" "${context}"
     return 0
-  fi
-
-  local output_buffer
-  output_buffer=$(create_temp_file) || exit ${E_IO}
-
-  if ! process_target "${INPUT_PATH}" "${output_buffer}"; then
-    log_error "Processing failed"
-    exit ${E_IO}
-  fi
-
-  if ! process_output "${output_buffer}" "${OUTPUT}"; then
-    exit ${E_IO}
-  fi
-
-  log_info "Successfully processed ${STATS_PROCESSED} files (${STATS_FAILED} failed)"
-  return 0
-
 }
+
 # Execute main function if script is not being sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
