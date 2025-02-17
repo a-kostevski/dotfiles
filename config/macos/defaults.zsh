@@ -5,9 +5,9 @@ echo "Configuring macOS"
 
 sudo -v
 while true; do
-   sudo -n true
-   sleep 60
-   kill -0 "$$" || exit
+  sudo -n true
+  sleep 60
+  kill -0 "$$" || exit
 done 2>/dev/null &
 
 ###############################################################################
@@ -32,7 +32,7 @@ defaults write com.apple.CrashReporter DialogType -string "none"
 
 # Disable Notification Center and remove the menu bar icon
 sudo launchctl unload -w \
-   /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null
+  /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null
 
 # Enable full keyboard access for all controls (e.g. enable Tab in modal dialogs)
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
@@ -40,7 +40,7 @@ defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
 # Reveal IP address, hostname, OS version, etc. when clicking the clock in the
 # login window
 sudo defaults write /Library/Preferences/com.apple.loginwindow \
-   AdminHostInfo HostName
+  AdminHostInfo HostName
 
 ###############################################################################
 # Trackpad, mouse, keyboard, Bluetooth accessories, and input                 #
@@ -140,9 +140,9 @@ defaults write com.apple.finder WarnOnEmptyTrash -bool false
 # Expand the following File Info panes:
 # “General”, “Open with”, and “Sharing & Permissions”
 defaults write com.apple.finder FXInfoPanesExpanded -dict \
-   General -bool true \
-   OpenWith -bool true \
-   Privileges -bool true
+  General -bool true \
+  OpenWith -bool true \
+  Privileges -bool true
 
 # Show the ~/Library folder.
 chflags nohidden ~/Library
@@ -307,6 +307,10 @@ defaults write com.apple.ActivityMonitor ShowCategory -int 0
 defaults write com.apple.ActivityMonitor SortColumn -string "CPUUsage"
 defaults write com.apple.ActivityMonitor SortDirection -int 0
 
+# Expanded Save and Print dialogs by default.
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint2 -bool true
 ###############################################################################
 # Harden                                                                      #
 ###############################################################################
@@ -316,26 +320,26 @@ defaults write com.apple.ActivityMonitor SortDirection -int 0
 ###############################################################################
 
 for app in "Activity Monitor" \
-   "Address Book" \
-   "Calendar" \
-   "cfprefsd" \
-   "Contacts" \
-   "Dock" \
-   "Finder" \
-   "Google Chrome Canary" \
-   "Google Chrome" \
-   "Mail" \
-   "Messages" \
-   "Opera" \
-   "Photos" \
-   "Safari" \
-   "SizeUp" \
-   "Spectacle" \
-   "SystemUIServer" \
-   "Terminal" \
-   "Transmission" \
-   "iCal"; do
-   killall "${app}" &>/dev/null
+  "Address Book" \
+  "Calendar" \
+  "cfprefsd" \
+  "Contacts" \
+  "Dock" \
+  "Finder" \
+  "Google Chrome Canary" \
+  "Google Chrome" \
+  "Mail" \
+  "Messages" \
+  "Opera" \
+  "Photos" \
+  "Safari" \
+  "SizeUp" \
+  "Spectacle" \
+  "SystemUIServer" \
+  "Terminal" \
+  "Transmission" \
+  "iCal"; do
+  killall "${app}" &>/dev/null
 done
 
 echo "Done. Note that some of these changes require a logout/restart to take effect."
