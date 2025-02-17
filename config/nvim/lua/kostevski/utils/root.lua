@@ -2,6 +2,7 @@
 ---@field spec table
 ---@field detectors table
 ---@field cache table
+---@field ft_patterns table<string, string[]> F
 local root = setmetatable({}, {
    __call = function(self)
       return self.get()
@@ -9,8 +10,11 @@ local root = setmetatable({}, {
 })
 
 root.spec = { "lsp", { ".git", "lua" }, "cwd" }
+---@alias Detector fun(buf?: number): string[]
+---@type table<string, Detector>
 root.detectors = {}
 root.cache = {}
+root.ft_patterns = {}
 
 ---Detector for cwd
 ---@return table
@@ -69,7 +73,16 @@ end
 ---@param buf number Buffer number
 ---@return string? path Normalized buffer path
 function root.bufpath(buf)
-   return root.realpath(vim.api.nvim_buf_get_name(assert(buf)))
+   -- Add validation
+   if type(buf) ~= "number" then
+      error("buf must be a number")
+   end
+
+   local name = vim.api.nvim_buf_get_name(buf)
+   if name == "" then
+      return nil
+   end
+   return root.realpath(name)
 end
 
 ---@return string
@@ -101,6 +114,24 @@ function root.resolve(spec)
    end
 end
 
+---Add root patterns for a specific filetype
+---@param ft string Filetype
+---@param patterns string|string[] Patterns to add
+function root.add_patterns(ft, patterns)
+   if type(patterns) == "string" then
+      patterns = { patterns }
+   end
+   root.ft_patterns[ft] = root.ft_patterns[ft] or {}
+   vim.list_extend(root.ft_patterns[ft], patterns)
+end
+
+---Get root patterns for a specific filetype
+---@param ft string Filetype
+---@return string[] patterns
+function root.get_patterns(ft)
+   return root.ft_patterns[ft] or {}
+end
+
 ---Detect root directory
 ---@param opts? table Options for root detection
 ---@return string[] roots List of detected root directories
@@ -108,8 +139,17 @@ function root.detect(opts)
    opts = opts or {}
    opts.spec = opts.spec or type(vim.g.root_spec) == "table" and vim.g.root_spec or root.spec
    opts.buf = (opts.buf == nil or opts.buf == 0) and vim.api.nvim_get_current_buf() or opts.buf
-   local ret = {}
 
+   -- Get filetype patterns
+   local ft = vim.api.nvim_buf_get_option(opts.buf, "filetype")
+   local ft_patterns = root.get_patterns(ft)
+   if #ft_patterns > 0 then
+      -- Insert filetype patterns at the beginning of spec
+      table.insert(opts.spec, 1, ft_patterns)
+   end
+
+   -- Rest of the detection logic remains the same
+   local ret = {}
    for _, spec in ipairs(opts.spec) do
       local paths = root.resolve(spec)(opts.buf)
       paths = paths or {}
@@ -197,6 +237,38 @@ function root.setup(opts)
       callback = function(event)
          root.cache[event.buf] = nil
       end,
+   })
+
+   vim.api.nvim_create_user_command("RootPatterns", function()
+      local ft = vim.bo.filetype
+      local patterns = root.get_patterns(ft)
+
+      -- Handle empty patterns case
+      if vim.tbl_isempty(patterns) then
+         Utils.notify.info(string.format("No root patterns defined for filetype '%s'", ft), {
+            title = "Root Patterns",
+         })
+         return
+      end
+
+      local lines = {
+         string.format("Root patterns for filetype '%s':", ft),
+         string.rep("-", 40),
+      }
+
+      for _, pattern in ipairs(patterns) do
+         table.insert(lines, string.format("• %s", pattern))
+      end
+
+      table.insert(lines, "")
+      table.insert(lines, string.format("Total patterns: %d", #patterns))
+
+      Utils.notify.info(table.concat(lines, "\n"), {
+         title = "Root Patterns",
+         timeout = 5000, -- 5 second timeout
+      })
+   end, {
+      desc = "Show root patterns for current filetype",
    })
 end
 

@@ -1,8 +1,7 @@
 ---@class Debug
 local Debug = {}
 
----Get the source location of the caller
----@return string location The file path and line number where the debug call originated
+---@return string location
 function Debug.get_loc()
    local current = debug.getinfo(1, "S")
    local level = 2
@@ -74,7 +73,7 @@ function Debug.backtrace(...)
    if vim.tbl_isempty(value) then
       value = nil
    else
-      value = vim.tbl_islist(value) and vim.tbl_count(value) <= 1 and value[1] or value
+      value = vim.islist(value) and vim.tbl_count(value) <= 1 and value[1] or value
    end
    Debug._dump(value, { bt = true, timeout = false })
 end
@@ -98,28 +97,36 @@ function Debug.get_upvalue(func, name)
 end
 
 Debug._log = {
-   enabled = true, -- Control debug logging
+   enabled = true,
    entries = {},
    max_entries = 1000,
+   levels = {
+      ERROR = 1,
+      WARN = 2,
+      INFO = 3,
+      DEBUG = 4,
+   },
 }
 
-function Debug.log(component, message, data)
-   local log = Debug._log
-
-   if not log.enabled then
+function Debug.log(level, component, message, data)
+   if not Debug._log.enabled then
       return
+   end
+   if not Debug._log.levels[level] then
+      level = "INFO"
    end
 
    local entry = {
+      level = level,
       timestamp = vim.fn.strftime("%Y-%m-%d %H:%M:%S"),
       component = component,
       message = message,
       data = data,
    }
 
-   table.insert(log.entries, 1, entry)
-   if #log.entries > log.max_entries then
-      table.remove(log.entries)
+   table.insert(Debug._log.entries, 1, entry)
+   if #Debug._log.entries > Debug._log.max_entries then
+      table.remove(Debug._log.entries)
    end
 
    -- Write to log file if needed

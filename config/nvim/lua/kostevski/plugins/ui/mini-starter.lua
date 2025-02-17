@@ -8,36 +8,9 @@ local function create_header(text)
    return string.format("%s %s %s", pad, text:upper(), pad)
 end
 
-local function format_item(name)
-   -- Calculate proper indentation based on section width
-   local indent = "  " -- 2 spaces for initial indent
-   local icon = "  " -- Add space after icon for breathing room
-
-   -- Special icons based on item type
-   local icons = {
-      --    ["Find File"] = " ", -- magnifying glass
-      --    ["Recent"] = "󰋚 ", -- clock
-      --    ["Config"] = " ", -- gear
-      --    ["Lazy"] = "󰒲 ", -- package
-      --    ["Mason"] = "󰏖 ", -- box
-      --    ["Quit"] = " ", -- power
-   }
-   return indent .. (icons[name] or "░ ") .. name
-end
-
 local M = {
    sections = {},
 }
--- M.sections.telescope = function()
---    return function()
---       return {
---          { action = "Telescope file_browser", name = "Browser", section = "Telescope" },
---          { action = "Telescope find_files", name = "Files", section = "Telescope" },
---          { action = "Telescope live_grep", name = "Live grep", section = "Telescope" },
---          { action = "Telescope oldfiles", name = "Old files", section = "Telescope" },
---       }
---    end
--- end
 
 function M.format_section(content, _)
    local current_section = ""
@@ -48,6 +21,7 @@ function M.format_section(content, _)
    end
    return content
 end
+
 return {
    "echasnovski/mini.starter",
    event = "VimEnter",
@@ -61,11 +35,27 @@ return {
          evaluate_single = true,
          header = function()
             local hour = tonumber(os.date("%H"))
-            local greeting = "Good "
-               .. (hour < 12 and "morning" or hour < 18 and "afternoon" or "evening")
-               .. ", "
-               .. (os.getenv("USER") or "")
-            return greeting
+            local greetings = {
+               [1] = "  Sleep well", -- 1-6
+               [2] = "  Good morning", -- 6-12
+               [3] = "  Good afternoon", -- 12-18
+               [4] = "  Good evening", -- 18-24
+            }
+            local greeting_idx = math.floor((hour + 6) / 6)
+            if greeting_idx == 0 then
+               greeting_idx = 4
+            end
+
+            local greeting = greetings[greeting_idx] .. ", " .. (os.getenv("USER") or "")
+            local datetime = os.date("   %A, %d %B")
+
+            -- Center the header text
+            local width = vim.o.columns
+            local function center(str)
+               local padding = math.floor((width - #str) / 2)
+               return string.rep(" ", padding) .. str
+            end
+            return string.format("%s\n%s", greeting, datetime)
          end,
          items = {
             new_section("Find File", "Telescope find_files", "Files"),
@@ -75,20 +65,19 @@ return {
             new_section("Grep", "Telescope live_grep", "Files"),
             new_section("Browse", "Telescope file_browser", "Files"),
 
-            new_section("Nvim", "e $MYVIMRC", "Config"),
+            new_section("Vim", "e $MYVIMRC", "Config"),
             new_section("Zsh", "e $ZDOTDIR", "Config"),
             new_section("Dotfiles", "e $DOTDIR", "Config"),
 
-            new_section("Search", "Telescope projects", "Projects"),
+            new_section("Projects", "Telescope projects", "Projects"),
             new_section("Todo", "TodoTelescope", "Projects"),
-            -- new_section("Notes", "Neorg workspace notes", "Projects"),
 
-            new_section("Last", "SessionLast", "Session"),
-
+            new_section("Last session", [[lua require("persistence").load()]], "Session"),
             new_section("Quit", "qa", "Built-in"),
          },
          footer = "",
          content_hooks = {
+            starter.gen_hook.adding_bullet("░ ", false),
             starter.gen_hook.aligning("center", "center"),
             M.format_section,
          },

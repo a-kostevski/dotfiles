@@ -67,130 +67,145 @@ function toggle.get(name)
    end
 end
 
--- Define standard toggles
-toggle.create({
-   name = "inline_hint",
-   get = function()
-      return vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
-   end,
-   set = function(state)
-      vim.lsp.inlay_hint.enable(state, { bufnr = 0 })
-   end,
-   keymap = "<leader>th",
-   desc = "Inline hints",
-})
+function toggle.setup()
+   -- Define standard toggles
+   toggle.create({
+      name = "inline_hint",
+      get = function()
+         return vim.lsp.inlay_hint.is_enabled({ bufnr = 0 })
+      end,
+      set = function(state)
+         vim.lsp.inlay_hint.enable(state, { bufnr = 0 })
+      end,
+      keymap = "<leader>th",
+      desc = "Inline hints",
+   })
 
-toggle.create({
-   name = "relative_lineno",
-   get = function()
-      return vim.opt_local.relativenumber:get()
-   end,
-   set = function(state)
-      vim.opt_local.relativenumber = state
-   end,
-   keymap = "<leader>tl",
-   desc = "Relative line numbers",
-})
+   toggle.create({
+      name = "relative_lineno",
+      get = function()
+         return vim.opt_local.relativenumber:get()
+      end,
+      set = function(state)
+         vim.opt_local.relativenumber = state
+      end,
+      keymap = "<leader>tl",
+      desc = "Relative line numbers",
+   })
 
-toggle.create({
-   name = "indent_guides",
-   get = function()
-      return require("ibl.config").get_config(0).enabled
-   end,
-   set = function(state)
-      require("ibl").setup_buffer(0, { enabled = state })
-   end,
-   keymap = "<leader>ti",
-   desc = "Indent guides",
-})
+   toggle.create({
+      name = "indent_guides",
+      get = function()
+         return require("ibl.config").get_config(0).enabled
+      end,
+      set = function(state)
+         require("ibl").setup_buffer(0, { enabled = state })
+      end,
+      keymap = "<leader>ti",
+      desc = "Indent guides",
+   })
 
-toggle.create({
-   name = "spell_check",
-   get = function()
-      return vim.opt_local.spell:get()
-   end,
-   set = function(state)
-      vim.opt_local.spell = state
-   end,
-   keymap = "<leader>tm",
-   desc = "Spell check",
-})
+   toggle.create({
+      name = "spell_check",
+      get = function()
+         return vim.opt_local.spell:get()
+      end,
+      set = function(state)
+         vim.opt_local.spell = state
+      end,
+      keymap = "<leader>tm",
+      desc = "Spell check",
+   })
 
-toggle.create({
-   name = "line_wrap",
-   get = function()
-      return vim.opt_local.wrap:get()
-   end,
-   set = function(state)
-      vim.opt_local.wrap = state
-   end,
-   keymap = "<leader>tw",
-   desc = "Line wrap",
-})
+   toggle.create({
+      name = "line_wrap",
+      get = function()
+         return vim.opt_local.wrap:get()
+      end,
+      set = function(state)
+         vim.opt_local.wrap = state
+      end,
+      keymap = "<leader>tw",
+      desc = "Line wrap",
+   })
 
-toggle.create({
-   name = "syntax_highlighting",
-   get = function()
-      return vim.opt_local.syntax == "on"
-   end,
-   set = function(state)
-      vim.opt_local.syntax = state and "on" or "off"
-   end,
-   keymap = "<leader>tx",
-   desc = "Syntax highlighting",
-})
+   toggle.create({
+      name = "syntax_highlighting",
+      get = function()
+         return vim.opt_local.syntax == "on"
+      end,
+      set = function(state)
+         vim.opt_local.syntax = state and "on" or "off"
+      end,
+      keymap = "<leader>tx",
+      desc = "Syntax highlighting",
+   })
 
-toggle.create({
-   name = "diagnostics",
-   get = function()
-      return vim.diagnostic.is_enabled()
-   end,
-   set = function(state)
-      vim.diagnostic.enable(state)
-   end,
-   keymap = "<leader>td",
-   desc = "Vim diagnostics",
-})
+   toggle.create({
+      name = "diagnostics",
+      get = function()
+         return vim.diagnostic.is_enabled()
+      end,
+      set = function(state)
+         vim.diagnostic.enable(state)
+      end,
+      keymap = "<leader>td",
+      desc = "Vim diagnostics",
+   })
 
-toggle.create({
-   name = "noneckpain",
-   get = function()
-      return true
-   end,
-   set = function(_)
-      vim.cmd(":NoNeckPain")
-   end,
-   keymap = "<leader>tn",
-   desc = "No Neck Pain",
-})
-toggle.create({
-   name = "signature_help",
-   get = function()
-      return vim.b.signature_help_enabled or false
-   end,
-   set = function(state)
-      vim.b.signature_help_enabled = state
+   toggle.create({
+      name = "noneckpain",
+      get = function()
+         return true
+      end,
+      set = function(_)
+         vim.cmd(":NoNeckPain")
+      end,
+      keymap = "<leader>tn",
+      desc = "No Neck Pain",
+   })
 
-      if state then
-         vim.api.nvim_create_autocmd("CursorHoldI", {
-            buffer = 0,
-            callback = function()
-               if vim.b.signature_help_enabled and #Utils.lsp.get_clients({ bufnr = 0 }) > 0 then
-                  vim.lsp.buf.signature_help()
-               end
-            end,
-            desc = "Show signature help",
-         })
-      else
-         vim.lsp.buf.clear_references()
-         vim.api.nvim_clear_autocmds({
-            buffer = 0,
-            event = "CursorHoldI",
-         })
-      end
-   end,
-   keymap = "<leader>ts",
-   desc = "Signature help",
-})
+   toggle.create({
+      name = "signature_help",
+      get = function()
+         return vim.b.signature_help_enabled or false
+      end,
+      set = function(state)
+         vim.b.signature_help_enabled = state
+
+         if state then
+            vim.api.nvim_create_autocmd("CursorHoldI", {
+               buffer = 0,
+               callback = function()
+                  if vim.b.signature_help_enabled and #Utils.lsp.get_clients({ bufnr = 0 }) > 0 then
+                     vim.lsp.buf.signature_help()
+                  end
+               end,
+               desc = "Show signature help",
+            })
+         else
+            vim.lsp.buf.clear_references()
+            vim.api.nvim_clear_autocmds({
+               buffer = 0,
+               event = "CursorHoldI",
+            })
+         end
+      end,
+      keymap = "<leader>ts",
+      desc = "Signature help",
+   })
+
+   toggle.create({
+      name = "mouse",
+      get = function()
+         return vim.opt.mouse:get() ~= ""
+      end,
+      set = function(state)
+         vim.opt.mouse = state and "a" or ""
+      end,
+      keymap = "<leader>tM",
+      desc = "Mouse support",
+   })
+end
 
 return toggle

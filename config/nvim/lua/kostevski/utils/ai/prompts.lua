@@ -454,7 +454,7 @@ Conclude with a unified solution including:
       system_prompt = sys_prompts.COPILOT_REVIEW,
    },
    CreateUnitTests = {
-      prompt = "@copilot #buffers \n\n Please write unit tests for my_module to ensure its proper functionin",
+      prompt = "@copilot #buffers \n\n Please write unit tests for my code to ensure its proper functionin",
       description = "Generate unit tests for the provided code.",
       kind = "testing",
       system_prompt = sys_prompts.COPILOT_GENERATE,

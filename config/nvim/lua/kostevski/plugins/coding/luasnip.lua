@@ -12,15 +12,4 @@ return {
       },
       opts = { history = true, delete_check_events = "TextChanged" },
    },
-   {
-      "saghen/blink.cmp",
-      optional = true,
-      opts = {
-         accept = {
-            expand_snippet = function(...)
-               return require("luasnip").lsp_expand(...)
-            end,
-         },
-      },
-   },
 }

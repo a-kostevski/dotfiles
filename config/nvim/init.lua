@@ -1,1 +1,1 @@
-require("kostevski")
+require("kostevski").setup()

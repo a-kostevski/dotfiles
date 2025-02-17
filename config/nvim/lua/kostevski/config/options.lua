@@ -2,8 +2,8 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
 -- Set default python interpreter to pyenv virtualenv shim named 'py3nvim'
-vim.g.python3_host_prog = os.getenv("PYENV_ROOT") .. "/versions/py3nvim/bin/python"
-vim.g.python_host_prog = os.getenv("PYENV_ROOT") .. "/versions/py3nvim/bin/python"
+vim.g.python3_host_prog = 0
+vim.g.python_host_prog = 0
 
 -- Perl interpreter
 vim.g.loaded_ruby_provider = 0
@@ -94,3 +94,18 @@ opt.foldtext = ""
 
 opt.termguicolors = true
 opt.syntax = "on"
+
+-- Add these performance-related options
+opt.lazyredraw = true
+opt.redrawtime = 1500
+opt.timeoutlen = 300
+opt.updatetime = 250
+opt.maxmempattern = 2000
+
+-- Better split handling
+opt.splitkeep = "screen"
+opt.splitright = true
+opt.splitbelow = true
+
+-- Improve startup time
+vim.loader.enable()  -- Enable the experimental Lua module loader

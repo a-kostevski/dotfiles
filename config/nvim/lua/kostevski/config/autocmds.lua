@@ -1,5 +1,5 @@
 local function augroup(name)
-   return vim.api.nvim_create_augroup("my_" .. name, { clear = true })
+   return vim.api.nvim_create_augroup("kostevski_" .. name, { clear = true })
 end
 
 -- Highlight when yanking (copying) text

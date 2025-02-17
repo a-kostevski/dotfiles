@@ -1,190 +1,193 @@
 local icons = Utils.ui.icons
 
 return {
-   "neovim/nvim-lspconfig",
-   name = "nvim-lspconfig",
-   event = { "BufReadPre", "BufNewFile" },
-   dependencies = {
-      { "williamboman/mason-lspconfig.nvim", config = function() end },
-   },
-   opts = function()
-      local ret = {
-         diagnostics = {
-            -- float = false,
-            underline = true,
-            update_in_insert = false,
-            virtual_text = {
-               spacing = 4,
-               source = "if_many",
-               prefix = "●",
-            },
-            severity_sort = true,
-            signs = {
-               text = {
-                  [vim.diagnostic.severity.ERROR] = icons.diagnostics.ERROR,
-                  [vim.diagnostic.severity.WARN] = icons.diagnostics.WARN,
-                  [vim.diagnostic.severity.HINT] = icons.diagnostics.HINT,
-                  [vim.diagnostic.severity.INFO] = icons.diagnostics.INFO,
+   {
+      "neovim/nvim-lspconfig",
+      event = { "BufReadPre", "BufNewFile" },
+      dependencies = {
+         "mason.nvim",
+         { "williamboman/mason-lspconfig.nvim", config = function() end },
+      },
+      opts = function()
+         local ret = {
+            diagnostics = {
+               -- float = false,
+               underline = true,
+               update_in_insert = false,
+               virtual_text = {
+                  spacing = 4,
+                  source = "if_many",
+                  prefix = "●",
+               },
+               severity_sort = true,
+               signs = {
+                  text = {
+                     [vim.diagnostic.severity.ERROR] = icons.diagnostics.ERROR,
+                     [vim.diagnostic.severity.WARN] = icons.diagnostics.WARN,
+                     [vim.diagnostic.severity.HINT] = icons.diagnostics.HINT,
+                     [vim.diagnostic.severity.INFO] = icons.diagnostics.INFO,
+                  },
                },
             },
-         },
-         inlay_hints = {
-            enabled = true,
-         },
-         codelens = {
-            enabled = false,
-         },
-         -- Enable lsp cursor word highlighting
-         document_highlight = {
-            enabled = true,
-         },
+            inlay_hints = {
+               enabled = true,
+            },
+            codelens = {
+               enabled = false,
+            },
+            -- Enable lsp cursor word highlighting
+            document_highlight = {
+               enabled = true,
+            },
 
-         capabilities = {
-            workspace = {
-               fileOperations = {
-                  didRename = true,
-                  willRename = true,
+            capabilities = {
+               workspace = {
+                  fileOperations = {
+                     didRename = true,
+                     willRename = true,
+                  },
                },
             },
-         },
-         format = {
-            formatting_options = nil,
-            timeout_ms = nil,
-         },
-         servers = {
-            bashls = {
-               filetypes = { "sh", "bash", "zsh" },
+            format = {
+               formatting_options = nil,
+               timeout_ms = nil,
             },
-            lua_ls = {
-               settings = {
-                  Lua = {
-                     workspace = {
-                        checkThirdParty = false,
-                     },
-                     codeLens = {
-                        enable = true,
-                     },
-                     completion = {
-                        callSnippet = "Replace",
-                     },
-                     doc = {
-                        privateName = { "^_" },
-                     },
-                     hint = {
-                        enable = true,
-                        setType = false,
-                        paramType = true,
-                        paramName = "Disable",
-                        semicolon = "Disable",
-                        arrayIndex = "Disable",
+            servers = {
+               bashls = {
+                  filetypes = { "sh", "bash", "zsh" },
+               },
+               lua_ls = {
+                  settings = {
+                     Lua = {
+                        workspace = {
+                           checkThirdParty = false,
+                        },
+                        codeLens = {
+                           enable = true,
+                        },
+                        completion = {
+                           callSnippet = "Replace",
+                        },
+                        doc = {
+                           privateName = { "^_" },
+                        },
+                        hint = {
+                           enable = true,
+                           setType = false,
+                           paramType = true,
+                           paramName = "Disable",
+                           semicolon = "Disable",
+                           arrayIndex = "Disable",
+                        },
                      },
                   },
                },
             },
-         },
-         setup = {
-            rust_analyzer = function()
-               return true
-            end,
-         },
-      }
-      return ret
-   end,
+            setup = {
+               rust_analyzer = function()
+                  return true
+               end,
+            },
+         }
+         return ret
+      end,
 
-   config = function(_, opts)
-      Utils.format.register(Utils.lsp.formatter())
-      Utils.lsp.on_attach(function(client, buffer)
-         require("kostevski.utils.keys").on_attach(client, buffer)
-      end)
-
-      Utils.lsp.setup()
-      Utils.lsp.on_dynamic_capability(require("kostevski.utils.keys").on_attach)
-      Utils.lsp.words.setup(opts.document_highlight)
-
-      -- inlay hints
-      if opts.inlay_hints.enabled then
-         Utils.lsp.on_supports_method("textDocument/inlayHint", function(client, buf)
-            if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "" then
-               vim.lsp.inlay_hint.enable(true, { bufnr = buf })
-            end
+      config = function(_, opts)
+         Utils.format.register(Utils.lsp.formatter())
+         Utils.lsp.on_attach(function(client, buffer)
+            require("kostevski.utils.keys").on_attach(client, buffer)
          end)
-      end
 
-      -- code lens
-      if opts.codelens.enable then
-         Utils.lsp.on_supports_method("textDocument/codeLens", function(_, buffer)
-            vim.lsp.codelens.refresh()
-            vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
-               buffer = buffer,
-               callback = vim.lsp.codelens.refresh,
+         Utils.lsp.setup()
+         Utils.lsp.on_dynamic_capability(require("kostevski.utils.keys").on_attach)
+         Utils.lsp.words.setup(opts.document_highlight)
+
+         -- inlay hints
+         if opts.inlay_hints.enabled then
+            Utils.lsp.on_supports_method("textDocument/inlayHint", function(client, buf)
+               if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "" then
+                  vim.lsp.inlay_hint.enable(true, { bufnr = buf })
+               end
+            end)
+         end
+
+         -- code lens
+         if opts.codelens.enable then
+            Utils.lsp.on_supports_method("textDocument/codeLens", function(_, buffer)
+               vim.lsp.codelens.refresh()
+               vim.api.nvim_create_autocmd({ "BufEnter", "CursorHold", "InsertLeave" }, {
+                  buffer = buffer,
+                  callback = vim.lsp.codelens.refresh,
+               })
+            end)
+         end
+
+         if type(opts.diagnostics.virtual_text) == "table" and opts.diagnostics.virtual_text.prefix == "icons" then
+            opts.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0 and "●"
+               or function(diagnostic)
+                  for d, icon in pairs(icons.diagnostics) do
+                     if diagnostic.severity == vim.diagnostic.severity[d:upper()] then
+                        return icon
+                     end
+                  end
+               end
+         end
+
+         vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
+         if opts.diagnostics.float == true then
+            vim.api.nvim_create_autocmd("CursorHold", {
+               callback = function()
+                  vim.diagnostic.open_float(nil, { focus = false })
+               end,
             })
-         end)
-      end
+         end
 
-      if type(opts.diagnostics.virtual_text) == "table" and opts.diagnostics.virtual_text.prefix == "icons" then
-         opts.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0 and "●"
-            or function(diagnostic)
-               for d, icon in pairs(icons.diagnostics) do
-                  if diagnostic.severity == vim.diagnostic.severity[d:upper()] then
-                     return icon
+         local servers = opts.servers
+         local capabilities = Utils.lsp.default_capabilities(opts)
+
+         local function setup(server)
+            local server_opts = vim.tbl_deep_extend("force", {
+               capabilities = vim.deepcopy(capabilities),
+            }, servers[server] or {})
+            if server_opts.enabled == false then
+               return
+            end
+            if opts.setup[server] then
+               if type(opts.setup[server]) == "function" and opts.setup[server](server, server_opts) then
+                  return
+               end
+            elseif opts.setup["*"] then
+               if type(opts.setup["*"]) == "function" and opts.setup["*"](server, server_opts) then
+                  return
+               end
+            end
+            require("lspconfig")[server].setup(server_opts)
+         end
+
+         -- get all the servers that are available through mason-lspconfig
+         local have_mason, mlsp = pcall(require, "mason-lspconfig")
+         local all_mslp_servers = {}
+         if have_mason then
+            all_mslp_servers = vim.tbl_keys(require("mason-lspconfig.mappings.server").lspconfig_to_package)
+         end
+         local ensure_installed = {}
+         for server, server_opts in pairs(servers) do
+            if server_opts then
+               server_opts = server_opts == true and {} or server_opts
+               if server_opts.enabled ~= false then
+                  if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
+                     setup(server)
+                  else
+                     ensure_installed[#ensure_installed + 1] = server
                   end
                end
             end
-      end
-
-      vim.diagnostic.config(vim.deepcopy(opts.diagnostics))
-      if opts.diagnostics.float == true then
-         vim.api.nvim_create_autocmd("CursorHold", {
-            callback = function()
-               vim.diagnostic.open_float(nil, { focus = false })
-            end,
-         })
-      end
-
-      local servers = opts.servers
-      local capabilities = Utils.lsp.default_capabilities(opts)
-
-      local function setup(server)
-         local server_opts = vim.tbl_deep_extend("force", {
-            capabilities = vim.deepcopy(capabilities),
-         }, servers[server] or {})
-         if server_opts.enabled == false then
-            return
          end
-         if opts.setup[server] then
-            if opts.setup[server](server, server_opts) then
-               return
-            end
-         elseif opts.setup["*"] then
-            if opts.setup["*"](server, server_opts) then
-               return
-            end
-         end
-         require("lspconfig")[server].setup(server_opts)
-      end
 
-      -- get all the servers that are available through mason-lspconfig
-      local have_mason, mlsp = pcall(require, "mason-lspconfig")
-      local all_mslp_servers = {}
-      if have_mason then
-         all_mslp_servers = vim.tbl_keys(require("mason-lspconfig.mappings.server").lspconfig_to_package)
-      end
-      local ensure_installed = {}
-      for server, server_opts in pairs(servers) do
-         if server_opts then
-            server_opts = server_opts == true and {} or server_opts
-            if server_opts.enabled ~= false then
-               if server_opts.mason == false or not vim.tbl_contains(all_mslp_servers, server) then
-                  setup(server)
-               else
-                  ensure_installed[#ensure_installed + 1] = server
-               end
-            end
-         end
-      end
+         Utils.debug.dump(ensure_installed)
 
-      if have_mason then
          mlsp.setup({
+            automatic_installation = true,
             ensure_installed = vim.tbl_deep_extend(
                "force",
                ensure_installed or {},
@@ -192,41 +195,80 @@ return {
             ),
             handlers = { setup },
          })
-      end
-      --
-      -- LSP Signature Help
-      -- vim.api.nvim_create_autocmd("CursorHoldI", {
-      --    callback = function()
-      --       vim.lsp.buf.signature_help()
-      --    end,
-      -- })
-      --
-      -- -- LSP Hover
-      -- vim.api.nvim_create_autocmd("CursorHold", {
-      --    callback = function()
-      --       vim.lsp.buf.hover()
-      --    end,
-      -- })
-      --
-      -- -- LSP Diagnostics in Floating Window
-      -- vim.api.nvim_create_autocmd("CursorHold", {
-      --    callback = function()
-      --       vim.diagnostic.open_float(nil, { focus = false })
-      --    end,
-      -- })
-      --
-      -- -- LSP Formatting on Save
-      -- vim.api.nvim_create_autocmd("BufWritePre", {
-      --    callback = function()
-      --       vim.lsp.buf.format({ async = true })
-      --    end,
-      -- })
+         --
+         -- LSP Signature Help
+         -- vim.api.nvim_create_autocmd("CursorHoldI", {
+         --    callback = function()
+         --       vim.lsp.buf.signature_help()
+         --    end,
+         -- })
+         --
+         -- -- LSP Hover
+         -- vim.api.nvim_create_autocmd("CursorHold", {
+         --    callback = function()
+         --       vim.lsp.buf.hover()
+         --    end,
+         -- })
+         --
+         -- -- LSP Diagnostics in Floating Window
+         -- vim.api.nvim_create_autocmd("CursorHold", {
+         --    callback = function()
+         --       vim.diagnostic.open_float(nil, { focus = false })
+         --    end,
+         -- })
+         --
+         -- -- LSP Formatting on Save
+         -- vim.api.nvim_create_autocmd("BufWritePre", {
+         --    callback = function()
+         --       vim.lsp.buf.format({ async = true })
+         --    end,
+         -- })
 
-      --    -- LSP Code Actions
-      --    vim.api.nvim_create_autocmd("CursorHold", {
-      --       callback = function()
-      --          vim.lsp.buf.code_action()
-      --       end,
-      --    })
-   end,
+         --    -- LSP Code Actions
+         --    vim.api.nvim_create_autocmd("CursorHold", {
+         --       callback = function()
+         --          vim.lsp.buf.code_action()
+         --       end,
+         --    })
+      end,
+   },
+   {
+      "williamboman/mason.nvim",
+      build = ":MasonUpdate",
+      opts_extend = { "ensure_installed" },
+      dependencies = {
+         "williamboman/mason-lspconfig.nvim",
+         "WhoIsSethDaniel/mason-tool-installer.nvim",
+      },
+      main = true,
+      opts = {
+         ensure_installed = {
+            "stylua",
+            "shfmt",
+         },
+      },
+      config = function(_, opts)
+         require("mason").setup(opts)
+         Utils.debug.dump(opts)
+         local mr = require("mason-registry")
+
+         mr:on("package:install:success", function()
+            vim.defer_fn(function()
+               require("lazy.core.handler.event").trigger({
+                  event = "FileType",
+                  buf = vim.api.nvim_get_current_buf(),
+               })
+            end, 100)
+         end)
+
+         mr.refresh(function()
+            for _, tool in ipairs(opts.ensure_installed) do
+               local p = mr.get_package(tool)
+               if not p:is_installed() then
+                  p:install()
+               end
+            end
+         end)
+      end,
+   },
 }

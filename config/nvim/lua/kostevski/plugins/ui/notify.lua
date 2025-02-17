@@ -6,13 +6,13 @@ return {
          vim.notify = require("notify")
       end,
       keys = {
-         {
-            "<leader>nd",
-            function()
-               require("notify").dismiss({ silent = true, pending = true })
-            end,
-            desc = "Dismiss All Notifications",
-         },
+         -- {
+         --    "<leader>nd",
+         --    function()
+         --       require("notify").dismiss({ silent = true, pending = true })
+         --    end,
+         --    desc = "Dismiss All Notifications",
+         -- },
       },
       opts = Utils.notify.default_config,
       config = function(_, opts)

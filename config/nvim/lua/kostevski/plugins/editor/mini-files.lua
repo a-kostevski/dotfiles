@@ -2,14 +2,12 @@ return {
    "echasnovski/mini.files",
    opts = {
       windows = {
-         preview = true,
-         width_focus = 30,
-         width_preview = 30,
+         width_nofocus = 20,
+         width_focus = 50,
+         width_preview = 100,
       },
       options = {
-         -- Whether to use for editing directories
-         -- Disabled by default in LazyVim because neo-tree is used for that
-         use_as_default_explorer = false,
+         use_as_default_explorer = true,
       },
    },
    keys = {
@@ -18,7 +16,7 @@ return {
          function()
             require("mini.files").open(vim.api.nvim_buf_get_name(0), true)
          end,
-         desc = "Open mini.files (Directory of Current File)",
+         desc = "Edit (Mini.files)",
       },
       {
          "<leader>fM",
@@ -104,7 +102,7 @@ return {
       vim.api.nvim_create_autocmd("User", {
          pattern = "MiniFilesActionRename",
          callback = function(event)
-            Snacks.rename.on_rename_file(event.data.from, event.data.to)
+            Utils.lsp.on_rename(event.data.from, event.data.to)
          end,
       })
    end,

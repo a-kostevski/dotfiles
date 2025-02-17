@@ -1,8 +1,5 @@
 return {
-   {
-      "nvim-treesitter/nvim-treesitter",
-      opts = { ensure_installed = { "go", "gomod", "gowork", "gosum" } },
-   },
+   -- LSP Configuration
    {
       "neovim/nvim-lspconfig",
       opts = {
@@ -30,13 +27,6 @@ return {
                         parameterNames = true,
                         rangeVariableTypes = true,
                      },
-                     -- analyses = {
-                     --    fieldalignment = true,
-                     --    nilness = true,
-                     --    unusedparams = true,
-                     --    unusedwrite = true,
-                     --    useany = true,
-                     -- },
                      usePlaceholders = true,
                      completeUnimported = true,
                      staticcheck = true,
@@ -68,22 +58,77 @@ return {
          },
       },
    },
-   -- Ensure Go tools are installed
    {
       "williamboman/mason.nvim",
       optional = true,
-      opts = function(_, opts)
-         opts.ensure_installed = opts.ensure_installed or {}
-         opts.ensure_installed = vim.list_extend(opts.ensure_installed, { "goimports", "gofumpt" })
-      end,
+      opts = { ensure_installed = { "goimports", "gofumpt" } },
    },
+
+   -- Formatter Configuration
    {
       "stevearc/conform.nvim",
-      optional = true,
       opts = {
          formatters_by_ft = {
-            go = { "goimports", "gofumpt" },
+            go = { "gofumpt", "goimports" },
          },
       },
+   },
+
+   -- Linter Configuration
+   {
+      "mfussenegger/nvim-lint",
+      opts = {
+         linters_by_ft = {
+            go = { "golangci-lint" },
+         },
+      },
+   },
+
+   -- DAP Configuration
+   {
+      "mfussenegger/nvim-dap",
+      optional = true,
+      opts = function()
+         require("dap-go").setup()
+         return {
+            adapters = {
+               delve = {
+                  type = "server",
+                  port = "${port}",
+                  executable = {
+                     command = "dlv",
+                     args = { "dap", "-l", "127.0.0.1:${port}" },
+                  },
+               },
+            },
+         }
+      end,
+   },
+
+   -- Neotest
+   {
+      "nvim-neotest/neotest",
+      optional = true,
+      dependencies = {
+         "fredrikaverpil/neotest-golang",
+      },
+      opts = {
+         adapters = {
+            ["neotest-golang"] = {
+               -- Here we can set options for neotest-golang, e.g.
+               -- go_test_args = { "-v", "-race", "-count=1", "-timeout=60s" },
+               dap_go_enabled = true, -- requires leoluz/nvim-dap-go
+            },
+         },
+      },
+   },
+   -- Additional Tools
+   {
+      "nvim-treesitter/nvim-treesitter",
+      opts = function(_, opts)
+         if type(opts.ensure_installed) == "table" then
+            vim.list_extend(opts.ensure_installed, { "go", "gomod", "gowork", "gosum" })
+         end
+      end,
    },
 }

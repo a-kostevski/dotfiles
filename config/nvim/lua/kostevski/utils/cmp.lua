@@ -1,7 +1,6 @@
 local completion = {}
 
 completion.actions = {
-   -- Native Snippets
    snippet_forward = function()
       if vim.snippet.active({ direction = 1 }) then
          vim.schedule(function()
@@ -29,7 +28,7 @@ function completion.snippet_preview(snippet)
          end)
          :gsub("%$0", "")
 end
--- This function replaces nested placeholders in a snippet with LSP placeholders.
+
 function completion.snippet_fix(snippet)
    local texts = {}
    return completion.snippet_replace(snippet, function(placeholder)
@@ -44,22 +43,6 @@ function completion.has_words_before_cursor()
    return vim.fn.matchstr(line:sub(1, cursor[2]), [[\k*$]]) ~= ""
 end
 
--- function completion.add_missing_snippet_docs(window)
---    local cmp = require("cmp")
---    local Kind = cmp.lsp.CompletionItemKind
---    local entries = window:get_entries()
---    for _, entry in ipairs(entries) do
---       if entry:get_kind() == Kind.Snippet then
---          local item = entry.completion_item
---          if not item.documentation and item.insertText then
---             item.documentation = {
---                kind = cmp.lsp.MarkupKind.Markdown,
---                value = string.format("```%s\n%s\n```", vim.bo.filetype, completion.snippet_preview(item.insertText)),
---             }
---          end
---       end
---    end
--- end
 
 function completion.insert_source(opts, src, index)
    opts.sources = opts.sources or {}

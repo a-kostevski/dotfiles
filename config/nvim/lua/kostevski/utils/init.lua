@@ -1,5 +1,4 @@
 local Utils = {}
-_G.Utils = Utils
 
 function Utils.is_list(t)
    local i = 0
@@ -11,10 +10,11 @@ function Utils.is_list(t)
    end
    return true
 end
-local function can_merge(v)
-   return type(v) == "table" and (vim.tbl_isempty(v) or not Utils.is_list(v))
-end
+
 function Utils.merge(...)
+   local function can_merge(v)
+      return type(v) == "table" and (vim.tbl_isempty(v) or not Utils.is_list(v))
+   end
    local ret = select(1, ...)
    if ret == vim.NIL then
       ret = nil
@@ -33,6 +33,7 @@ function Utils.merge(...)
    end
    return ret
 end
+
 ---@generic T
 ---@param list T[]
 ---@return T[]
@@ -47,6 +48,7 @@ function Utils.dedup(list)
    end
    return ret
 end
+
 function Utils.norm(path)
    -- Replace ~ with the home directory
    if path:sub(1, 1) == "~" then
@@ -125,6 +127,7 @@ function Utils.try(fn, opts)
 end
 
 function Utils.setup()
+   -- Load utility modules
    Utils.debug = require("kostevski.utils.debug")
    Utils.notify = require("kostevski.utils.notify")
    Utils.lsp = require("kostevski.utils.lsp")
@@ -136,6 +139,7 @@ function Utils.setup()
    Utils.root = require("kostevski.utils.root")
    Utils.format.setup()
    Utils.root.setup()
+   Utils.lsp.setup()
 end
 
 return Utils

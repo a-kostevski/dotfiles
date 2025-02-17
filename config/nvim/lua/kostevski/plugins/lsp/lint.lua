@@ -1,15 +1,3 @@
-local Info = {}
-
-function Info.info()
-   local linters = require("lint").linters
-   Utils.notify.info("Available linters:")
-   for name, linter in pairs(linters) do
-      Utils.notify.info(string.format("Linter: %s", name))
-      Utils.notify.info(vim.inspect(linter))
-   end
-end
-vim.api.nvim_create_user_command("LinterInfo", Info.info, {})
-
 return {
    {
       "mfussenegger/nvim-lint",
@@ -61,11 +49,11 @@ return {
                   Utils.notify.warn("Linter not found for" .. name)
                   return false
                end
-               if type(linter) == "table" and type(linter.condition) == "function" then
-                  return linter.condition(ctx)
-               end
-               return true
-               -- return linter and not (type(linter) == "table" and linter.condition and not linter.condition(ctx))
+               -- if type(linter) == "table" and type(linter.condition) == "function" then
+               --    return linter.condition(ctx)
+               -- end
+               -- return true
+               return linter and not (type(linter) == "table" and linter.condition and not linter.condition(ctx))
             end, names)
 
             -- Run linters.
@@ -78,14 +66,25 @@ return {
             group = vim.api.nvim_create_augroup("nvim-lint", { clear = true }),
             callback = Utils.debounce(100, M.lint),
          })
+
+         local Info = {}
+
+         function Info.info()
+            local linters = require("lint").linters
+            -- Use the custom Utils.notify API
+            Utils.notify.info("Available linters:", {
+               title = "Linter Information",
+            })
+
+            for name, linter in pairs(linters) do
+               -- Show linter name
+               Utils.notify.info(string.format("Linter: %s", name), { title = "Linter Details" })
+
+               -- Show linter configuration
+               Utils.notify.info(vim.inspect(linter), { title = string.format("%s Configuration", name) })
+            end
+         end
+         vim.api.nvim_create_user_command("LinterInfo", Info.info, {})
       end,
-   },
-   {
-      "williamboman/mason.nvim",
-      opts = {
-         ensure_installed = {
-            "shellcheck",
-         },
-      },
    },
 }

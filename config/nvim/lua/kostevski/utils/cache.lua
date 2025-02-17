@@ -67,11 +67,17 @@ function Cache.create(name, opts)
    ---@param value any
    function store.set(key, value)
       vim.validate({ key = { key, "string" } })
-
-      Cache.stores[name].data[key] = {
-         value = value,
-         timestamp = vim.loop.now(),
-      }
+      
+      local success, err = pcall(function()
+         Cache.stores[name].data[key] = {
+            value = value,
+            timestamp = vim.loop.now(),
+         }
+      end)
+      
+      if not success then
+         Utils.notify.error(string.format("Failed to cache %s: %s", key, err))
+      end
    end
 
    ---Clear cache entries

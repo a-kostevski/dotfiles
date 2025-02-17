@@ -1,6 +1,9 @@
 ---@class Lsp
 ---@field private _supports_method table<string, table>
 ---@field private _cache table<string, any>
+---@field public words LspWords Words highlighting functionality
+---@field public handlers LspHandlers LSP handlers
+---@field public capabilities LspCapabilities LSP capabilities management
 local Lsp = {
    _supports_method = {},
    _cache = {},
@@ -10,8 +13,19 @@ local Lsp = {
    },
 }
 
----@param opts table|nil Options for client filtering
+---Gets LSP clients with specified options
+---@param opts {bufnr?: number, method?: string, filter?: function} Options for filtering clients
 ---@return table[] Array of LSP clients
+---@example
+--- -- Get all clients for current buffer
+--- local clients = Lsp.get_clients({ bufnr = 0 })
+--- 
+--- -- Get clients supporting formatting
+--- local formatting_clients = Lsp.get_clients({
+---    filter = function(client)
+---       return client.supports_method("textDocument/formatting")
+---    end
+--- })
 function Lsp.get_clients(opts)
    opts = opts or {}
    local ok, clients = pcall(vim.lsp.get_clients, opts)
@@ -164,6 +178,17 @@ function Lsp.rename_file()
    local buf = vim.api.nvim_get_current_buf()
    local old = vim.api.nvim_buf_get_name(buf)
    local root = vim.fn.getcwd()
+   
+   if not vim.api.nvim_buf_is_valid(buf) then
+      vim.notify("Invalid buffer", vim.log.levels.ERROR)
+      return
+   end
+   
+   if not old or old == "" then
+      vim.notify("No file name for current buffer", vim.log.levels.ERROR)
+      return
+   end
+
    assert(old:find(root, 1, true) == 1, "File not in project root")
    local extra = old:sub(#root + 2)
    vim.ui.input({
@@ -227,7 +252,7 @@ function Lsp.default_capabilities(opts)
    local capabilities = vim.tbl_deep_extend(
       "force",
       {},
-      vim.lsp.protocol.make_client_capabilities(),
+  ---    vim.lsp.protocol.make_client_capabilities(),
       has_blink and blink.get_lsp_capabilities() or {},
       opts.capabilities or {}
    )

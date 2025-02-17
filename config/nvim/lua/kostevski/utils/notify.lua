@@ -21,9 +21,6 @@ local function sanitize(text)
    if type(text) ~= "string" then
       return tostring(text)
    end
-   -- Remove control characters
-   -- text = text:gsub("[\0-\31]", "")
-   -- Convert tabs to spaces
    text = text:gsub("\t", "  ")
    return text
 end
@@ -36,8 +33,15 @@ function Format.message(message, progress)
       return nil
    end
 
-   -- Convert to string and sanitize
-   local text = sanitize(message)
+   local text
+   if type(message) == "table" then
+      text = vim.islist(message) and table.concat(message, "\n") or vim.inspect(message)
+   else
+      text = tostring(message)
+   end
+
+   text = sanitize(text)
+
    if #text == 0 then
       return nil
    end
@@ -66,20 +70,16 @@ end
 function Format.title(title, level, prefix)
    local parts = {}
 
-   -- Add prefix if provided
    if prefix then
       table.insert(parts, prefix)
    end
 
-   -- Add title if provided
    if title then
       table.insert(parts, sanitize(title))
    end
 
-   -- Join parts with separator
    local final_title = table.concat(parts, " - ")
 
-   -- Add level indicator if provided
    if level then
       local level_name = vim.log.levels[level] or "INFO"
       final_title = string.format("[%s] %s", level_name:upper(), final_title)
@@ -98,7 +98,7 @@ end
 ---@return string formatted_list
 function Format.list(items)
    local formatted = {}
-   for i, item in ipairs(items) do
+   for _, item in ipairs(items) do
       table.insert(formatted, string.format("• %s", sanitize(item)))
    end
    return table.concat(formatted, "\n")
@@ -143,25 +143,23 @@ Notify.default_opts = {
 }
 
 ---@class NotifyConfig
----@field level string|integer Minimum log level to display. See vim.log.levels.
----@field timeout `(number)` Default timeout for notification
----@field max_width `(number|function)` Max number of columns for messages
----@field max_height `(number|function)` Max number of lines for a message
----@field stages `(string|function[])` Animation stages
----@field background_colour `(string)` For stages that change opacity this is treated as the highlight behind the window. Set this to either a highlight group, an RGB hex value e.g. "#000000" or a function returning an RGB code for dynamic values
----@field icons `(table)` Icons for each level (upper case names)
----@field time_formats `(table)` Time formats for different kind of notifications
----@field on_open `(function)` Function called when a new window is opened, use for changing win settings/config
----@field on_close `(function)` Function called when a window is closed
----@field render `(function|string)` Function to render a notification buffer or a built-in renderer name
----@field minimum_width `(integer)` Minimum width for notification windows
----@field fps `(integer)` Frames per second for animation stages, higher value means smoother animations but more CPU usage
----@field top_down `(boolean)` whether or not to position the notifications at the top or not
+---@field level string|integer Minimum log level
+---@field timeout number Default timeout in milliseconds
+---@field max_width number|function Max columns for messages
+---@field max_height number|function Max lines for messages
+---@field stages string|function[] Animation stages
+---@field background_colour string Background color
+---@field icons table Icons for each level
+---@field on_open function Window open callback
+---@field on_close function Window close callback
+---@field render function|string Renderer
+---@field minimum_width integer Min window width
+---@field fps integer Animation FPS
+---@field top_down boolean Position at top
 
 Notify.default_config = {
    level = vim.log.levels.INFO,
    timeout = 5000,
-
    max_height = function()
       return math.floor(vim.o.lines * 0.75)
    end,
@@ -169,70 +167,55 @@ Notify.default_config = {
       return math.floor(vim.o.columns * 0.75)
    end,
    stages = "static",
-   -- background_color = nil,
    icons = require("kostevski.utils.ui").icons.diagnostics,
    on_open = function(win)
       return Notify.setup_window(win)
    end,
-   -- on_close = function() end,
    render = "minimal",
-   -- minimum_width = 30,
    fps = 30,
    top_down = true,
 }
 
+---@param win number Window handle
 function Notify.setup_window(win)
-   -- Window options
    local win_opts = {
       conceallevel = 3,
       concealcursor = "",
       spell = false,
    }
+
    for opt, value in pairs(win_opts) do
       vim.wo[win][opt] = value
    end
 
-   -- Buffer setup with fallback
    local buf = vim.api.nvim_win_get_buf(win)
    vim.bo[buf].filetype = "markdown"
-   vim.bo[buf].syntax = "markdown"
 end
 
+---@param msg string|table Message content
+---@param level number|string Notification level
+---@param opts? table Additional options
+---@return table|nil notification_handle
 function Notify.notify(msg, level, opts)
-   Utils.debug.log("notify.notify", "Notification requested", {
-      msg = msg,
-      level = level,
-      opts = opts,
-   })
-
-   -- Handle fast events
    if vim.in_fast_event() then
       return vim.schedule(function()
          Notify.notify(msg, level, opts)
       end)
    end
 
-   local success, result = pcall(function()
+   local ok, result = pcall(function()
       local format_msg = Format.message(msg)
       if not format_msg then
-         Utils.debug.log("notify.notify", "Message validation failed")
          return nil
       end
 
-      opts = vim.tbl_deep_extend("force", Notify.default_opts, opts or {})
-
-      -- Set notification properties
-      -- opts.on_open = opts.on_open or setup_window
+      opts = vim.tbl_deep_extend("force", {}, opts or {})
       opts.title = Format.title(opts.title or "Nvim")
 
-      Utils.debug.log("notify.notify", "Opts are: ", opts)
       return vim.notify(format_msg, level, opts)
    end)
 
-   if not success then
-      Utils.debug.log("notify.notify", "Notification error", {
-         error = result,
-      })
+   if not ok then
       vim.schedule(function()
          vim.notify("Notification error: " .. tostring(result), vim.log.levels.ERROR)
       end)
@@ -244,8 +227,7 @@ end
 
 local function create_level_notifier(level)
    return function(message, opts)
-      opts = opts or {}
-      return Notify.notify(message, level, opts)
+      return Notify.notify(message, level, opts or {})
    end
 end
 
@@ -254,20 +236,13 @@ Notify.warn = create_level_notifier("warn")
 Notify.info = create_level_notifier("info")
 
 local client_notifs = {}
+local spinner_frames = require("kostevski.utils.ui").icons.misc.spinner_frames
 
 local function get_notif_data(client_id, token)
-   if not client_notifs[client_id] then
-      client_notifs[client_id] = {}
-   end
-
-   if not client_notifs[client_id][token] then
-      client_notifs[client_id][token] = {}
-   end
-
+   client_notifs[client_id] = client_notifs[client_id] or {}
+   client_notifs[client_id][token] = client_notifs[client_id][token] or {}
    return client_notifs[client_id][token]
 end
-
-local spinner_frames = require("kostevski.utils.ui").icons.misc.spinner_frames
 
 local function update_spinner(client_id, token)
    local notif_data = get_notif_data(client_id, token)
@@ -288,10 +263,7 @@ local function update_spinner(client_id, token)
    end
 end
 
---- @see #https://microsoft.github.io/language-server-protocol/specifications/specification-current/#progress
---- @param result lsp.ProgressParams
---- @param ctx lsp.HandlerContext
---- @diagnostic disable-next-line:no-unknown
+---@param result {token: string, value: {kind: string, title?: string, message?: string, percentage?: number}}
 vim.lsp.handlers["$/progress"] = function(_, result, ctx)
    local client_id = ctx.client_id
 
@@ -324,21 +296,40 @@ vim.lsp.handlers["$/progress"] = function(_, result, ctx)
       local message = Format.message(val.message, val.percentage)
       notif_data.notification = Notify.info(message, {
          replace = notif_data.notification,
-         hide_from_history = false,
+         hide_from_history = true,
       })
    elseif val.kind == "end" and notif_data then
       local message = val.message and Format.message(val.message) or "Complete"
       notif_data.notification = Notify.info(message, {
          replace = notif_data.notification,
          timeout = 3000,
-         hide_from_history = true,
+         hide_from_history = false,
       })
       notif_data.spinner = nil
    end
 end
 local severity = { "error", "warn", "info", "hint" }
+local last_notification = 0
+local RATE_LIMIT_MS = 100
 
-vim.lsp.handlers["window/showMessage"] = function(_, method, params, _)
-   vim.notify(method.message, severity[params.type])
+---@param client_id number|nil The ID of the LSP client
+---@param method table LSP method containing message
+---@param params table Parameters containing message type
+---@param _ any Unused ctx parameter
+vim.lsp.handlers["window/showMessage"] = function(client_id, method, params, _)
+   if not method or not params then
+      return
+   end
+
+   local current_time = vim.loop.now()
+   if current_time - last_notification < RATE_LIMIT_MS then
+      return
+   end
+   last_notification = current_time
+
+   local client = client_id and vim.lsp.get_client_by_id(client_id)
+   local source = client and client.name or "LSP"
+   -- Notify.notify(method.message, severity[params.type], { title = source })
+   vim.notify(method.message, severity[params.type], { title = source })
 end
 return Notify
