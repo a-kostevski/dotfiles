@@ -1,36 +1,14 @@
-return {
-   -- LSP Configuration
-   {
-      "neovim/nvim-lspconfig",
-      opts = {
-         servers = {
-            ruff = {
-               cmd_env = { RUFF_TRACE = "messages" },
-               init_options = {
-                  settings = {
-                     logLevel = "error",
-                  },
-               },
-               keys = {
-                  {
-                     "<leader>co",
-                     Utils.lsp.action["source.organizeImports"],
-                     desc = "Organize Imports",
-                  },
-               },
-            },
-         },
-         setup = {
-            ruff = function()
-               Utils.lsp.on_attach(function(client, _)
-                  -- Disable hover in favor of Pyright
-                  client.server_capabilities.hoverProvider = false
-               end, ruff)
-            end,
-         },
-      },
-   },
+vim.api.nvim_create_autocmd("FileType", {
+   pattern = "python",
+   callback = function()
+      vim.opt_local.expandtab = true
+      vim.opt_local.shiftwidth = 4
+      vim.opt_local.tabstop = 4
+      vim.opt_local.softtabstop = 4
+   end,
+})
 
+return {
    -- Formatter Configuration
    {
       "stevearc/conform.nvim",
@@ -110,24 +88,5 @@ return {
             },
          },
       },
-   },
-
-   -- Filetype-specific settings
-   {
-      "neovim/nvim-lspconfig",
-      opts = {
-         autoformat = true,
-      },
-      init = function()
-         vim.api.nvim_create_autocmd("FileType", {
-            pattern = "python",
-            callback = function()
-               vim.opt_local.expandtab = true
-               vim.opt_local.shiftwidth = 4
-               vim.opt_local.tabstop = 4
-               vim.opt_local.softtabstop = 4
-            end,
-         })
-      end,
    },
 }

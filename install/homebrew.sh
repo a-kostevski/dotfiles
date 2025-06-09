@@ -15,7 +15,7 @@ install_homebrew() {
       dot_error "Failed to install Homebrew"
       return 1
     }
-    
+
     # Add Homebrew to PATH for the current session
     eval "$($BREW_PREFIX/bin/brew shellenv)"
   else
@@ -28,11 +28,11 @@ configure_homebrew() {
   # Disable analytics
   export HOMEBREW_NO_ANALYTICS=1
   export HOMEBREW_NO_INSECURE_REDIRECT=1
-  
+
   # Save the settings permanently
   if [[ ! -f "$HOME/.config/homebrew/config" ]]; then
     mkdir -p "$HOME/.config/homebrew"
-    cat > "$HOME/.config/homebrew/config" << EOF
+    cat >"$HOME/.config/homebrew/config" <<EOF
 export HOMEBREW_NO_ANALYTICS=1
 export HOMEBREW_NO_INSECURE_REDIRECT=1
 EOF
@@ -45,7 +45,7 @@ install_packages() {
   if [[ ! -f "$brewfile" ]]; then
     dot_error "Brewfile not found at: $brewfile"
     return 1
-  }
+  fi
 
   dot_info "Installing Homebrew packages from $brewfile..."
   brew bundle --file="$brewfile" --no-lock || {
@@ -66,8 +66,14 @@ select_package_set() {
     echo
     read -p "Enter your choice (1/2): " choice
     case "$choice" in
-      1) echo "$dot_root/config/homebrew/Brewfile-min"; return 0 ;;
-      2) echo "$dot_root/config/homebrew/Brewfile-all"; return 0 ;;
+      1)
+        echo "$dot_root/config/homebrew/Brewfile-min"
+        return 0
+        ;;
+      2)
+        echo "$dot_root/config/homebrew/Brewfile-all"
+        return 0
+        ;;
       *) dot_error "Invalid choice. Please enter 1 or 2" ;;
     esac
   done
@@ -77,12 +83,13 @@ select_package_set() {
 main() {
   install_homebrew || return 1
   configure_homebrew || return 1
-  
+
   local brewfile
   brewfile=$(select_package_set)
   install_packages "$brewfile" || return 1
-  
+
   return 0
 }
 
-main "$@" 
+main "$@"
+

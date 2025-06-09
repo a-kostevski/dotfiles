@@ -1,93 +1,204 @@
 # Dotfiles
 
-My personal dotfiles for macOS development environment.
-
-## Overview
-
-This repository contains my personal dotfiles and scripts for setting up a new macOS system. It includes configurations for:
-
-- Zsh (with custom prompt, aliases, and vim keybindings)
-- Neovim
-- Git
-- Tmux
-- Kitty terminal
-- Various CLI tools
-
-## Installation
-
-1. Clone the repository:
-
-```zsh
-git clone https://github.com/a-kostevski/dotfiles.git
-cd dotfiles
-```
-
-2. Run the bootstrap script:
-
-```zsh
-./bootstrap.sh
-```
-
-### Bootstrap Options
-
-| Flag                 | Description                       | Default        |
-| -------------------- | --------------------------------- | -------------- |
-| `-c, --config-dest`  | Configuration files destination   | `~/.config`    |
-| `-b, --bin-dest`     | Binary scripts destination        | `~/.local/bin` |
-| `-d, --dry-run`      | Show what would be done           | `false`        |
-| `-s, --skip-install` | Skip running installation scripts | `false`        |
-| `-v, --verbose`      | Enable verbose output             | `false`        |
-| `-h, --help`         | Show help message                 |                |
+Personal development environment configuration for macOS and Ubuntu.
 
 ## Features
 
-### Zsh Configuration
+- **Cross-platform support**: Works on macOS and Ubuntu/Debian
+- **Modular configuration**: Choose between minimal, standard, or full installation profiles
+- **Safe installation**: Automatic backup of existing files
+- **Development tools**: Neovim, tmux, git, zsh, and more
+- **Language support**: Go, Python, Rust, and more with full LSP integration
 
-- Vi mode with enhanced keybindings
-- Custom prompt with git integration
-- Organized configuration with separate files for:
-  - Aliases
-  - Key bindings
-  - Completions
-  - History settings
-  - Environment variables
+## Quick Start
 
-### Scripts
+```bash
+# Clone the repository
+git clone https://github.com/a-kostevski/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
 
-The `bin/` directory contains utility scripts:
+# Run bootstrap (minimal profile by default)
+./bootstrap.sh
 
-- `cantsleep` - Prepare system for focus mode
-- `countdown` - Simple countdown timer
-- `mkx` - Create executable script
-- `lnclean` - Clean broken symlinks
-- `osx_clock_toggle` - Toggle between analog/digital clock
+# Or choose a specific profile
+./bootstrap.sh --profile standard --verbose
+```
 
-### MacOS Configuration
+## Installation Profiles
 
-Includes scripts for:
+### Minimal
+Essential tools only - perfect for servers or minimal setups:
+- Zsh with custom configuration
+- Git with sensible defaults  
+- Tmux configuration
 
-- Setting up macOS defaults
-- Installing common development tools
-- Configuring security settings
+### Standard
+Common development setup:
+- Everything from Minimal
+- Neovim with full plugin ecosystem
+- Development utilities (bat, ripgrep, fd)
+- Python environment configuration
 
-## Requirements
+### Full
+Complete development environment:
+- Everything from Standard
+- Language-specific tools (Go, Rust, etc.)
+- macOS-specific: Homebrew packages, Karabiner, Kitty terminal
+- Additional development utilities
 
-- macOS
-- Git
-- Curl
-- Sudo access
+## Usage
+
+```bash
+# View all options
+./bootstrap.sh --help
+
+# Dry run to preview changes
+./bootstrap.sh --profile standard --dry-run
+
+# Skip OS package installation
+./bootstrap.sh --profile full --skip-install
+
+# Force overwrite without backups (use with caution)
+./bootstrap.sh --force
+```
+
+## Repository Structure
+
+```
+.
+├── bin/                    # Utility scripts
+├── config/                 # Application configurations
+│   ├── bat/               # Better cat
+│   ├── git/               # Git configuration
+│   ├── nvim/              # Neovim configuration
+│   ├── tmux/              # Tmux configuration
+│   ├── zsh/               # Zsh configuration
+│   └── ...                # Other tool configs
+├── install/               # OS-specific installation scripts
+│   ├── install-macos.sh   # macOS setup
+│   └── install-ubuntu.sh  # Ubuntu setup
+├── bootstrap.sh           # Main installation script
+└── CLAUDE.md             # AI assistant instructions
+```
+
+## Configuration Details
+
+### Zsh
+- Modular configuration split into `rc.d/` and `profile.d/`
+- Custom functions and completions
+- Minimal plugin system using zsh-unplugged
+- Performance-optimized with lazy loading
+
+### Neovim
+- Lazy.nvim for plugin management
+- Full LSP support for multiple languages
+- Modular plugin organization
+- Custom keybindings and workflows
+- AI integration (Copilot, Aider)
+
+### Git
+- Global gitignore patterns
+- Sensible defaults
+- Aliases for common operations
+
+### Tmux
+- Custom status bar
+- Vim-like keybindings
+- Session management
+
+## Platform-Specific Features
+
+### macOS
+- Homebrew package management
+- System defaults configuration
+- Security hardening options
+- Karabiner for keyboard customization
+- Kitty terminal configuration
+
+### Ubuntu
+- APT package installation
+- Essential development tools
+- Compatibility aliases (fd, bat)
+
+## Manual Steps
+
+After installation, some manual steps may be required:
+
+### Set Zsh as Default Shell
+```bash
+# Ubuntu/Debian
+chsh -s $(which zsh)
+
+# Then logout and login again
+```
+
+### Install Language-Specific Tools
+```bash
+# Go
+go install golang.org/x/tools/gopls@latest
+
+# Python
+pip install --user pynvim
+
+# Rust
+rustup component add rust-analyzer
+```
+
+### Neovim Setup
+First launch will automatically install plugins:
+```bash
+nvim
+# Wait for plugin installation to complete
+# Run :checkhealth to verify setup
+```
+
+## Updating
+
+To update configurations:
+```bash
+cd ~/.dotfiles
+git pull
+./bootstrap.sh --profile <your-profile>
+```
+
+## Troubleshooting
+
+### Permission Denied
+If you get permission errors, ensure the scripts are executable:
+```bash
+chmod +x bootstrap.sh
+chmod +x install/*.sh
+```
+
+### Broken Symlinks
+The bootstrap script can detect and clean broken symlinks:
+```bash
+# During installation, you'll be prompted to clean broken links
+# Or manually check:
+find ~/.config -type l ! -exec test -e {} \; -print
+```
+
+### Zsh Not Found
+On Ubuntu, if zsh is not found after installation:
+```bash
+# Ensure /etc/shells contains zsh path
+grep -q "$(which zsh)" /etc/shells || echo "$(which zsh)" | sudo tee -a /etc/shells
+```
+
+## Customization
+
+### Adding New Configurations
+1. Add configuration to `config/<tool-name>/`
+2. Update bootstrap script if needed
+3. Document any special requirements
+
+### Creating Custom Profiles
+Edit `bootstrap.sh` and modify the `get_config_list()` function to define custom profiles.
+
+## Contributing
+
+This is a personal configuration, but feel free to fork and adapt for your own use.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-Inspired by and borrowed from:
-
-- [holman/dotfiles](https://github.com/holman/dotfiles)
-- [mathiasbynens/dotfiles](https://github.com/mathiasbynens/dotfiles)
-- [folke/dot](https://github.com/folke/dot)
-- And many others in the dotfiles community. If you see your work here but aren't credited, please open an issue - I'd love to acknowledge your contribution!
-
----
+MIT - See LICENSE file for details.

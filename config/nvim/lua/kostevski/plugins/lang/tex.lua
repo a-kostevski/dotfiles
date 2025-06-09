@@ -1,27 +1,4 @@
 return {
-   -- LSP Configuration
-   {
-      "neovim/nvim-lspconfig",
-      opts = {
-         servers = {
-            texlab = {
-               settings = {
-                  texlab = {
-                     build = {
-                        onSave = true,
-                        forwardSearchAfter = true,
-                     },
-                     forwardSearch = {
-                        executable = "skim",
-                        args = { "--synctex-forward", "%l:1:%f", "%p" },
-                     },
-                  },
-               },
-            },
-         },
-      },
-   },
-
    -- Formatter Configuration
    {
       "stevearc/conform.nvim",
@@ -50,21 +27,6 @@ return {
          vim.g.vimtex_view_method = "skim"
          vim.g.vimtex_compiler_method = "latexmk"
          vim.g.vimtex_quickfix_mode = 0
-      end,
-   },
-
-   -- Filetype-specific settings
-   {
-      "neovim/nvim-lspconfig",
-      init = function()
-         vim.api.nvim_create_autocmd("FileType", {
-            pattern = { "tex", "plaintex" },
-            callback = function()
-               vim.opt_local.wrap = true
-               vim.opt_local.spell = true
-               vim.opt_local.textwidth = 80
-            end,
-         })
       end,
    },
 }

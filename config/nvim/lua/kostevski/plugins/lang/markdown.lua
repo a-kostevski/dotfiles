@@ -1,6 +1,6 @@
 return {
    {
-      "williamboman/mason.nvim",
+      "mason",
       opts = {
          ensure_installed = {
             "markdownlint-cli2",
@@ -8,16 +8,6 @@ return {
          },
       },
    },
-   -- LSP Configuration
-   {
-      "neovim/nvim-lspconfig",
-      opts = {
-         servers = {
-            marksman = {},
-         },
-      },
-   },
-
    -- Formatter Configuration
    {
       "stevearc/conform.nvim",

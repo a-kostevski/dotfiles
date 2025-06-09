@@ -354,7 +354,7 @@ Conclude with a unified solution including:
       sys_prompts.COPILOT_REVIEW,
       prompt = table.concat({
          "Based on your previous security and logic analysis",
-         "1. Review each recommendation for accurac",
+         "1. Review each recommendation for accuracy",
          "2. Identify any false positive",
          "3. Note any missing critical issue",
          "4. Provide corrections where needed",
@@ -367,7 +367,7 @@ Conclude with a unified solution including:
    ImplementImprovements = {
       system_prompt = sys_prompts.COPILOT_GENERATE,
       prompt = table.concat({
-         "1. Implement all accepted security fixe",
+         "1. Implement all accepted security fixes",
          "2. Address the confirmed logical issue",
          "3. Add proper error handling",
          "4. Apply performance optimizations",

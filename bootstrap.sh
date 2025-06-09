@@ -1,354 +1,501 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
-# Exit on error
+# Unified Bootstrap Script for Dotfiles
+# Supports: macOS, Ubuntu/Debian
+# Version: 3.0.0
+
 set -e
 
-# Script version and metadata
-readonly SCRIPT_VERSION="1.0.0"
-readonly SCRIPT_DATE="2024-01-17"
+# Script metadata
+readonly SCRIPT_VERSION="3.0.0"
+readonly SCRIPT_DATE="2025-06-09"
 readonly SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd -P)"
 
 # Configuration constants
 readonly DEFAULT_CONFIG_DEST="${HOME}/.config"
 readonly DEFAULT_BIN_DEST="${HOME}/.local/bin"
+readonly DEFAULT_PROFILE="minimal"
 
-# Color constants for output
-readonly COLOR_HEADER="\x1b[1;36m"
-readonly COLOR_INFO="\x1b[34m"
-readonly COLOR_ERROR="\x1b[31m"
-readonly COLOR_SUCCESS="\x1b[32m"
-readonly COLOR_RESET="\x1b[0m"
+# Color constants
+readonly COLOR_HEADER="\033[1;36m"
+readonly COLOR_INFO="\033[34m"
+readonly COLOR_ERROR="\033[31m"
+readonly COLOR_SUCCESS="\033[32m"
+readonly COLOR_WARNING="\033[33m"
+readonly COLOR_RESET="\033[0m"
 
-usage() {
-  echo "Usage: $0 [-c|--config-dest <config_dest>] [-b|--bin-dest <bin_dest>] [-d|--dry-run] [-s|--skip-install]"
-  echo "Options:"
-  echo "  -c, --config-dest <config_dest>  Set the config directory (default: ~/.config)"
-  echo "  -b, --bin-dest <bin_dest>        Set the bin directory (default: ~/.local/bin)"
-  echo "  -d, --dry-run                    Perform a dry run without making any changes"
-  echo "  -s, --skip-install               Skip running installation scripts"
-  echo "  -v, --verbose                    Enable verbose output"
-  echo "  -h, --help                       Display this help message"
-  exit 1
-}
+# Global variables
+declare -g OS_TYPE
+declare -g OS_VERSION
+declare -g PROFILE
+declare -g CONFIG_DEST
+declare -g BIN_DEST
+declare -g DRY_RUN=""
+declare -g VERBOSE=false
+declare -g SKIP_INSTALL=false
+declare -g FORCE=false
 
-declare config_dest
-declare bin_dest
-declare dry_run
-declare verbose
-declare skip_install
-declare -r dot_root="$(cd "$(dirname "${0}")" && pwd -P)"
-
+# Output functions
 dot_title() {
-  printf "\x1b[35m=>\x1b[0m $1\n"
+    printf "\n${COLOR_HEADER}==> %s${COLOR_RESET}\n" "$1"
 }
 
 dot_header() {
-  printf "\x1b[1;36m$1\x1b[0m\n"
+    printf "${COLOR_HEADER}%s${COLOR_RESET}\n" "$1"
 }
 
 dot_info() {
-  ((verbose)) && printf "%2s\x1b[34m [Info]\x1b[0m$1\n"
+    [[ "$VERBOSE" == "true" ]] && printf "  ${COLOR_INFO}[INFO]${COLOR_RESET} %s\n" "$1"
 }
 
 dot_error() {
-  printf "%2s\x1b[31m [Error]\x1b[0m$1\n"
+    printf "  ${COLOR_ERROR}[ERROR]${COLOR_RESET} %s\n" "$1" >&2
 }
 
 dot_success() {
-  printf "\x1b[32m [Success]\x1b[0m$1\n"
+    printf "  ${COLOR_SUCCESS}[OK]${COLOR_RESET} %s\n" "$1"
 }
 
-valid_os() {
-  if [ $(uname -s) != "Darwin" ]; then
-    echo "Script only supports macOS. Exiting..."
-    exit 1
-  fi
+dot_warning() {
+    printf "  ${COLOR_WARNING}[WARN]${COLOR_RESET} %s\n" "$1"
 }
 
-valid_paths() {
-  [[ ! -d "$dot_root" ]] && dot_error "Invalid dotfiles root directory" && exit 1
-  [[ ! -d "$config_src" ]] && dot_error "Invalid config source directory" && exit 1
-  [[ ! -d "$bin_src" ]] && dot_error "Invalid bin source directory" && exit 1
+# OS detection
+detect_os() {
+    case "$(uname -s)" in
+        Darwin)
+            OS_TYPE="macos"
+            OS_VERSION=$(sw_vers -productVersion)
+            ;;
+        Linux)
+            if [[ -f /etc/os-release ]]; then
+                . /etc/os-release
+                case "$ID" in
+                    ubuntu|debian)
+                        OS_TYPE="ubuntu"
+                        OS_VERSION="$VERSION_ID"
+                        ;;
+                    *)
+                        OS_TYPE="unsupported"
+                        ;;
+                esac
+            else
+                OS_TYPE="unsupported"
+            fi
+            ;;
+        *)
+            OS_TYPE="unsupported"
+            ;;
+    esac
 }
 
-dot_mkdir() {
-  local dir="$1"
-  if [[ ! -d "$dir" ]]; then
-    dot_info "Creating directory $dir"
-    $dry_run mkdir -p "$dir"
-  fi
+# Usage information
+usage() {
+    cat << EOF
+Usage: $SCRIPT_NAME [OPTIONS]
+
+Bootstrap script for installing dotfiles across macOS and Ubuntu.
+
+OPTIONS:
+    -p, --profile <profile>     Installation profile: minimal, standard, full (default: minimal)
+    -c, --config-dest <path>    Config directory path (default: ~/.config)
+    -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
+    -s, --skip-install          Skip OS-specific installation scripts
+    -f, --force                 Force overwrite existing files without backup
+    -d, --dry-run               Show what would be done without making changes
+    -v, --verbose               Enable verbose output
+    -h, --help                  Show this help message
+
+PROFILES:
+    minimal:  Essential configs only (zsh, git, tmux)
+    standard: Common development tools (+ nvim, basic tools)
+    full:     Everything including GUI apps and extras
+
+EXAMPLES:
+    # Minimal installation with dry run
+    $SCRIPT_NAME --profile minimal --dry-run
+
+    # Standard installation with verbose output
+    $SCRIPT_NAME --profile standard --verbose
+
+    # Full installation, skip OS packages
+    $SCRIPT_NAME --profile full --skip-install
+
+EOF
+    exit 0
 }
 
-dot_mk_parent() {
-  local target_file="$1"
-  local parent_dir="$(dirname "$target_file")"
-  [ -d "$parent_dir" ] || $dry_run mkdir -p "$parent_dir"
+# Parse command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -p|--profile)
+                PROFILE="${2:-}"
+                [[ -z "$PROFILE" ]] && dot_error "Profile requires a value" && exit 1
+                shift 2
+                ;;
+            -c|--config-dest)
+                CONFIG_DEST="${2:-}"
+                [[ -z "$CONFIG_DEST" ]] && dot_error "Config destination requires a value" && exit 1
+                shift 2
+                ;;
+            -b|--bin-dest)
+                BIN_DEST="${2:-}"
+                [[ -z "$BIN_DEST" ]] && dot_error "Bin destination requires a value" && exit 1
+                shift 2
+                ;;
+            -s|--skip-install)
+                SKIP_INSTALL=true
+                shift
+                ;;
+            -f|--force)
+                FORCE=true
+                shift
+                ;;
+            -d|--dry-run)
+                DRY_RUN="echo [DRY-RUN]"
+                shift
+                ;;
+            -v|--verbose)
+                VERBOSE=true
+                shift
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                dot_error "Unknown option: $1"
+                usage
+                ;;
+        esac
+    done
 }
 
-dot_link() {
-  local src="$1"
-  local dest="$2"
+# Validate environment
+validate_environment() {
+    # Check OS support
+    if [[ "$OS_TYPE" == "unsupported" ]]; then
+        dot_error "Unsupported operating system"
+        dot_error "This script supports macOS and Ubuntu/Debian only"
+        exit 1
+    fi
 
-  [[ ! -e "$src" ]] && dot_error "Source $src does not exist" && return 1
+    # Check required commands
+    local required_commands=("git" "curl")
+    [[ "$OS_TYPE" == "ubuntu" ]] && required_commands+=("sudo")
+    
+    for cmd in "${required_commands[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            dot_error "Required command not found: $cmd"
+            exit 1
+        fi
+    done
 
-  # If destination is a symlink
-  if [[ -L "$dest" ]]; then
-    local current_target
-    current_target="$(readlink "$dest")"
+    # Validate profile
+    case "$PROFILE" in
+        minimal|standard|full) ;;
+        *)
+            dot_error "Invalid profile: $PROFILE"
+            dot_error "Valid profiles: minimal, standard, full"
+            exit 1
+            ;;
+    esac
 
-    # If it points to our source file, we're good
-    [[ "$current_target" == "$src" ]] && dot_info "Link already exists: $dest" && return 0
-
-    # If it's a broken symlink or points somewhere else, remove it
-    dot_info "Removing existing symlink: $dest"
-    $dry_run rm "$dest"
-  fi
-
-  # If destination exists and is not a symlink, back it up
-  if [[ -e "$dest" ]]; then
-    local backup="${dest}.backup.$(date +%s)"
-    dot_info "Backing up ${dest} to ${backup}"
-    $dry_run mv "$dest" "$backup" || return 1
-  fi
-
-  # Create parent directory if needed
-  dot_mk_parent "$dest"
-
-  # Create new symlink
-  dot_info "Linking ${src} to ${dest}"
-  $dry_run ln -sfn "$src" "$dest" || return 1
-  return 0
+    # Check source directories
+    if [[ ! -d "$SCRIPT_DIR/config" ]]; then
+        dot_error "Config directory not found at: $SCRIPT_DIR/config"
+        exit 1
+    fi
+    if [[ ! -d "$SCRIPT_DIR/bin" ]]; then
+        dot_error "Bin directory not found at: $SCRIPT_DIR/bin"
+        exit 1
+    fi
 }
 
-link_config_dirs() {
-  local config_src="$1"
-  local config_dest="$2"
-  local errors=0
-  # HOME
-  dot_link "$config_src/zsh/zshenv" "$HOME/.zshenv" || ((errors++))
-  dot_link "$config_src/lldb/.lldbinit" "$HOME/.lldbinit" || ((errors++))
+# Create directory with proper permissions
+create_directory() {
+    local dir="$1"
+    if [[ ! -d "$dir" ]]; then
+        dot_info "Creating directory: $dir"
+        $DRY_RUN mkdir -p "$dir"
+    fi
+}
 
-  # Loop through all directories in config_src
-  while IFS= read -r file; do
+# Create symlink with backup
+create_symlink() {
+    local src="$1"
+    local dest="$2"
 
-    # Calculate relative path from config_src
-    local rel_path="${file#$config_src/}"
-    local dest_path="$config_dest/$rel_path"
+    # Source must exist
+    [[ ! -e "$src" ]] && dot_error "Source not found: $src" && return 1
+
+    # Handle existing symlink
+    if [[ -L "$dest" ]]; then
+        local current_target=$(readlink "$dest")
+        if [[ "$current_target" == "$src" ]]; then
+            dot_info "Already linked: $dest"
+            return 0
+        else
+            dot_info "Removing existing symlink: $dest"
+            $DRY_RUN rm "$dest"
+        fi
+    fi
+
+    # Handle existing file
+    if [[ -e "$dest" ]] && [[ ! -L "$dest" ]]; then
+        if [[ "$FORCE" == "true" ]]; then
+            dot_warning "Force removing: $dest"
+            $DRY_RUN rm -rf "$dest"
+        else
+            local backup="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
+            dot_info "Backing up: $dest -> $backup"
+            $DRY_RUN mv "$dest" "$backup"
+        fi
+    fi
 
     # Create parent directory if needed
-    dot_mk_parent "$dest_path"
+    local parent_dir=$(dirname "$dest")
+    [[ ! -d "$parent_dir" ]] && $DRY_RUN mkdir -p "$parent_dir"
 
     # Create symlink
-    dot_info "Processing $rel_path..."
-    dot_link "$file" "$dest_path" || ((errors++))
-  done < <(find "$config_src" -type f -not -name ".DS_Store")
-
-  return $errors
+    dot_info "Linking: $src -> $dest"
+    $DRY_RUN ln -sfn "$src" "$dest"
 }
 
-link_bin_files() {
-  local errors=0
-
-  while IFS= read -r file; do
-    dot_link "$file" "$bin_dest/$(basename "$file")" || ((errors++))
-  done < <(find "$bin_src" -type f -not -name ".*")
-
-  return $errors
+# Get config list based on profile and OS
+get_config_list() {
+    local -a configs=()
+    
+    # Minimal profile - essentials only
+    configs+=("git" "zsh" "tmux")
+    
+    # Standard profile - add development tools
+    if [[ "$PROFILE" == "standard" || "$PROFILE" == "full" ]]; then
+        configs+=("nvim" "bat" "python")
+    fi
+    
+    # Full profile - add everything
+    if [[ "$PROFILE" == "full" ]]; then
+        # Cross-platform configs
+        configs+=("clang-format" "lldb")
+        
+        # macOS-specific configs
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            configs+=("homebrew" "karabiner" "kitty")
+        fi
+    fi
+    
+    printf '%s\n' "${configs[@]}"
 }
 
-run_install() {
-  target=$1
-  install_cmd=$2
-  if [[ ! $target ]]; then
-    dot_info "$target could not be found, installing..."
-    echo "$install_cmd"
-    dot_success "Installed $target"
-  else
-    dot_info "$target is already installed."
-  fi
+# Link configuration files
+link_configs() {
+    local config_list
+    config_list=$(get_config_list)
+    
+    dot_title "Linking configuration files"
+    
+    # Special case: zsh needs .zshenv in HOME
+    if echo "$config_list" | grep -q "zsh"; then
+        create_symlink "$SCRIPT_DIR/config/zsh/zshenv" "$HOME/.zshenv"
+    fi
+    
+    # Special case: lldb needs .lldbinit in HOME (macOS only)
+    if [[ "$OS_TYPE" == "macos" ]] && echo "$config_list" | grep -q "lldb"; then
+        create_symlink "$SCRIPT_DIR/config/lldb/.lldbinit" "$HOME/.lldbinit"
+    fi
+    
+    # Link each config directory
+    while IFS= read -r config; do
+        local src="$SCRIPT_DIR/config/$config"
+        local dest="$CONFIG_DEST/$config"
+        
+        if [[ -d "$src" ]]; then
+            dot_info "Processing $config configuration..."
+            
+            # For directories with special handling
+            case "$config" in
+                zsh)
+                    # Already handled .zshenv above, link the rest
+                    for item in "$src"/*; do
+                        [[ "$(basename "$item")" != "zshenv" ]] && \
+                            create_symlink "$item" "$dest/$(basename "$item")"
+                    done
+                    ;;
+                *)
+                    # Link all files in the directory
+                    while IFS= read -r file; do
+                        local rel_path="${file#$src/}"
+                        create_symlink "$file" "$dest/$rel_path"
+                    done < <(find "$src" -type f -not -name ".DS_Store" 2>/dev/null)
+                    ;;
+            esac
+        fi
+    done <<< "$config_list"
+    
+    dot_success "Configuration files linked"
 }
 
-parse_args() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    -c | --config-dest)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: config-dest requires a value"
-        usage
-      fi
-      config_dest="${2}"
-      shift 2
-      ;;
-    -b | --bin-dest)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: bin-dest requires a value"
-        usage
-      fi
-      bin_dest="${2}"
-      shift 2
-      ;;
-    -d | --dry-run)
-      dry_run="echo"
-      shift
-      ;;
-    -s | --skip-install)
-      skip_install=true
-      shift
-      ;;
-    -v | --verbose)
-      verbose=true
-      shift
-      ;;
-    -h | --help)
-      usage
-      ;;
-    *)
-      echo "Invalid argument: ${1}"
-      usage
-      ;;
+# Link binary scripts based on profile
+link_binaries() {
+    dot_title "Linking binary scripts"
+    
+    create_directory "$BIN_DEST"
+    
+    # Determine which scripts to link based on profile
+    local pattern="*"
+    if [[ "$PROFILE" == "minimal" ]]; then
+        # For minimal, skip linking any binaries
+        dot_info "Skipping binary scripts for minimal profile"
+        return 0
+    fi
+    
+    # Link scripts
+    local count=0
+    while IFS= read -r script; do
+        create_symlink "$script" "$BIN_DEST/$(basename "$script")"
+        ((count++))
+    done < <(find "$SCRIPT_DIR/bin" -type f -not -name ".*" 2>/dev/null)
+    
+    # Set permissions
+    [[ -d "$BIN_DEST" ]] && $DRY_RUN chmod -R 755 "$BIN_DEST"
+    
+    dot_success "Linked $count binary scripts"
+}
+
+# Run OS-specific installation
+run_os_installation() {
+    [[ "$SKIP_INSTALL" == "true" ]] && return 0
+    
+    dot_title "Running OS-specific installation"
+    
+    # Export functions for install scripts
+    export -f dot_title dot_header dot_info dot_error dot_success dot_warning
+    export -f create_directory
+    
+    # Compatibility alias for old scripts
+    dot_mkdir() {
+        create_directory "$@"
+    }
+    export -f dot_mkdir
+    
+    # Export dot_root for compatibility
+    export dot_root="$SCRIPT_DIR"
+    export DRY_RUN VERBOSE PROFILE SCRIPT_DIR
+    
+    case "$OS_TYPE" in
+        macos)
+            source "$SCRIPT_DIR/install/install-macos.sh"
+            ;;
+        ubuntu)
+            source "$SCRIPT_DIR/install/install-ubuntu.sh"
+            ;;
     esac
-    # shift
-  done
 }
 
-valid_env() {
-  local required_commands=("git" "curl" "sudo")
-  for cmd in "${required_commands[@]}"; do
-    if ! command -v "$cmd" >/dev/null; then
-      dot_error "Required command not found: $cmd"
-      exit 1
+# Create standard directory structure
+create_directories() {
+    dot_title "Creating directory structure"
+    
+    local dirs=(
+        "$HOME/.cache"
+        "$HOME/.config"
+        "$HOME/.local"
+        "$HOME/.local/bin"
+        "$HOME/.local/share"
+        "$HOME/.local/state"
+    )
+    
+    # Add development directories for non-minimal profiles
+    if [[ "$PROFILE" != "minimal" ]]; then
+        dirs+=(
+            "$HOME/dev"
+            "$HOME/dev/projects"
+            "$HOME/dev/scripts"
+        )
     fi
-  done
+    
+    for dir in "${dirs[@]}"; do
+        create_directory "$dir"
+    done
+    
+    dot_success "Directory structure created"
 }
 
-find_broken_links() {
-  local dir="$1"
-  find "$dir" -type l ! -exec test -e {} \; -print
-}
-
-clean_broken_links() {
-  local dir="$1"
-  local broken_links=()
-
-  while IFS= read -r link; do
-    broken_links+=("$link")
-  done < <(find_broken_links "$dir")
-
-  if ((${#broken_links[@]} > 0)); then
-    echo "Found ${#broken_links[@]} broken symlinks:"
-    printf '%s\n' "${broken_links[@]}"
-
-    read -q "REPLY?Do you want to remove these broken symlinks? [y/N] "
+# Show summary
+show_summary() {
+    dot_title "Installation Summary"
+    
+    echo "  OS Type:        $OS_TYPE"
+    echo "  OS Version:     $OS_VERSION"
+    echo "  Profile:        $PROFILE"
+    echo "  Config Path:    $CONFIG_DEST"
+    echo "  Binary Path:    $BIN_DEST"
+    echo "  Dry Run:        $([[ -n "$DRY_RUN" ]] && echo "Yes" || echo "No")"
     echo
-
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-      for link in "${broken_links[@]}"; do
-        dot_info "Removing broken symlink: $link"
-        $dry_run rm "$link"
-      done
-      return 0
+    
+    if [[ -z "$DRY_RUN" ]]; then
+        dot_success "Bootstrap completed successfully!"
+        
+        # Post-installation instructions
+        case "$OS_TYPE" in
+            ubuntu)
+                if command -v zsh &> /dev/null && [[ "$SHELL" != *"zsh"* ]]; then
+                    echo
+                    dot_info "To set zsh as your default shell, run:"
+                    echo "    chsh -s \$(which zsh)"
+                fi
+                ;;
+            macos)
+                echo
+                dot_info "Some changes may require a restart to take effect"
+                ;;
+        esac
+        
+        echo
+        dot_info "Restart your terminal or run: source ~/.zshenv"
     else
-      dot_info "Skipping cleanup of broken symlinks"
-      return 1
+        echo
+        dot_info "This was a dry run. No changes were made."
+        dot_info "Remove --dry-run to apply changes."
     fi
-  else
-    dot_info "No broken symlinks found in $dir"
-    return 0
-  fi
 }
 
 # Main execution
 main() {
-  local exit_code=0
-
-  valid_os
-  valid_env
-
-  verbose=${verbose:-false}
-  # Set default values
-  config_dest=${config_dest:-$DEFAULT_CONFIG_DEST}
-  bin_dest=${bin_dest:-$DEFAULT_BIN_DEST}
-  config_dest=$(realpath "$config_dest")
-  bin_dest=$(realpath "$bin_dest")
-
-  dry_run=${dry_run:-""}
-  skip_install=${skip_install:-false}
-
-  config_src="${dot_root}/config"
-  bin_src="${dot_root}/bin"
-
-  valid_paths
-
-  # Check for broken symlinks before proceeding
-  dot_title "Broken symlinks check..."
-
-  read -q "REPLY?Do you want to check and clean broken symlinks? [y/N] "
-  echo
-
-  if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-    local dirs_to_check=("$config_dest" "$bin_dest")
-    local found_broken=false
-
-    for dir in "${dirs_to_check[@]}"; do
-      if [[ -d "$dir" ]]; then
-        if ! find_broken_links "$dir" | grep -q .; then
-          dot_info "No broken symlinks found in $dir"
-        else
-          found_broken=true
-          dot_header "Found broken symlinks in $dir:"
-          find_broken_links "$dir"
-          clean_broken_links "$dir"
-        fi
-      fi
-    done
-
-    if ! $found_broken; then
-      dot_success "No broken symlinks found in any directory"
-    fi
-  else
-    dot_info "Skipping broken symlinks check"
-  fi
-
-  # Create necessary directories
-  dot_mkdir "$config_dest" || exit 1
-  dot_mkdir "$bin_dest" || exit 1
-
-  # Run installation if needed
-  if ! $skip_install; then
-    run_install_script "${dot_root}/install/install-macos.sh" || exit_code=1
-  fi
-
-  # Link configuration files
-  dot_title "Symlinking config files..."
-  link_config_dirs "$config_src" "$config_dest" || exit_code=1
-
-  # Link binary files
-  dot_info "Symlinking bin scripts..."
-  link_bin_files || exit_code=1
-
-  # Set final permissions
-  if [[ -d "$bin_dest" ]]; then
-    $dry_run chmod 0700 "$bin_dest"
-    $dry_run find "$bin_dest" -type f -exec chmod 0700 {} \;
-  fi
-
-  if ((bin_errors > 0)); then
-    dot_error "Some bin scripts failed to link"
-    exit_code=1
-  fi
-
-  # Final status
-  if ((exit_code == 0)); then
-    dot_success "Installation completed successfully"
-  else
-    dot_error "Installation completed with errors"
-  fi
-
-  return $exit_code
+    # Detect OS
+    detect_os
+    
+    # Set defaults
+    PROFILE="${PROFILE:-$DEFAULT_PROFILE}"
+    CONFIG_DEST="${CONFIG_DEST:-$DEFAULT_CONFIG_DEST}"
+    BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
+    
+    # Show header
+    dot_header "Dotfiles Bootstrap v${SCRIPT_VERSION}"
+    dot_header "OS: ${OS_TYPE} ${OS_VERSION}"
+    echo
+    
+    # Validate environment
+    validate_environment
+    
+    # Create directories
+    create_directories
+    
+    # Run OS installation
+    run_os_installation
+    
+    # Link configurations
+    link_configs
+    
+    # Link binaries
+    link_binaries
+    
+    # Show summary
+    show_summary
 }
 
+# Run the script
 parse_args "$@"
-if ! main; then
-  dot_error "Bootstrap failed"
-  exit 1
-fi
+main

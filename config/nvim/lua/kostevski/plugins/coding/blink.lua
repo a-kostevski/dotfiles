@@ -19,7 +19,6 @@ return {
          },
          completion = {
             accept = {
-               -- experimental auto-brackets support
                auto_brackets = {
                   enabled = true,
                },
@@ -91,7 +90,7 @@ return {
             },
          },
          sources = {
-            default = { "lsp", "path", "snippets", "buffer" },
+            default = { "snippets", "lsp", "path", "buffer" },
             cmdline = {},
             min_keyword_length = 2,
          },

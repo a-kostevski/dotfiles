@@ -7,19 +7,8 @@ require("kostevski.utils.root").add_patterns("dockerfile", {
 
 return {
    {
-      "mason.nvim",
+      "mason",
       opts = { ensure_installed = { "hadolint" } },
-   },
-
-   -- LSP Configuration
-   {
-      "neovim/nvim-lspconfig",
-      opts = {
-         servers = {
-            dockerls = {},
-            docker_compose_language_service = {},
-         },
-      },
    },
 
    -- Linter Configuration
