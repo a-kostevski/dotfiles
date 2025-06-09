@@ -61,6 +61,15 @@ dot_warning() {
   printf "  ${COLOR_WARNING}[WARN]${COLOR_RESET} %s\n" "$1"
 }
 
+# Dry run command execution
+dry_run() {
+  if [[ -n "$DRY_RUN" ]]; then
+    echo "[DRY-RUN] $*"
+  else
+    "$@"
+  fi
+}
+
 # OS detection
 detect_os() {
   case "$(uname -s)" in
@@ -154,7 +163,7 @@ parse_args() {
         shift
         ;;
       -d | --dry-run)
-        DRY_RUN="echo [DRY-RUN]"
+        DRY_RUN="dry_run"
         shift
         ;;
       -v | --verbose)
@@ -218,7 +227,7 @@ create_directory() {
   local dir="$1"
   if [[ ! -d "$dir" ]]; then
     dot_info "Creating directory: $dir"
-    $DRY_RUN mkdir -p "$dir"
+    dry_run mkdir -p "$dir"
   fi
 }
 
@@ -238,25 +247,23 @@ create_symlink() {
       return 0
     else
       dot_info "Updating existing symlink: $dest"
-      $DRY_RUN rm "$dest"
+      dry_run rm "$dest"
     fi
-  fi
-
   # Handle existing file (non-symlink)
-  if [[ -e "$dest" ]] && [[ ! -L "$dest" ]]; then
+  elif [[ -e "$dest" ]]; then
     if [[ "$FORCE" == "true" ]]; then
       dot_warning "Force removing: $dest"
-      $DRY_RUN rm -rf "$dest"
+      dry_run rm -rf "$dest"
     else
       local backup="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
       dot_info "Backing up: $dest -> $backup"
-      $DRY_RUN mv "$dest" "$backup"
+      dry_run mv "$dest" "$backup"
     fi
   fi
 
   # Create symlink
   dot_info "Linking: $src -> $dest"
-  $DRY_RUN ln -sfn "$src" "$dest"
+  dry_run ln -sfn "$src" "$dest"
 }
 
 # Get config list based on profile and OS
@@ -331,7 +338,7 @@ link_configs() {
         local dest_dir=$(dirname "$dest_file")
         if [[ ! -d "$dest_dir" ]]; then
           dot_info "Creating directory: $dest_dir"
-          $DRY_RUN mkdir -p "$dest_dir"
+          dry_run mkdir -p "$dest_dir"
         fi
 
         # Create the symlink
@@ -365,7 +372,7 @@ link_binaries() {
   done < <(find "$SCRIPT_DIR/bin" -type f -not -name ".*" 2>/dev/null)
 
   # Set permissions
-  [[ -d "$BIN_DEST" ]] && $DRY_RUN chmod -R 755 "$BIN_DEST"
+  [[ -d "$BIN_DEST" ]] && dry_run chmod -R 755 "$BIN_DEST"
 
   dot_success "Linked $count binary scripts"
 }
@@ -495,4 +502,3 @@ main() {
 # Run the script
 parse_args "$@"
 main
-
