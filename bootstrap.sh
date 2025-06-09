@@ -317,18 +317,25 @@ link_configs() {
             # For directories with special handling
             case "$config" in
                 zsh)
-                    # Already handled .zshenv above, link the rest
-                    for item in "$src"/*; do
-                        [[ "$(basename "$item")" != "zshenv" ]] && \
-                            create_symlink "$item" "$dest/$(basename "$item")"
-                    done
-                    ;;
-                *)
-                    # Link all files in the directory
+                    # Already handled .zshenv above, link the rest including hidden files
+                    # Use find to get all files including hidden ones
                     while IFS= read -r file; do
+                        local basename=$(basename "$file")
+                        # Skip zshenv (already linked to HOME) and .DS_Store
+                        [[ "$basename" == "zshenv" || "$basename" == ".DS_Store" ]] && continue
                         local rel_path="${file#$src/}"
                         create_symlink "$file" "$dest/$rel_path"
-                    done < <(find "$src" -type f -not -name ".DS_Store" 2>/dev/null)
+                    done < <(find "$src" -type f 2>/dev/null)
+                    ;;
+                *)
+                    # Link all files in the directory including hidden files
+                    while IFS= read -r file; do
+                        local basename=$(basename "$file")
+                        # Skip .DS_Store files
+                        [[ "$basename" == ".DS_Store" ]] && continue
+                        local rel_path="${file#$src/}"
+                        create_symlink "$file" "$dest/$rel_path"
+                    done < <(find "$src" -type f 2>/dev/null)
                     ;;
             esac
         fi
