@@ -254,10 +254,6 @@ create_symlink() {
         fi
     fi
 
-    # Create parent directory if needed
-    local parent_dir=$(dirname "$dest")
-    [[ ! -d "$parent_dir" ]] && $DRY_RUN mkdir -p "$parent_dir"
-
     # Create symlink
     dot_info "Linking: $src -> $dest"
     $DRY_RUN ln -sfn "$src" "$dest"
@@ -314,30 +310,35 @@ link_configs() {
         if [[ -d "$src" ]]; then
             dot_info "Processing $config configuration..."
             
-            # For directories with special handling
-            case "$config" in
-                zsh)
-                    # Already handled .zshenv above, link the rest including hidden files
-                    # Use find to get all files including hidden ones
-                    while IFS= read -r file; do
-                        local basename=$(basename "$file")
-                        # Skip zshenv (already linked to HOME) and .DS_Store
-                        [[ "$basename" == "zshenv" || "$basename" == ".DS_Store" ]] && continue
-                        local rel_path="${file#$src/}"
-                        create_symlink "$file" "$dest/$rel_path"
-                    done < <(find "$src" -type f 2>/dev/null)
-                    ;;
-                *)
-                    # Link all files in the directory including hidden files
-                    while IFS= read -r file; do
-                        local basename=$(basename "$file")
-                        # Skip .DS_Store files
-                        [[ "$basename" == ".DS_Store" ]] && continue
-                        local rel_path="${file#$src/}"
-                        create_symlink "$file" "$dest/$rel_path"
-                    done < <(find "$src" -type f 2>/dev/null)
-                    ;;
-            esac
+            # Create the destination directory structure first
+            create_directory "$dest"
+            
+            # Find all files and create symlinks while preserving directory structure
+            while IFS= read -r file; do
+                local basename=$(basename "$file")
+                # Skip .DS_Store files
+                [[ "$basename" == ".DS_Store" ]] && continue
+                
+                # Special handling for zsh
+                if [[ "$config" == "zsh" && "$basename" == "zshenv" ]]; then
+                    # Skip zshenv as it's already linked to HOME
+                    continue
+                fi
+                
+                # Get the relative path from the source config directory
+                local rel_path="${file#$src/}"
+                local dest_file="$dest/$rel_path"
+                
+                # Create parent directories if needed
+                local dest_dir=$(dirname "$dest_file")
+                if [[ ! -d "$dest_dir" ]]; then
+                    dot_info "Creating directory: $dest_dir"
+                    $DRY_RUN mkdir -p "$dest_dir"
+                fi
+                
+                # Create the symlink
+                create_symlink "$file" "$dest_file"
+            done < <(find "$src" -type f 2>/dev/null)
         fi
     done <<< "$config_list"
     
