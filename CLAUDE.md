@@ -18,6 +18,12 @@ This is a personal dotfiles repository for macOS development environments. The r
 
 # Skip installation scripts (only create symlinks)
 ./bootstrap.sh --skip-install
+
+# Install with specific profile (minimal, standard, full)
+./bootstrap.sh --profile standard
+
+# Verbose output for debugging
+./bootstrap.sh --dry-run --verbose --profile full
 ```
 
 ### Neovim Development
@@ -42,11 +48,18 @@ lnclean ~/.config
 
 ### Bootstrap Process
 The `bootstrap.sh` script is the main entry point that:
-1. Creates symlinks from `config/*` to `~/.config/*`
-2. Creates symlinks from `bin/*` to `~/.local/bin/*`
-3. Handles backup of existing files
-4. Runs installation scripts in `install/` directory
-5. Provides dry-run mode for testing
+1. Detects OS (macOS, Ubuntu) and validates environment
+2. Creates standard directory structure (`~/.cache`, `~/.config`, `~/.local`, etc.)
+3. Creates symlinks from `config/*` to `~/.config/*` based on profile
+4. Creates symlinks from `bin/*` to `~/.local/bin/*` (standard/full profiles only)
+5. Runs OS-specific installation scripts in `install/` directory
+6. Handles backup of existing files with timestamps
+7. Provides comprehensive dry-run mode and verbose logging
+
+### Installation Profiles
+- **minimal**: Essential configs only (git, zsh, tmux) + minimal Homebrew packages
+- **standard**: Common development tools (+ nvim, basic tools) + minimal Homebrew packages  
+- **full**: Everything including GUI apps and extras + full Homebrew packages
 
 ### Neovim Configuration Structure
 - **Entry**: `config/nvim/init.lua` → `lua/kostevski/init.lua`
@@ -61,13 +74,31 @@ The `bootstrap.sh` script is the main entry point that:
 - **Completions**: Custom completions in `config/zsh/completions/`
 
 ### Installation Scripts
-- `install/install-macos.sh`: Sets up macOS defaults and directory structure
-- `install/homebrew.sh`: Manages package installation with minimal/full profiles
+The `install/` directory contains modular installation scripts:
+- **`lib.sh`**: Shared library with common functions (output, validation, utilities)
+- **`install-macos.sh`**: macOS-specific setup (Xcode tools, Rosetta 2, system defaults)
+- **`install-ubuntu.sh`**: Ubuntu-specific setup (apt packages, symlink fixes)
+- **`homebrew.sh`**: Homebrew package management integrated with profiles
+
+All scripts use the shared library for consistent behavior, error handling, and dry-run support.
 
 ## Important Notes
 
 - All configuration paths must be absolute when working with symlinks
-- The bootstrap script creates backups of existing files before overwriting
+- The bootstrap script creates timestamped backups of existing files before overwriting
+- Cross-platform support for macOS and Ubuntu with OS-specific optimizations
 - Neovim plugins are managed by lazy.nvim and auto-update on startup
 - Language server configurations are in individual files under `config/nvim/lsp/`
 - Security hardening for macOS is optional and can be applied separately
+- Use `--dry-run` mode to test changes before applying them
+- All install scripts support verbose logging with `--verbose` flag
+
+## Development Guidelines
+
+### Script Improvements
+When modifying bootstrap or install scripts:
+- Use the shared library (`install/lib.sh`) for common functions
+- Maintain consistent error handling and dry-run support
+- Add file validation before sourcing configuration files
+- Export variables early in bootstrap for proper script integration
+- Follow the established output patterns (colors, prefixes)

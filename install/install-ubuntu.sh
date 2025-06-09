@@ -1,25 +1,19 @@
 #!/usr/bin/env bash
 
+# Source shared library
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
+
 dot_title "Installing for Ubuntu"
 
-HOME=${HOME:-"/home/$(whoami)"}
+HOME=${HOME:-$(get_default_home)}
 
-# Create necessary directories
-dot_mkdir "$HOME"/dev
-dot_mkdir "$HOME"/dev/projects
-dot_mkdir "$HOME"/dev/scripts
-dot_mkdir "$HOME"/.cache
-dot_mkdir "$HOME"/.config
-dot_mkdir "$HOME"/.local
-dot_mkdir "$HOME"/.local/bin
-dot_mkdir "$HOME"/.local/share
-dot_mkdir "$HOME"/.local/state
+# Bootstrap handles standard directory creation
 
 dot_header "Installing essential packages"
 
 # Update package lists
 dot_info "Updating package lists..."
-$DRY_RUN sudo apt-get update
+execute_cmd "sudo apt-get update"
 
 # Install essential development tools
 dot_info "Installing essential packages..."
@@ -41,17 +35,17 @@ PACKAGES=(
   unzip
 )
 
-$DRY_RUN sudo apt-get install -y "${PACKAGES[@]}"
+execute_cmd "sudo apt-get install -y ${PACKAGES[*]}"
 
 # Create symbolic links for some tools with different names on Ubuntu
-if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
+if command_exists fdfind && ! command_exists fd; then
   dot_info "Creating fd symlink..."
-  $DRY_RUN sudo ln -sf $(which fdfind) /usr/local/bin/fd
+  execute_cmd "sudo ln -sf $(which fdfind) /usr/local/bin/fd"
 fi
 
-if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
+if command_exists batcat && ! command_exists bat; then
   dot_info "Creating bat symlink..."
-  $DRY_RUN sudo ln -sf $(which batcat) /usr/local/bin/bat
+  execute_cmd "sudo ln -sf $(which batcat) /usr/local/bin/bat"
 fi
 
 dot_success "Ubuntu setup completed successfully"

@@ -1,25 +1,19 @@
 #!/usr/bin/env bash
 
+# Source shared library
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
+
 dot_title "Installing macOS"
 
-HOME=${HOME:-"/Users/$(whoami)"}
+HOME=${HOME:-$(get_default_home)}
 
-# Create necessary directories
-dot_mkdir "$HOME"/dev
-dot_mkdir "$HOME"/dev/projects
-dot_mkdir "$HOME"/dev/scripts
-dot_mkdir "$HOME"/.cache
-dot_mkdir "$HOME"/.config
-dot_mkdir "$HOME"/.local
-dot_mkdir "$HOME"/.local/bin
-dot_mkdir "$HOME"/.local/share
-dot_mkdir "$HOME"/.local/state
+# Create macOS-specific directories (bootstrap handles standard directories)
 dot_mkdir "$HOME"/pictures/mac-screenshots
 
 dot_header "Checking for command line tools"
 if ! xcode-select -p &>/dev/null; then
   dot_info "Installing command line tools..."
-  $DRY_RUN xcode-select --install
+  execute_cmd "xcode-select --install"
   if [[ -z "$DRY_RUN" ]]; then
     # Wait for installation to complete
     until xcode-select -p &>/dev/null; do
@@ -34,7 +28,11 @@ fi
 dot_header "Checking for Rosetta 2"
 if [[ $(uname -m) == "arm64" ]] && [[ ! -f "/Library/Apple/usr/share/rosetta/rosetta" ]]; then
   dot_info "Installing Rosetta 2..."
-  $DRY_RUN sudo softwareupdate --install-rosetta --agree-to-license
+  if [[ -z "$DRY_RUN" ]]; then
+    safe_sudo 600 softwareupdate --install-rosetta --agree-to-license
+  else
+    echo "[DRY-RUN] sudo softwareupdate --install-rosetta --agree-to-license"
+  fi
   dot_success "Installed Rosetta 2"
 else
   dot_info "Rosetta 2 not needed or already installed"
@@ -46,24 +44,20 @@ source "$dot_root/install/homebrew.sh"
 # Configure macOS
 dot_header "Configuring macOS"
 
-# Ask for sudo password upfront (skip in dry run)
+# Request sudo access with timeout (skip in dry run)
 if [[ -z "$DRY_RUN" ]]; then
-  sudo -v
-  # Keep sudo alive
-  while true; do
-    sudo -n true
-    sleep 60
-    kill -0 "$$" || exit
-  done 2>/dev/null &
+  if ! sudo -v; then
+    dot_error "Failed to obtain sudo access"
+    exit 1
+  fi
+  dot_info "Sudo access granted"
 fi
 
 # Apply system defaults
 dot_info "Applying macOS system defaults..."
-if [ -f "$dot_root/config/macos/defaults.zsh" ]; then
-  $DRY_RUN zsh "$dot_root/config/macos/defaults.zsh"
+if validate_file "$dot_root/config/macos/defaults.zsh" "macOS defaults configuration"; then
+  execute_cmd "zsh '$dot_root/config/macos/defaults.zsh'"
   dot_success "Applied macOS defaults"
-else
-  dot_error "macOS defaults configuration not found"
 fi
 
 # Ask for security hardening (skip prompts in dry run)
@@ -75,11 +69,9 @@ else
 fi
 if [[ "$response" =~ ^[Yy]$ ]]; then
   dot_info "Applying security hardening..."
-  if [ -f "$dot_root/config/macos/harden.zsh" ]; then
-    $DRY_RUN zsh "$dot_root/config/macos/harden.zsh"
+  if validate_file "$dot_root/config/macos/harden.zsh" "Security hardening configuration"; then
+    execute_cmd "zsh '$dot_root/config/macos/harden.zsh'"
     dot_success "Applied security hardening"
-  else
-    dot_error "Security hardening configuration not found"
   fi
 fi
 
@@ -89,7 +81,7 @@ dot_header "Cleaning up"
 # Kill affected applications
 dot_info "Restarting affected applications..."
 for app in "Finder" "Dock" "SystemUIServer" "cfprefsd"; do
-  $DRY_RUN killall "${app}" &>/dev/null
+  execute_cmd "killall '${app}' &>/dev/null"
 done
 
 dot_success "macOS setup completed successfully"

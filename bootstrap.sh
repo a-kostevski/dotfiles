@@ -370,20 +370,6 @@ run_os_installation() {
     
     dot_title "Running OS-specific installation"
     
-    # Export functions for install scripts
-    export -f dot_title dot_header dot_info dot_error dot_success dot_warning
-    export -f create_directory
-    
-    # Compatibility alias for old scripts
-    dot_mkdir() {
-        create_directory "$@"
-    }
-    export -f dot_mkdir
-    
-    # Export dot_root for compatibility
-    export dot_root="$SCRIPT_DIR"
-    export DRY_RUN VERBOSE PROFILE SCRIPT_DIR
-    
     case "$OS_TYPE" in
         macos)
             source "$SCRIPT_DIR/install/install-macos.sh"
@@ -467,10 +453,14 @@ main() {
     # Detect OS
     detect_os
     
-    # Set defaults
+    # Set defaults and export variables early
     PROFILE="${PROFILE:-$DEFAULT_PROFILE}"
     CONFIG_DEST="${CONFIG_DEST:-$DEFAULT_CONFIG_DEST}"
     BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
+    
+    # Export key variables for install scripts
+    export dot_root="$SCRIPT_DIR"
+    export DRY_RUN VERBOSE PROFILE SCRIPT_DIR
     
     # Show header
     dot_header "Dotfiles Bootstrap v${SCRIPT_VERSION}"
