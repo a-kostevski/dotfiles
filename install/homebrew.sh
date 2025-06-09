@@ -11,13 +11,16 @@ fi
 install_homebrew() {
   if ! command -v brew >/dev/null; then
     dot_info "Installing Homebrew..."
-    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
-      dot_error "Failed to install Homebrew"
-      return 1
-    }
-
-    # Add Homebrew to PATH for the current session
-    eval "$($BREW_PREFIX/bin/brew shellenv)"
+    if [[ -z "$DRY_RUN" ]]; then
+      NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || {
+        dot_error "Failed to install Homebrew"
+        return 1
+      }
+      # Add Homebrew to PATH for the current session
+      eval "$($BREW_PREFIX/bin/brew shellenv)"
+    else
+      $DRY_RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
   else
     dot_info "Homebrew is already installed"
   fi
@@ -31,11 +34,15 @@ configure_homebrew() {
 
   # Save the settings permanently
   if [[ ! -f "$HOME/.config/homebrew/config" ]]; then
-    mkdir -p "$HOME/.config/homebrew"
-    cat >"$HOME/.config/homebrew/config" <<EOF
+    $DRY_RUN mkdir -p "$HOME/.config/homebrew"
+    if [[ -z "$DRY_RUN" ]]; then
+      cat >"$HOME/.config/homebrew/config" <<EOF
 export HOMEBREW_NO_ANALYTICS=1
 export HOMEBREW_NO_INSECURE_REDIRECT=1
 EOF
+    else
+      $DRY_RUN cat >"$HOME/.config/homebrew/config"
+    fi
   fi
 }
 
@@ -48,15 +55,40 @@ install_packages() {
   fi
 
   dot_info "Installing Homebrew packages from $brewfile..."
-  brew bundle --file="$brewfile" --no-lock || {
-    dot_error "Failed to install some Homebrew packages"
-    return 1
-  }
+  if [[ -z "$DRY_RUN" ]]; then
+    brew bundle --file="$brewfile" --no-lock || {
+      dot_error "Failed to install some Homebrew packages"
+      return 1
+    }
+  else
+    $DRY_RUN brew bundle --file="$brewfile" --no-lock
+  fi
   dot_success "Installed Homebrew packages"
 }
 
 # Ask user which package set to install
 select_package_set() {
+  # In dry run mode, use the PROFILE variable or default to minimal
+  if [[ -n "$DRY_RUN" ]]; then
+    case "${PROFILE:-minimal}" in
+      minimal)
+        echo "$dot_root/config/homebrew/Brewfile-min"
+        dot_info "Dry run: Would use minimal Brewfile"
+        return 0
+        ;;
+      full)
+        echo "$dot_root/config/homebrew/Brewfile-all"
+        dot_info "Dry run: Would use full Brewfile"
+        return 0
+        ;;
+      *)
+        echo "$dot_root/config/homebrew/Brewfile-min"
+        dot_info "Dry run: Defaulting to minimal Brewfile"
+        return 0
+        ;;
+    esac
+  fi
+
   local choice
   while true; do
     echo

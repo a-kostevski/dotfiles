@@ -19,7 +19,7 @@ dot_header "Installing essential packages"
 
 # Update package lists
 dot_info "Updating package lists..."
-$dry_run sudo apt-get update
+$DRY_RUN sudo apt-get update
 
 # Install essential development tools
 dot_info "Installing essential packages..."
@@ -41,17 +41,17 @@ PACKAGES=(
   unzip
 )
 
-$dry_run sudo apt-get install -y "${PACKAGES[@]}"
+$DRY_RUN sudo apt-get install -y "${PACKAGES[@]}"
 
 # Create symbolic links for some tools with different names on Ubuntu
 if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then
   dot_info "Creating fd symlink..."
-  $dry_run sudo ln -sf $(which fdfind) /usr/local/bin/fd
+  $DRY_RUN sudo ln -sf $(which fdfind) /usr/local/bin/fd
 fi
 
 if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
   dot_info "Creating bat symlink..."
-  $dry_run sudo ln -sf $(which batcat) /usr/local/bin/bat
+  $DRY_RUN sudo ln -sf $(which batcat) /usr/local/bin/bat
 fi
 
 dot_success "Ubuntu setup completed successfully"
