@@ -10,17 +10,17 @@ This is a personal dotfiles repository for macOS development environments. The r
 
 ### Initial Setup
 ```bash
-# Run the bootstrap script to symlink all configurations
+# Run the bootstrap script with interactive profile selection
 ./bootstrap.sh
+
+# Install with specific profile (minimal, standard, full)
+./bootstrap.sh --profile standard
 
 # Dry run to see what would be done
 ./bootstrap.sh --dry-run
 
 # Skip installation scripts (only create symlinks)
 ./bootstrap.sh --skip-install
-
-# Install with specific profile (minimal, standard, full)
-./bootstrap.sh --profile standard
 
 # Verbose output for debugging
 ./bootstrap.sh --dry-run --verbose --profile full
@@ -44,22 +44,39 @@ stylua --check config/nvim/
 lnclean ~/.config
 ```
 
+### Configuration Syncing
+```bash
+# Quick sync after making changes (symlinks only)
+./bootstrap.sh --sync
+
+# Alternative: use the dotfiles utility
+dotfiles sync              # Update all symlinks
+dotfiles clean             # Remove broken symlinks
+dotfiles status            # Check symlink health
+dotfiles watch             # Auto-sync on file changes
+
+# Enable git hooks for automatic syncing
+./.githooks/setup.sh       # Auto-sync on branch switches and pulls
+```
+
 ## Architecture
 
 ### Bootstrap Process
 The `bootstrap.sh` script is the main entry point that:
 1. Detects OS (macOS, Ubuntu) and validates environment
-2. Creates standard directory structure (`~/.cache`, `~/.config`, `~/.local`, etc.)
-3. Creates symlinks from `config/*` to `~/.config/*` based on profile
-4. Creates symlinks from `bin/*` to `~/.local/bin/*` (standard/full profiles only)
-5. Runs OS-specific installation scripts in `install/` directory
-6. Handles backup of existing files with timestamps
-7. Provides comprehensive dry-run mode and verbose logging
+2. **Interactive profile selection** if no profile specified
+3. Creates standard directory structure (`~/.cache`, `~/.config`, `~/.local`, etc.)
+4. Creates symlinks from `config/*` to `~/.config/*` based on profile
+5. Creates symlinks from `bin/*` to `~/.local/bin/*` (standard/full profiles only)
+6. Runs OS-specific installation scripts in `install/` directory
+7. Handles backup of existing files with timestamps
+8. Provides comprehensive dry-run mode and verbose logging
 
 ### Installation Profiles
 - **minimal**: Essential configs only (git, zsh, tmux) + minimal Homebrew packages
 - **standard**: Common development tools (+ nvim, basic tools) + minimal Homebrew packages  
 - **full**: Everything including GUI apps and extras + full Homebrew packages
+- **custom**: Interactive selection of individual components (via prompt)
 
 ### Neovim Configuration Structure
 - **Entry**: `config/nvim/init.lua` → `lua/kostevski/init.lua`
@@ -92,6 +109,13 @@ All scripts use the shared library for consistent behavior, error handling, and 
 - Security hardening for macOS is optional and can be applied separately
 - Use `--dry-run` mode to test changes before applying them
 - All install scripts support verbose logging with `--verbose` flag
+
+### Syncing Configuration Changes
+- **Quick Sync**: Run `./bootstrap.sh --sync` or `dotfiles sync` after making changes
+- **Auto Sync**: Enable git hooks with `./.githooks/setup.sh` for automatic syncing
+- **File Watching**: Use `dotfiles watch` to auto-sync on file changes (requires fswatch)
+- **Broken Symlinks**: Clean with `dotfiles clean` or `lnclean ~/.config`
+- **Health Check**: Run `dotfiles status` to verify all symlinks are correct
 
 ## Development Guidelines
 

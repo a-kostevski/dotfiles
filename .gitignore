@@ -1,6 +1,8 @@
-j
 .DS_Store
 Brewfile*.lock.json
 
 *.local
 *.claude
+
+.local/
+CLAUDE.md
