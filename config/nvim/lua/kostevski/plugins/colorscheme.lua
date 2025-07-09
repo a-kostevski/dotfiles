@@ -50,8 +50,4 @@ return {
       "shaunsingh/nord.nvim",
       priority = 1000,
    },
-   {
-      "scottmckendry/cyberdream.nvim",
-      priority = 1000,
-   },
 }

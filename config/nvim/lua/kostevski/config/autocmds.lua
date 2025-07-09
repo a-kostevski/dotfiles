@@ -7,7 +7,7 @@ vim.api.nvim_create_autocmd("TextYankPost", {
    desc = "Highlight when yanking (copying) text",
    group = augroup("highlight-yank"),
    callback = function()
-      vim.highlight.on_yank()
+      vim.hl.on_yank()
    end,
 })
 
@@ -40,11 +40,3 @@ vim.api.nvim_create_autocmd("FileType", {
       vim.bo[event.buf].buflisted = false
    end,
 })
-
--- vim.api.nvim_create_autocmd("FileType", {
---    group = augroup("markdown-editor"),
---    pattern = { "markdown" },
---    callback = function(event)
---       require("no-neck-pain").enable()
---    end,
--- })

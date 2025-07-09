@@ -1,3 +1,31 @@
+-- Root patterns for Go projects
+require("kostevski.utils.root").add_patterns("go", {
+   -- Go modules
+   "go.mod",
+   "go.sum",
+   "go.work",
+   "go.work.sum",
+   -- Legacy dependency management
+   "Gopkg.toml",
+   "Gopkg.lock",
+   "glide.yaml",
+   "glide.lock",
+   "vendor/",
+   -- Go-specific config
+   ".golangci.yml",
+   ".golangci.yaml",
+   ".golangci.toml",
+   ".goreleaser.yml",
+   ".goreleaser.yaml",
+   -- Testing
+   "testdata/",
+   -- Build
+   "Makefile",
+   "Taskfile.yml",
+   "Taskfile.yaml",
+   "magefile.go",
+})
+
 return {
    -- LSP Configuration
    {

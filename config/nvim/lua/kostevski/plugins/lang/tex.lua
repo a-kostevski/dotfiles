@@ -1,3 +1,37 @@
+-- Root patterns for LaTeX projects
+require("kostevski.utils.root").add_patterns("tex", {
+   -- LaTeX project files
+   "main.tex",
+   "document.tex",
+   "thesis.tex",
+   "paper.tex",
+   "report.tex",
+   "book.tex",
+   "article.tex",
+   -- LaTeX build files
+   ".latexmkrc",
+   "latexmkrc",
+   "Makefile",
+   -- Bibliography
+   "references.bib",
+   "bibliography.bib",
+   "refs.bib",
+   "sources.bib",
+   "*.bib",
+   -- LaTeX auxiliary files (in project root)
+   "*.cls",
+   "*.sty",
+   -- Build directories
+   "build/",
+   "out/",
+   -- Project structure
+   "chapters/",
+   "sections/",
+   "figures/",
+   "images/",
+   "graphics/",
+})
+
 return {
    -- Formatter Configuration
    {

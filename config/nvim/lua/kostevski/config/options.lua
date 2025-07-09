@@ -1,9 +1,9 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
--- Set default python interpreter to pyenv virtualenv shim named 'py3nvim'
-vim.g.python3_host_prog = 0
-vim.g.python_host_prog = 0
+-- Disable python providers
+vim.g.python3_host_prog = nil
+vim.g.python_host_prog = nil
 
 -- Perl interpreter
 vim.g.loaded_ruby_provider = 0
@@ -55,16 +55,11 @@ opt.splitright = true
 opt.splitbelow = true
 
 -- Sets how neovim will display certain whitespace characters in the editor.
--- opt.list = true
--- opt.listchars = {
---    tab = " ",
---    trail = "·",
---    nbsp = "␣",
--- }
 opt.fillchars = {
    vert = "│",
    fold = " ",
 }
+
 -- Preview substitutions as you type
 opt.inccommand = "split"
 
@@ -106,6 +101,3 @@ opt.maxmempattern = 2000
 opt.splitkeep = "screen"
 opt.splitright = true
 opt.splitbelow = true
-
--- Improve startup time
-vim.loader.enable()  -- Enable the experimental Lua module loader

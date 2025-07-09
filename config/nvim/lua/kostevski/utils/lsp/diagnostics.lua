@@ -17,7 +17,7 @@ function M.setup()
    -- Configure diagnostic display
    vim.diagnostic.config({
       virtual_text = {
-         prefix = '●',
+         prefix = "●",
          source = "if_many",
          severity = {
             min = vim.diagnostic.severity.HINT,
@@ -36,4 +36,4 @@ function M.setup()
    })
 end
 
-return M 
+return M

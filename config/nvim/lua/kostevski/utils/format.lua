@@ -18,8 +18,8 @@ function Format.register(formatter)
    end)
 end
 
---- Returns the formatexpr for conform.nvim.
---- @return string: The formatexpr string.
+-- Fix formatexpr return type annotation
+---@return integer formatexpr The formatexpr value
 function Format.formatexpr()
    return require("conform").formatexpr()
 end
@@ -70,7 +70,9 @@ function Format.info(buf)
       lines[#lines + 1] = "\n***No formatters available for this buffer.***"
    end
 
-   Utils.notify[enabled and "info" or "warn"](table.concat(lines, "\n"))
+   if Utils.notify then
+      Utils.notify[enabled and "info" or "warn"](table.concat(lines, "\n"))
+   end
 end
 
 --- Toggles autoformatting for a buffer.
@@ -128,12 +130,16 @@ function Format.format(opts)
          if ok then
             return format
          end
-         Utils.notify.error("Formatter '" .. formatter.name .. "' failed")
+         if Utils.notify then
+            Utils.notify.error("Formatter '" .. formatter.name .. "' failed")
+         end
       end
    end
 
    if not formatted and opts and opts.force then
-      Utils.notify.warn("No formatter available")
+      if Utils.notify then
+         Utils.notify.warn("No formatter available")
+      end
    end
 end
 

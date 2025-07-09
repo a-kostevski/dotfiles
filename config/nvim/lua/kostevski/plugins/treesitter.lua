@@ -1,44 +1,15 @@
 return {
    {
       "nvim-treesitter/nvim-treesitter",
-      version = false, -- last release is way too old
+      lazy = false,
+      branch = "main",
       build = ":TSUpdate",
-      event = { "VeryLazy" },
-      init = function(plugin)
-         -- PERF: add nvim-treesitter queries to rtp and it's custom query predicates
-         require("lazy.core.loader").add_to_rtp(plugin)
-         require("nvim-treesitter.query_predicates")
-      end,
       dependencies = {
          {
-            "nvim-treesitter/nvim-treesitter-textobjects",
-            config = function()
-               -- When in diff mode, we want to use the default
-               -- vim text objects c & C instead of the treesitter ones.
-               local move = require("nvim-treesitter.textobjects.move") ---@type table<string,fun(...)>
-               local configs = require("nvim-treesitter.configs")
-               for name, fn in pairs(move) do
-                  if name:find("goto") == 1 then
-                     move[name] = function(...)
-                        if vim.wo.diff then
-                           return require("diffview.config").diffview_callback()
-                        end
-                        return fn(...)
-                     end
-                  end
-               end
-            end,
+            "OXY2DEV/markview.nvim",
          },
       },
-      cmd = { "TSUpdateSync", "TSUpdate", "TSInstall" },
-      keys = {
-         { "<c-space>", desc = "Increment selection" },
-         { "<bs>", desc = "Decrement selection", mode = "x" },
-      },
       opts = {
-            auto_install = true,
-         highlight = { enable = true },
-         indent = { enable = true },
          ensure_installed = {
             "bash",
             "c",
@@ -58,37 +29,62 @@ return {
             "vimdoc",
             "yaml",
          },
-         incremental_selection = {
-            enable = true,
-            keymaps = {
-               init_selection = "<C-space>",
-               node_incremental = "<C-space>",
-               scope_incremental = false,
-               node_decremental = "<bs>",
-            },
-         },
-         textobjects = {
-            move = {
-               enable = true,
-               goto_next_start = { ["]f"] = "@function.outer", ["]c"] = "@class.outer" },
-               goto_next_end = { ["]F"] = "@function.outer", ["]C"] = "@class.outer" },
-               goto_previous_start = { ["[f"] = "@function.outer", ["[c"] = "@class.outer" },
-               goto_previous_end = { ["[F"] = "@function.outer", ["[C"] = "@class.outer" },
-            },
-         },
       },
       config = function(_, opts)
-         if type(opts.ensure_installed) == "table" then
-            local added = {}
-            opts.ensure_installed = vim.tbl_filter(function(parser)
-               if added[parser] then
-                  return false
+         -- Remove duplicate parsers from ensure_installed
+         opts.ensure_installed = Utils.dedup(opts.ensure_installed)
+
+         -- Setup nvim-treesitter
+         require("nvim-treesitter").setup(opts)
+
+         -- Auto-install configured parsers
+         if opts.auto_install ~= false and opts.ensure_installed then
+            local parsers_to_install = {}
+            local installed = require("nvim-treesitter").get_installed()
+
+            for _, parser in ipairs(opts.ensure_installed) do
+               if not vim.tbl_contains(installed, parser) then
+                  table.insert(parsers_to_install, parser)
                end
-               added[parser] = true
-               return true
-            end, opts.ensure_installed)
+            end
+
+            if #parsers_to_install > 0 then
+               require("nvim-treesitter").install(parsers_to_install)
+            end
          end
-         require("nvim-treesitter.configs").setup(opts)
+
+         -- Enable highlighting for all buffers with treesitter parsers
+         vim.api.nvim_create_autocmd("FileType", {
+            callback = function(event)
+               local lang = vim.treesitter.language.get_lang(event.match)
+               if lang and pcall(vim.treesitter.get_parser, event.buf, lang) then
+                  vim.treesitter.start(event.buf, lang)
+               end
+            end,
+         })
+
+         -- Enable treesitter-based folding
+         vim.api.nvim_create_autocmd("FileType", {
+            callback = function(event)
+               local lang = vim.treesitter.language.get_lang(event.match)
+               if lang and pcall(vim.treesitter.get_parser, event.buf, lang) then
+                  vim.wo.foldmethod = "expr"
+                  vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+               end
+            end,
+         })
+
+         -- Enable treesitter indentation for specific filetypes
+         local indent_filetypes = { "lua", "python", "rust", "javascript", "typescript", "tsx", "jsx" }
+         vim.api.nvim_create_autocmd("FileType", {
+            pattern = indent_filetypes,
+            callback = function(event)
+               local lang = vim.treesitter.language.get_lang(event.match)
+               if lang then
+                  vim.bo[event.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+               end
+            end,
+         })
       end,
    },
 }

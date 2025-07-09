@@ -1,3 +1,43 @@
+-- Root patterns for Markdown projects
+require("kostevski.utils.root").add_patterns("markdown", {
+   -- Documentation projects
+   "README.md",
+   "readme.md",
+   "index.md",
+   "docs/",
+   "documentation/",
+   -- Static site generators
+   "_config.yml", -- Jekyll
+   "config.toml", -- Hugo
+   "config.yaml",
+   "mkdocs.yml", -- MkDocs
+   "book.toml", -- mdBook
+   ".vuepress/", -- VuePress
+   ".vitepress/", -- VitePress
+   "gatsby-config.js", -- Gatsby
+   "next.config.js", -- Next.js
+   "nuxt.config.js", -- Nuxt
+   "docusaurus.config.js", -- Docusaurus
+   ".docsify/", -- Docsify
+   "_sidebar.md", -- Docsify
+   -- Wiki
+   "wiki/",
+   ".wiki/",
+   "_wiki/",
+   -- Notebook
+   "notebook/",
+   "notes/",
+   -- Blog
+   "_posts/",
+   "posts/",
+   "blog/",
+   "content/",
+   -- Book/Manual
+   "SUMMARY.md", -- GitBook/mdBook
+   "manuscript/",
+   "chapters/",
+})
+
 return {
    {
       "mason",
@@ -50,16 +90,6 @@ return {
       },
    },
 
-   -- Treesitter
-   {
-      "nvim-treesitter/nvim-treesitter",
-      opts = function(_, opts)
-         if type(opts.ensure_installed) == "table" then
-            vim.list_extend(opts.ensure_installed, { "markdown", "markdown_inline" })
-         end
-      end,
-   },
-
    -- Mardown Preview
    {
       "iamcco/markdown-preview.nvim",
@@ -81,11 +111,12 @@ return {
       },
    },
 
-   -- Markdowb render
+   -- Markdown render
    {
       "OXY2DEV/markview.nvim",
+      lazy = false,
+      priority = 49,
       dependencies = {
-         "nvim-treesitter/nvim-treesitter",
          "nvim-tree/nvim-web-devicons",
       },
       opts = function()
@@ -208,6 +239,16 @@ return {
          vim.api.nvim_set_hl(0, "MarkviewInlineCode", { fg = colors.heading6 })
          vim.api.nvim_set_hl(0, "MarkviewLink", { fg = colors.heading6, underline = true })
          require("markview").setup(opts)
+      end,
+   },
+
+   -- Treesitter
+   {
+      "nvim-treesitter/nvim-treesitter",
+      opts = function(_, opts)
+         if type(opts.ensure_installed) == "table" then
+            vim.list_extend(opts.ensure_installed, { "markdown", "markdown_inline" })
+         end
       end,
    },
 }

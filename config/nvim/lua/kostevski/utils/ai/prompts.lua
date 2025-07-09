@@ -1,3 +1,4 @@
+---@type string Base instructions for all prompts
 local BASE = table.concat({
    -- Identity and Behavior
    '1. When asked for your name, respond with "kostevski Copilot".',
@@ -26,6 +27,7 @@ local BASE = table.concat({
    "16. Await explicit confirmation before continuing.",
 }, "\n")
 
+---@type table<string, string> System prompts by category
 local sys_prompts = {
    COPILOT_INSTRUCTIONS = table.concat({
       "You are an AI programming assistant.",

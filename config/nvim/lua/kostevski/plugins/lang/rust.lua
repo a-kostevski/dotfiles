@@ -1,3 +1,29 @@
+-- Root patterns for Rust projects
+require("kostevski.utils.root").add_patterns("rust", {
+   -- Rust-specific
+   "Cargo.toml",
+   "Cargo.lock",
+   "rust-project.json",
+   "rustfmt.toml",
+   ".rustfmt.toml",
+   "clippy.toml",
+   ".clippy.toml",
+   "rust-toolchain",
+   "rust-toolchain.toml",
+   ".cargo/config.toml",
+   ".cargo/config",
+   -- Workspace
+   "workspace.toml",
+   -- Testing
+   "tests/",
+   "benches/",
+   "examples/",
+   -- Build
+   "build.rs",
+   "Makefile",
+   "justfile",
+})
+
 return {
    -- LSP Configuration
    -- {

@@ -2,10 +2,27 @@ return {
    {
       "saghen/blink.cmp",
       enabled = true,
-      version = "0.10.0",
+      version = "*",
       dependencies = {
+         {
+            "L3MON4D3/LuaSnip",
+            version = "v2.*",
+            build = "make install_jsregexp",
+            dependencies = {
+               {
+                  "rafamadriz/friendly-snippets",
+                  config = function()
+                     require("luasnip").filetype_extend("markdown_inline", { "markdown" })
+                     require("luasnip.loaders.from_lua").lazy_load({
+                        paths = { vim.fn.stdpath("config") .. "/snippets" },
+                     })
+                     require("luasnip.loaders.from_vscode").lazy_load()
+                  end,
+               },
+            },
+            opts = { history = true, delete_check_events = "TextChanged" },
+         },
          { "rafamadriz/friendly-snippets" },
-         { "L3MON4D3/LuaSnip", version = "2.*" },
       },
       opts_extend = {
          "sources.completion.enabled_providers",
@@ -22,6 +39,16 @@ return {
                auto_brackets = {
                   enabled = true,
                },
+            },
+            trigger = {
+               show_on_insert_on_trigger_character = true,
+               show_on_keyword = true,
+               show_on_trigger_character = true,
+               show_on_accept_on_trigger_character = true,
+               show_on_x_blocked_trigger_characters = { "'", '"', "(" },
+            },
+            ghost_text = {
+               enabled = true,
             },
             documentation = {
                auto_show = true,
@@ -90,26 +117,25 @@ return {
             },
          },
          sources = {
-            default = { "snippets", "lsp", "path", "buffer" },
-            cmdline = {},
-            min_keyword_length = 2,
+            default = { "lsp", "path", "snippets", "buffer" },
+            min_keyword_length = 1,
+         },
+         cmdline = {
+            sources = { "path", "buffer", "cmdline" },
          },
          snippets = {
             preset = "luasnip",
          },
          keymap = {
             preset = "enter",
-            ["<Tab>"] = {
-               function(cmp)
-                  if cmp.is_visible() then
-                     return cmp.select_next()
-                  else
-                     return cmp.snippet_forward()
-                  end
-               end,
-               "snippet_forward",
-               "fallback",
-            },
+            ["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
+            ["<C-e>"] = { "hide" },
+            ["<C-y>"] = { "select_and_accept" },
+            ["<C-p>"] = { "select_prev", "fallback" },
+            ["<C-n>"] = { "select_next", "fallback" },
+            ["<C-b>"] = { "scroll_documentation_up", "fallback" },
+            ["<C-f>"] = { "scroll_documentation_down", "fallback" },
+            ["<Tab>"] = { "select_next", "snippet_forward", "fallback" },
             ["<S-Tab>"] = { "select_prev", "snippet_backward", "fallback" },
          },
          signature = {
@@ -118,9 +144,14 @@ return {
                border = "single",
             },
          },
+         fuzzy = {
+            use_frecency = true,
+            use_proximity = true,
+            prebuilt_binaries = {
+               download = true,
+               force_version = nil,
+            },
+         },
       },
-      config = function(_, opts)
-         require("blink.cmp").setup(opts)
-      end,
    },
 }

@@ -1,3 +1,34 @@
+-- Root patterns for Python projects
+require("kostevski.utils.root").add_patterns("python", {
+   -- Python-specific
+   "pyproject.toml",
+   "setup.py",
+   "setup.cfg",
+   "requirements.txt",
+   "requirements-dev.txt",
+   "requirements*.txt",
+   "Pipfile",
+   "Pipfile.lock",
+   "poetry.lock",
+   "pdm.lock",
+   "pixi.lock",
+   "uv.lock",
+   ".python-version",
+   ".venv",
+   "venv",
+   "tox.ini",
+   "noxfile.py",
+   "tasks.py",
+   "manage.py", -- Django
+   "pyrightconfig.json",
+   "pyright.json",
+   ".flake8",
+   ".pylintrc",
+   "pytest.ini",
+   ".pytest.ini",
+   "conftest.py",
+})
+
 vim.api.nvim_create_autocmd("FileType", {
    pattern = "python",
    callback = function()

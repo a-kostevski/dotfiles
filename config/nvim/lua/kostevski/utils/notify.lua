@@ -1,335 +1,306 @@
-local Format = {}
-
--- Constants
-local MAX_TITLE_LENGTH = 50
-local MAX_MESSAGE_SIZE = 1024
-local ELLIPSIS = "..."
-
----@param text string The text to truncate
----@param max_length number Maximum length
----@return string truncated_text
-local function truncate(text, max_length)
-   if not text or #text <= max_length then
-      return text
-   end
-   return string.sub(text, 1, max_length - #ELLIPSIS) .. ELLIPSIS
-end
-
----@param text string Text to sanitize
----@return string sanitized_text
-local function sanitize(text)
-   if type(text) ~= "string" then
-      return tostring(text)
-   end
-   text = text:gsub("\t", "  ")
-   return text
-end
-
----@param message any The message to format
----@param progress? number Optional progress percentage
----@return string|nil formatted_message
-function Format.message(message, progress)
-   if not message then
-      return nil
-   end
-
-   local text
-   if type(message) == "table" then
-      text = vim.islist(message) and table.concat(message, "\n") or vim.inspect(message)
-   else
-      text = tostring(message)
-   end
-
-   text = sanitize(text)
-
-   if #text == 0 then
-      return nil
-   end
-
-   -- Add progress if provided
-   if progress then
-      text = string.format("[%d%%]\t %s", progress, text)
-   end
-
-   if #text > MAX_MESSAGE_SIZE then
-      text = text:sub(1, MAX_MESSAGE_SIZE) .. ELLIPSIS
-   end
-
-   -- Apply markdown formatting for code blocks
-   text = text:gsub("```(.-)```", function(code)
-      return string.format("\n```\n%s\n```", code)
-   end)
-
-   return text
-end
-
----@param title? string The title to format
----@param level? number Message level (vim.log.levels)
----@param prefix? string Optional prefix (e.g., LSP client name)
----@return string formatted_title
-function Format.title(title, level, prefix)
-   local parts = {}
-
-   if prefix then
-      table.insert(parts, prefix)
-   end
-
-   if title then
-      table.insert(parts, sanitize(title))
-   end
-
-   local final_title = table.concat(parts, " - ")
-
-   if level then
-      local level_name = vim.log.levels[level] or "INFO"
-      final_title = string.format("[%s] %s", level_name:upper(), final_title)
-   end
-
-   return truncate(final_title, MAX_TITLE_LENGTH)
-end
-
----@param text string Text to format as code
----@return string formatted_code
-function Format.code(text)
-   return string.format("```\n%s\n```", sanitize(text))
-end
-
----@param items string[] List of items to format
----@return string formatted_list
-function Format.list(items)
-   local formatted = {}
-   for _, item in ipairs(items) do
-      table.insert(formatted, string.format("• %s", sanitize(item)))
-   end
-   return table.concat(formatted, "\n")
-end
-
----@param text string Text to highlight
----@param hl_group? string Optional highlight group
----@return string highlighted_text
-function Format.highlight(text, hl_group)
-   if not hl_group then
-      return sanitize(text)
-   end
-   return string.format("**%s**", sanitize(text))
-end
-
-local Notify = {}
-
----@class NotifyOptions
----@field title string
----@field icon string
----@field timeout number|boolean Time to show notification in milliseconds, set to false to disable timeou
----@field on_open function Callback for when window opens, receives window as argumen
----@field on_close function Callback for when window closes, receives window as argumen
----@field keep function Function to keep the notification window open after timeout, should return boolea
----@field render function|string Function to render a notification buffe
----@field replace integer|notify.Record Notification record or the record `id` field. Replace an existing notification if still open. All arguments not given are inherited from the replaced notification including message and leve
----@field hide_from_history boolean Hide this notification from the histo
----@field animate boolean If false, the window will jump to the timed stage. Intended for use in blocking events (e.g. vim.fn.inpu
-
-Notify.default_opts = {
-   title = "Nvim",
-   icon = "",
-   timeout = 5000,
-   max_width = 50,
-   on_open = nil,
-   on_close = nil,
-   keep = false,
-   render = "default",
-   replace = nil,
-   hide_from_history = false,
-   animate = false,
-}
+---@alias NotifyLevel integer|string Log level (number or string)
+---@alias NotifyIcon string Icon character
+---@alias NotifySpinnerFrame string Spinner animation frame
 
 ---@class NotifyConfig
----@field level string|integer Minimum log level
----@field timeout number Default timeout in milliseconds
----@field max_width number|function Max columns for messages
----@field max_height number|function Max lines for messages
----@field stages string|function[] Animation stages
----@field background_colour string Background color
----@field icons table Icons for each level
----@field on_open function Window open callback
----@field on_close function Window close callback
----@field render function|string Renderer
----@field minimum_width integer Min window width
----@field fps integer Animation FPS
----@field top_down boolean Position at top
+---@field timeout integer Default timeout in milliseconds
+---@field max_width integer Maximum notification width
+---@field max_height integer Maximum notification height
+---@field icons table<string, NotifyIcon> Icons for log levels
+---@field spinner_frames NotifySpinnerFrame[] Spinner animation frames
 
-Notify.default_config = {
-   level = vim.log.levels.INFO,
+---@class NotifyOptions
+---@field title? string Notification title
+---@field timeout? integer|false Timeout in ms (false = no timeout)
+---@field icon? string Icon to display
+---@field replace? any Previous notification to replace
+---@field on_open? fun(win: integer) Callback when window opens
+---@field hide_from_history? boolean Hide from notification history
+
+---@class NotifyProgressData
+---@field notification any Notification handle
+---@field spinner_idx integer Current spinner frame index
+---@field client_name string LSP client name
+
+---@class UtilsNotify Notification utilities
+---@field config NotifyConfig Module configuration
+local Notify = {}
+
+-- Default configuration
+---@type NotifyConfig
+Notify.config = {
    timeout = 5000,
-   max_height = function()
-      return math.floor(vim.o.lines * 0.75)
-   end,
-   max_width = function()
-      return math.floor(vim.o.columns * 0.75)
-   end,
-   stages = "static",
-   icons = require("kostevski.utils.ui").icons.diagnostics,
-   on_open = function(win)
-      return Notify.setup_window(win)
-   end,
-   render = "minimal",
-   fps = 30,
-   top_down = true,
+   max_width = 80,
+   max_height = 20,
+   icons = {
+      ERROR = " ",
+      WARN = " ",
+      INFO = " ",
+      DEBUG = " ",
+      TRACE = "✎ ",
+   },
+   spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
 }
 
----@param win number Window handle
-function Notify.setup_window(win)
-   local win_opts = {
-      conceallevel = 3,
-      concealcursor = "",
-      spell = false,
-   }
+-- Progress tracking for LSP
+---@type table<string, NotifyProgressData>
+local progress_notifications = {}
 
-   for opt, value in pairs(win_opts) do
-      vim.wo[win][opt] = value
+---Setup notification module with custom configuration
+---@param opts? NotifyConfig Configuration options
+function Notify.setup(opts)
+   if opts then
+      Notify.config = vim.tbl_deep_extend("force", Notify.config, opts)
    end
 
-   local buf = vim.api.nvim_win_get_buf(win)
-   vim.bo[buf].filetype = "markdown"
-end
+   -- Setup window options for notifications
+   local orig_notify = vim.notify
+   -- Create wrapper with more specific name
+   local function enhanced_notify(msg, level, notify_opts)
+      notify_opts = notify_opts or {}
 
----@param msg string|table Message content
----@param level number|string Notification level
----@param opts? table Additional options
----@return table|nil notification_handle
-function Notify.notify(msg, level, opts)
-   if vim.in_fast_event() then
-      return vim.schedule(function()
-         Notify.notify(msg, level, opts)
-      end)
-   end
+      if not notify_opts.on_open then
+         notify_opts.on_open = function(win)
+            vim.wo[win].conceallevel = 3
+            vim.wo[win].concealcursor = ""
+            vim.wo[win].spell = false
 
-   local ok, result = pcall(function()
-      local format_msg = Format.message(msg)
-      if not format_msg then
-         return nil
+            local buf = vim.api.nvim_win_get_buf(win)
+            vim.bo[buf].filetype = "markdown"
+         end
       end
 
-      opts = vim.tbl_deep_extend("force", {}, opts or {})
-      opts.title = Format.title(opts.title or "Nvim")
+      return orig_notify(msg, level, notify_opts)
+   end
+   vim.notify = enhanced_notify
+end
 
-      return vim.notify(format_msg, level, opts)
-   end)
-
-   if not ok then
-      vim.schedule(function()
-         vim.notify("Notification error: " .. tostring(result), vim.log.levels.ERROR)
+---Send a notification with formatting and options
+---@param msg string|table|any Message content (will be formatted)
+---@param level? NotifyLevel Log level (number or string)
+---@param opts? NotifyOptions Additional options
+---@return any? notification_handle Notification handle or nil if failed
+function Notify.notify(msg, level, opts)
+   -- Defer if in fast event
+   if vim.in_fast_event() then
+      return vim.schedule(function()
+         return Notify.notify(msg, level, opts)
       end)
+   end
+
+   -- Format message
+   local Utils = require("kostevski.utils")
+   local formatted_msg = Utils.strings.message(msg)
+   if not formatted_msg then
       return nil
    end
 
-   return result
-end
-
-local function create_level_notifier(level)
-   return function(message, opts)
-      return Notify.notify(message, level, opts or {})
+   -- Normalize level
+   if type(level) == "string" then
+      level = vim.log.levels[level:upper()] or vim.log.levels.INFO
    end
-end
+   level = level or vim.log.levels.INFO
 
-Notify.error = create_level_notifier("error")
-Notify.warn = create_level_notifier("warn")
-Notify.info = create_level_notifier("info")
+   -- Merge options
+   opts = vim.tbl_deep_extend("force", {
+      timeout = Notify.config.timeout,
+      icon = Notify.config.icons[vim.log.levels[level]] or "",
+   }, opts or {})
 
-local client_notifs = {}
-local spinner_frames = require("kostevski.utils.ui").icons.misc.spinner_frames
-
-local function get_notif_data(client_id, token)
-   client_notifs[client_id] = client_notifs[client_id] or {}
-   client_notifs[client_id][token] = client_notifs[client_id][token] or {}
-   return client_notifs[client_id][token]
-end
-
-local function update_spinner(client_id, token)
-   local notif_data = get_notif_data(client_id, token)
-
-   if notif_data.spinner then
-      local new_spinner = (notif_data.spinner + 1) % #spinner_frames
-      notif_data.spinner = new_spinner
-
-      notif_data.notification = vim.notify("", nil, {
-         hide_from_history = true,
-         icon = spinner_frames[new_spinner],
-         replace = notif_data.notification,
-      })
-
-      vim.defer_fn(function()
-         update_spinner(client_id, token)
-      end, 3000)
+   -- Format title if provided
+   if opts.title then
+      opts.title = Utils.strings.title(opts.title, level)
    end
+
+   -- Send notification
+   return vim.notify(formatted_msg, level, opts)
 end
 
----@param result {token: string, value: {kind: string, title?: string, message?: string, percentage?: number}}
-vim.lsp.handlers["$/progress"] = function(_, result, ctx)
+-- Convenience methods
+---@param msg string|table|any Message content
+---@param opts? NotifyOptions Additional options
+---@return any? notification_handle
+function Notify.error(msg, opts)
+   return Notify.notify(msg, vim.log.levels.ERROR, opts)
+end
+
+---@param msg string|table|any Message content
+---@param opts? NotifyOptions Additional options
+---@return any? notification_handle
+function Notify.warn(msg, opts)
+   return Notify.notify(msg, vim.log.levels.WARN, opts)
+end
+
+---@param msg string|table|any Message content
+---@param opts? NotifyOptions Additional options
+---@return any? notification_handle
+function Notify.info(msg, opts)
+   return Notify.notify(msg, vim.log.levels.INFO, opts)
+end
+
+---@param msg string|table|any Message content
+---@param opts? NotifyOptions Additional options
+---@return any? notification_handle
+function Notify.debug(msg, opts)
+   return Notify.notify(msg, vim.log.levels.DEBUG, opts)
+end
+
+---@param msg string|table|any Message content
+---@param opts? NotifyOptions Additional options
+---@return any? notification_handle
+function Notify.trace(msg, opts)
+   return Notify.notify(msg, vim.log.levels.TRACE, opts)
+end
+
+---@class LspProgressValue
+---@field kind "begin"|"report"|"end" Progress kind
+---@field title? string Progress title
+---@field message? string Progress message
+---@field percentage? number Progress percentage
+
+---@class LspProgressResult
+---@field token string|integer Progress token
+---@field value LspProgressValue Progress value
+
+---@class LspProgressContext
+---@field client_id integer LSP client ID
+
+---Handle LSP progress notifications
+---@param result LspProgressResult Progress result
+---@param ctx LspProgressContext Context with client_id
+function Notify.progress(result, ctx)
    local client_id = ctx.client_id
-
    local client = vim.lsp.get_client_by_id(client_id)
    if not client then
-      Notify.error("Invalid LSP client ID: " .. tostring(client_id))
       return
    end
 
-   local val = result.value
-
-   if not val.kind then
+   local value = result.value
+   if not value or not value.kind then
       return
    end
 
-   local notif_data = get_notif_data(client_id, result.token)
+   local key = string.format("%s:%s", client_id, result.token)
 
-   if val.kind == "begin" then
-      local message = Format.message(val.message, val.percentage)
+   if value.kind == "begin" then
+      local message = value.message or "Loading..."
+      if value.percentage then
+         message = string.format("%s (%d%%)", message, value.percentage)
+      end
 
-      notif_data.notification = Notify.info(message, {
-         title = Format.title(val.title, vim.log.levels.INFO, client.name),
-         icon = spinner_frames[1],
+      progress_notifications[key] = {
+         notification = Notify.info(message, {
+            title = string.format("%s - %s", client.name, value.title or "Progress"),
+            icon = Notify.config.spinner_frames[1],
+            timeout = false,
+            replace = progress_notifications[key] and progress_notifications[key].notification,
+         }),
+         spinner_idx = 1,
+         client_name = client.name,
+      }
+
+      -- Start spinner animation
+      Notify._animate_spinner(key)
+   elseif value.kind == "report" and progress_notifications[key] then
+      local data = progress_notifications[key]
+      local message = value.message or "Processing..."
+      if value.percentage then
+         message = string.format("%s (%d%%)", message, value.percentage)
+      end
+
+      data.notification = Notify.info(message, {
+         replace = data.notification,
          timeout = false,
-         hide_from_history = false,
       })
-      notif_data.spinner = 1
-      update_spinner(client_id, result.token)
-   elseif val.kind == "report" and notif_data then
-      local message = Format.message(val.message, val.percentage)
-      notif_data.notification = Notify.info(message, {
-         replace = notif_data.notification,
-         hide_from_history = true,
-      })
-   elseif val.kind == "end" and notif_data then
-      local message = val.message and Format.message(val.message) or "Complete"
-      notif_data.notification = Notify.info(message, {
-         replace = notif_data.notification,
+   elseif value.kind == "end" and progress_notifications[key] then
+      local data = progress_notifications[key]
+      local message = value.message or "Complete"
+
+      Notify.info(message, {
+         title = data.client_name,
+         replace = data.notification,
          timeout = 3000,
-         hide_from_history = false,
       })
-      notif_data.spinner = nil
+
+      progress_notifications[key] = nil
    end
 end
-local severity = { "error", "warn", "info", "hint" }
-local last_notification = 0
-local RATE_LIMIT_MS = 100
 
----@param client_id number|nil The ID of the LSP client
----@param method table LSP method containing message
----@param params table Parameters containing message type
----@param _ any Unused ctx parameter
-vim.lsp.handlers["window/showMessage"] = function(client_id, method, params, _)
-   if not method or not params then
+---Animate spinner for progress notifications
+---@private
+---@param key string Progress key
+function Notify._animate_spinner(key)
+   local data = progress_notifications[key]
+   if not data then
       return
    end
 
-   local current_time = vim.loop.now()
-   if current_time - last_notification < RATE_LIMIT_MS then
-      return
-   end
-   last_notification = current_time
+   vim.defer_fn(function()
+      if progress_notifications[key] then
+         data.spinner_idx = (data.spinner_idx % #Notify.config.spinner_frames) + 1
 
-   local client = client_id and vim.lsp.get_client_by_id(client_id)
-   local source = client and client.name or "LSP"
-   -- Notify.notify(method.message, severity[params.type], { title = source })
-   vim.notify(method.message, severity[params.type], { title = source })
+         vim.notify(nil, nil, {
+            replace = data.notification,
+            icon = Notify.config.spinner_frames[data.spinner_idx],
+            hide_from_history = true,
+         })
+
+         Notify._animate_spinner(key)
+      end
+   end, 100)
 end
+
+---Setup LSP handlers for notifications and progress
+function Notify.setup_lsp_handlers()
+   -- Progress handler - disabled by default (too noisy)
+   -- To enable: vim.lsp.handlers["$/progress"] = function(_, result, ctx)
+   --    Notify.progress(result, ctx)
+   -- end
+
+   -- Show message handler - only errors and warnings
+   vim.lsp.handlers["window/showMessage"] = function(_, result, ctx)
+      -- Skip info and log messages
+      if result.type > vim.lsp.protocol.MessageType.Warning then
+         return
+      end
+
+      local client = vim.lsp.get_client_by_id(ctx.client_id)
+      local client_name = client and client.name or "LSP"
+
+      ---@type integer[]
+      local level_map = {
+         vim.lsp.protocol.MessageType.Error,
+         vim.lsp.protocol.MessageType.Warning,
+         vim.lsp.protocol.MessageType.Info,
+         vim.lsp.protocol.MessageType.Log,
+      }
+
+      Notify.notify(result.message, level_map[result.type], {
+         title = client_name,
+      })
+   end
+end
+
+---@class NotifyFormatOptions
+---@field progress? number Progress percentage
+
+---Format a message for display using string utilities
+---@param msg any Message to format
+---@param opts? NotifyFormatOptions Formatting options
+---@return string? formatted Formatted message or nil
+function Notify.format_message(msg, opts)
+   local Utils = require("kostevski.utils")
+   return Utils.strings.message(msg, opts and opts.progress)
+end
+
+---Format a title for display using string utilities
+---@param title string Title to format
+---@param level? integer Log level (vim.log.levels)
+---@param prefix? string Optional prefix
+---@return string formatted Formatted title
+function Notify.format_title(title, level, prefix)
+   local Utils = require("kostevski.utils")
+   return Utils.strings.title(title, level, prefix)
+end
+
 return Notify

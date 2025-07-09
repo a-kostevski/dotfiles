@@ -41,17 +41,26 @@ return {
          },
          {
             "<leader>af",
-            copilot.create_prompt_handler(copilot.prompts.FixDiagnostic),
+            function()
+               local prompts = copilot.get_prompts()
+               return copilot.create_prompt_handler(prompts.FixDiagnostic)()
+            end,
             desc = "Fix",
          },
          {
             "<leader>ad",
-            copilot.create_prompt_handler(copilot.prompts.FixDiagnostic),
+            function()
+               local prompts = copilot.get_prompts()
+               return copilot.create_prompt_handler(prompts.FixDiagnostic)()
+            end,
             desc = "Diagnostics",
          },
          {
             "<leader>aD",
-            copilot.create_prompt_handler(copilot.prompts.Documentation),
+            function()
+               local prompts = copilot.get_prompts()
+               return copilot.create_prompt_handler(prompts.Documentation)()
+            end,
             desc = "Docs",
          },
          { "<leader>ae", "<cmd>CopilotChatExplain<cr>", desc = "Explain code" },
@@ -60,12 +69,18 @@ return {
          { "<leader>ai", "<cmd>CopilotChatInline<cr>", desc = "Inline chat" },
          {
             "<leader>ar",
-            copilot.create_prompt_handler(copilot.prompts.ReviewSecurityAndLogic),
+            function()
+               local prompts = copilot.get_prompts()
+               return copilot.create_prompt_handler(prompts.ReviewSecurityAndLogic)()
+            end,
             desc = "Review code",
          },
          {
             "<leader>aR",
-            copilot.create_prompt_handler(copilot.prompts.ReviewChain),
+            function()
+               local prompts = copilot.get_prompts()
+               return copilot.create_prompt_handler(prompts.ReviewChain)()
+            end,
             desc = "Reviewchain code",
          },
          { "<leader>at", "<cmd>CopilotChatTests<cr>", desc = "Generate tests" },
@@ -73,7 +88,9 @@ return {
          -- Prompt actions
          {
             "<leader>ap",
-            copilot.pick(),
+            function()
+               return copilot.pick()()
+            end,
             desc = "Prompt Actions",
          },
       },
@@ -152,7 +169,7 @@ return {
       config = function(_, opts)
          local chat = require("CopilotChat")
          local select = require("CopilotChat.select")
-         opts.prompts = vim.tbl_extend("keep", copilot.prompts, opts.prompts or {})
+         opts.prompts = vim.tbl_extend("keep", copilot.get_prompts(), opts.prompts or {})
 
          opts.selection = function(source)
             return select.visual(source) or select.buffer(source)
