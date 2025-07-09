@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+# dotfiles - Utility script for managing dotfiles symlinks
+# Commands: sync, clean, status, watch
+# Version: 1.0.0
+
+set -uo pipefail
+
+# Script version
+readonly DOTFILES_VERSION="1.0.0"
+
+# Script directory - find the real location even if symlinked
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink "$SCRIPT_PATH" || echo "$SCRIPT_PATH")")" && pwd)"
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Export key variables for shared libraries
+export dot_root="$DOTFILES_ROOT"
+export CONFIG_DIR="$DOTFILES_ROOT/config"
+export VERBOSE=false
+
+# Source shared libraries
+source "$DOTFILES_ROOT/install/lib.sh"
+source "$DOTFILES_ROOT/install/symlinks.sh"
+source "$DOTFILES_ROOT/install/profiles.sh"
+
+# Configuration
+export MANIFEST_FILE="$HOME/.config/.dotfiles-manifest"
+export CACHE_FILE="$HOME/.cache/dotfiles-status"
+
+# Detect OS for profile management
+detect_os
+
+# Ensure OS_TYPE is exported
+export OS_TYPE OS_VERSION
+
+# Command: sync - Update symlinks using bootstrap
+cmd_sync() {
+  local profile=""
+  local sync_all=false
+  local args=()
+
+  # Parse arguments to check for profile or --all
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --profile | -p)
+        profile="$2"
+        args+=("$1" "$2")
+        shift 2
+        ;;
+      --all | -a)
+        sync_all=true
+        profile="all"
+        args+=("--profile" "all")
+        shift
+        ;;
+      *)
+        args+=("$1")
+        shift
+        ;;
+    esac
+  done
+
+  # If no profile specified and not syncing all, prompt for it
+  if [[ -z "$profile" ]] && [[ "$sync_all" == "false" ]]; then
+    # Check if we should skip interactive (e.g., in CI or with --yes flag)
+    local skip_interactive=false
+    for arg in "${args[@]}"; do
+      if [[ "$arg" == "--yes" ]] || [[ "$arg" == "-y" ]]; then
+        skip_interactive=true
+        break
+      fi
+    done
+
+    if [[ "$skip_interactive" == "false" ]] && [[ -t 0 ]]; then
+      # Interactive mode
+      profile=$(select_profile_with_current)
+      if [[ -n "$profile" ]]; then
+        args+=("--profile" "$profile")
+      fi
+      echo # Add spacing after selection
+    fi
+  fi
+
+  dot_info "Syncing dotfiles configurations..."
+  exec "$DOTFILES_ROOT/bootstrap.sh" --sync "${args[@]}"
+}
+
+# Command: clean - Remove broken symlinks
+cmd_clean() {
+  local dry_run=""
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run | -n)
+        dry_run="dry_run"
+        export DRY_RUN="$dry_run"
+        shift
+        ;;
+      --verbose | -v)
+        export VERBOSE=true
+        shift
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+
+  # Use the shared clean_broken_symlinks function
+  clean_broken_symlinks "$HOME/.config" "$dry_run"
+}
+
+# Command: status - Show symlink health
+cmd_status() {
+  local show_details=true
+
+  # Check for summary-only flag
+  for arg in "$@"; do
+    case "$arg" in
+      --summary | -s)
+        show_details=false
+        ;;
+    esac
+  done
+
+  if [[ "$show_details" == "true" ]]; then
+    dot_title "Dotfiles Symlink Status"
+  fi
+
+  # Get current profile or use minimal as default
+  local current_profile
+  current_profile=$(detect_current_profile)
+  [[ -z "$current_profile" ]] && current_profile="minimal"
+
+  # Get config list for current profile
+  local config_list
+  config_list=$(get_config_list "$current_profile" "$OS_TYPE")
+
+  # Check all config directories
+  if [[ "$show_details" == "true" ]]; then
+    dot_info "Checking configuration symlinks..."
+    echo
+  fi
+
+  local total_ok=0 total_broken=0 total_missing=0
+
+  while IFS= read -r config; do
+    local config_path="$CONFIG_DIR/$config"
+    [[ ! -d "$config_path" ]] && continue
+
+    # Show config section only if showing details
+    if [[ "$show_details" == "true" ]]; then
+      printf "%b%s:%b\n" "$COLOR_HEADER" "$config" "$COLOR_RESET"
+    fi
+
+    # Check symlinks for this config
+    get_config_symlinks "$config" "$config_path" "$HOME/.config" | while IFS='|' read -r src dest; do
+      if [[ "$show_details" == "true" ]]; then
+        check_symlink "$src" "$dest" true
+      else
+        check_symlink "$src" "$dest" false >/dev/null 2>&1
+      fi
+
+      # Update counts based on exit status
+      local status=$?
+      case $status in
+        0) ((total_ok++)) ;;
+        1) ((total_broken++)) ;;
+        2) ((total_missing++)) ;;
+      esac
+    done
+
+    [[ "$show_details" == "true" ]] && echo
+  done <<<"$config_list"
+
+  # Summary
+  dot_title "Summary"
+  print_status "ok" "Correct symlinks: $total_ok"
+  print_status "broken" "Broken symlinks: $total_broken"
+  print_status "missing" "Missing symlinks: $total_missing"
+
+  if [[ $total_broken -gt 0 ]] || [[ $total_missing -gt 0 ]]; then
+    echo
+    dot_info "Run 'dotfiles sync' to fix issues"
+  fi
+}
+
+# Command: watch - Auto-sync on file changes
+cmd_watch() {
+  dot_title "Watching for Configuration Changes"
+
+  # Check if fswatch is installed
+  if ! command -v fswatch &>/dev/null; then
+    dot_error "fswatch is not installed"
+    dot_info "Install with: brew install fswatch"
+    exit 1
+  fi
+
+  dot_info "Watching $CONFIG_DIR for changes..."
+  dot_info "Press Ctrl+C to stop"
+  echo
+
+  # Watch for changes and sync
+  fswatch -o "$CONFIG_DIR" | while read -r event; do
+    printf "${COLOR_INFO}[%s]${COLOR_RESET} Change detected, syncing...\n" "$(date '+%H:%M:%S')"
+    "$DOTFILES_ROOT/bootstrap.sh" --sync --verbose
+    echo
+  done
+}
+
+# Show usage
+usage() {
+  cat <<EOF
+Usage: dotfiles <command> [options]
+
+Commands:
+    sync,   s      Update symlinks (interactive profile if not specified)
+    clean,  c      Remove broken symlinks
+    status, st     Show symlink health and status
+    watch,  w      Auto-sync on file changes (requires fswatch)
+    help,   h      Show this help message
+    version        Show version information
+
+Options:
+    -h, --help         Show this help message
+    -n, --dry-run      Show what would be done (for clean command)
+    -v, --verbose      Show detailed output (for sync/clean commands)
+    -s, --summary      Show summary only (for status command)
+    -p, --profile      Specify profile for sync (minimal/standard/full)
+    -a, --all          Sync all existing configs (for sync command)
+    -y, --yes          Skip interactive prompts
+
+Examples:
+    dotfiles s                 # Quick sync (interactive profile)
+    dotfiles s -p full         # Sync with full profile
+    dotfiles s --all           # Sync all existing configs
+    dotfiles st                # Quick status check
+    dotfiles st -s             # Summary only
+    dotfiles c -n              # Dry-run clean
+    dotfiles s -v              # Verbose sync
+    dotfiles w                 # Start watching
+
+EOF
+  exit 0
+}
+
+# Main execution
+main() {
+  # Check for global help flag first
+  for arg in "$@"; do
+    case "$arg" in
+      -h | --help)
+        usage
+        ;;
+    esac
+  done
+
+  local command="${1:-}"
+  shift || true
+
+  case "$command" in
+    sync | s)
+      cmd_sync "$@"
+      ;;
+    clean | c)
+      cmd_clean "$@"
+      ;;
+    status | st)
+      cmd_status "$@"
+      ;;
+    watch | w)
+      cmd_watch "$@"
+      ;;
+    -h | --help | help | h | "")
+      usage
+      ;;
+    --version | version)
+      echo "dotfiles version $DOTFILES_VERSION"
+      exit 0
+      ;;
+    *)
+      dot_error "Unknown command: $command"
+      usage
+      ;;
+  esac
+}
+
+# Run main function
+main "$@"
