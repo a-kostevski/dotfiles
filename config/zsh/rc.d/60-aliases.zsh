@@ -16,7 +16,7 @@ alias config="cd $XDG_CONFIG_HOME"
 alias repos="cd ~/dev/repos"
 alias ghrepos="cd ~/dev/repos/github.com/a-kostevski"
 alias gorepos="cd $GOPATH"
-
+alias clconfig="cd ~/Library/Application Support/Claude/"
 alias c="clear"
 alias clr="clear"
 
