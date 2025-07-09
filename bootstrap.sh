@@ -6,6 +6,9 @@
 
 set -e
 
+# Trap errors for better debugging
+trap 'echo "Error occurred at line $LINENO while executing: $BASH_COMMAND"' ERR
+
 # Script metadata
 readonly SCRIPT_VERSION="3.0.0"
 readonly SCRIPT_DATE="2025-06-09"
@@ -46,7 +49,6 @@ export CONFIG_DIR="$SCRIPT_DIR/config"
 source "$SCRIPT_DIR/install/lib.sh"
 source "$SCRIPT_DIR/install/symlinks.sh"
 source "$SCRIPT_DIR/install/profiles.sh"
-
 
 # Usage information
 usage() {
@@ -107,12 +109,12 @@ select_profile() {
   echo
   echo "  ${COLOR_INFO}4) custom${COLOR_RESET}   - Choose individual components"
   echo
-  
+
   local choice
   while true; do
     printf "Select profile [1-4]: "
     read -r choice
-    
+
     case "$choice" in
       1)
         PROFILE="minimal"
@@ -147,13 +149,13 @@ select_custom_components() {
   echo
   echo "Select which components to install:"
   echo
-  
+
   # Start with minimal configs
   local -a selected_configs=("git" "zsh" "tmux")
-  
+
   # Available additional configs
   local -a available_configs=("nvim" "bat" "python" "kitty" "karabiner" "homebrew" "lldb" "clang-format")
-  
+
   for config in "${available_configs[@]}"; do
     printf "Install %s? [y/N]: " "$config"
     read -r response
@@ -162,11 +164,11 @@ select_custom_components() {
       dot_success "Added: $config"
     fi
   done
-  
+
   # Set a custom profile flag
   PROFILE="custom"
   CUSTOM_CONFIGS=("${selected_configs[@]}")
-  
+
   echo
   dot_success "Custom profile created with: ${selected_configs[*]}"
 }
@@ -276,24 +278,24 @@ create_directory() {
 is_ignored() {
   local file="$1"
   local rel_path="${file#$SCRIPT_DIR/}"
-  
+
   # Use git check-ignore if we're in a git repo
   if [[ -d "$SCRIPT_DIR/.git" ]] && command -v git &>/dev/null; then
     git -C "$SCRIPT_DIR" check-ignore -q "$rel_path" 2>/dev/null
     return $?
   fi
-  
+
   # Fallback: manually check common patterns
   local basename
   basename=$(basename "$file")
-  
+
   # Check common ignore patterns
   case "$basename" in
-    .DS_Store|*.local|*.claude|Brewfile*.lock.json)
+    .DS_Store | *.local | *.claude | Brewfile*.lock.json)
       return 0
       ;;
   esac
-  
+
   return 1
 }
 
@@ -371,9 +373,9 @@ get_config_list() {
 # Clean broken symlinks
 clean_broken_symlinks() {
   dot_title "Cleaning Broken Symlinks"
-  
+
   local count=0
-  
+
   # Clean in .config directory
   if command -v lnclean &>/dev/null; then
     dot_info "Using lnclean to clean broken symlinks in $CONFIG_DEST"
@@ -397,7 +399,7 @@ clean_broken_symlinks() {
       ((count++))
     done
   fi
-  
+
   # Also clean home directory symlinks
   for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
     if [[ -L "$link" ]] && [[ ! -e "$link" ]]; then
@@ -410,7 +412,7 @@ clean_broken_symlinks() {
       ((count++))
     fi
   done
-  
+
   if [[ $count -gt 0 ]]; then
     dot_success "Cleaned $count broken symlinks"
   else
@@ -421,19 +423,15 @@ clean_broken_symlinks() {
 # Link configuration files
 link_configs() {
   dot_info "[DEBUG] link_configs called with PROFILE=$PROFILE"
-  
-  # Debug: Call get_config_list to see stderr
-  dot_info "[DEBUG] Calling get_config_list with PROFILE=$PROFILE OS_TYPE=$OS_TYPE"
-  get_config_list "$PROFILE" "$OS_TYPE" >/dev/null
-  
+
   local config_list
-  config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
-  
+  config_list=$(get_config_list "$PROFILE" "$OS_TYPE" 2>/dev/null || echo "")
+
   dot_info "[DEBUG] config_list content: $(echo "$config_list" | xargs)"
   dot_info "[DEBUG] config_list lines: $(echo "$config_list" | wc -l)"
 
   dot_title "Linking configuration files"
-  
+
   if [[ "$VERBOSE" == "true" ]]; then
     dot_info "Profile: $PROFILE, OS: $OS_TYPE"
     dot_info "Configs to link: $(echo "$config_list" | xargs | sed 's/ /, /g')"
@@ -578,12 +576,12 @@ main() {
   # Detect OS
   detect_os
 
-dot_info "starting"
+  dot_info "starting"
   # Set defaults and export variables early
   PROFILE="${PROFILE:-$DEFAULT_PROFILE}"
   CONFIG_DEST="${CONFIG_DEST:-$DEFAULT_CONFIG_DEST}"
   BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
-  
+
   # Debug output
   dot_info "[DEBUG] After defaults: PROFILE='$PROFILE', DEFAULT_PROFILE='$DEFAULT_PROFILE'"
 
@@ -611,7 +609,7 @@ dot_info "starting"
   if [[ "$SYNC_MODE" == "true" ]]; then
     dot_info "Running in sync mode - updating symlinks only"
     echo
-    
+
     # If no profile specified in sync mode, detect current or use minimal
     if [[ -z "$PROFILE" ]]; then
       PROFILE=$(detect_current_profile)
@@ -624,20 +622,22 @@ dot_info "starting"
     else
       dot_info "Using specified profile: $PROFILE"
     fi
-    
+
     # Clean broken symlinks first
-    clean_broken_symlinks "$CONFIG_DEST" "$DRY_RUN"
-    
+    if ! clean_broken_symlinks "$CONFIG_DEST" "$DRY_RUN"; then
+      dot_warning "Failed to clean some broken symlinks, continuing anyway"
+    fi
+
     # Create minimal directory structure
     create_directory "$CONFIG_DEST"
     create_directory "$BIN_DEST"
-    
+
     # Link configurations
     link_configs
-    
+
     # Link binaries
     link_binaries
-    
+
     dot_success "Sync completed successfully!"
     echo
     dot_info "Restart your terminal or run: source ~/.zshenv"

@@ -93,6 +93,12 @@ clean_broken_symlinks() {
     
     dot_title "Cleaning Broken Symlinks"
     
+    # Check if target directory exists
+    if [[ ! -d "$target_dir" ]]; then
+        dot_info "Target directory does not exist: $target_dir"
+        return 0
+    fi
+    
     local temp_file=$(mktemp)
     echo "0" > "$temp_file"
     
@@ -109,7 +115,8 @@ clean_broken_symlinks() {
         fi
     else
         # Fallback to find command
-        find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null | while read -r link; do
+        # Use process substitution to avoid subshell issues with set -e
+        while IFS= read -r link; do
             if [[ -n "$dry_run" ]]; then
                 print_status "broken" "Would remove: $link"
             else
@@ -117,7 +124,7 @@ clean_broken_symlinks() {
                 print_status "ok" "Removed: $link"
             fi
             echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-        done
+        done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
     fi
     
     # Also clean home directory symlinks
