@@ -193,40 +193,7 @@ is_ignored() {
   return 1
 }
 
-# Create symlink with backup
-create_symlink() {
-  local src="$1"
-  local dest="$2"
-
-  # Source must exist
-  [[ ! -e "$src" ]] && dot_error "Source not found: $src" && return 1
-
-  # Handle existing symlink
-  if [[ -L "$dest" ]]; then
-    local current_target=$(readlink "$dest")
-    if [[ "$current_target" == "$src" ]]; then
-      dot_info "Already linked: $dest"
-      return 0
-    else
-      dot_info "Updating existing symlink: $dest"
-      dry_run rm "$dest"
-    fi
-  # Handle existing file (non-symlink)
-  elif [[ -e "$dest" ]]; then
-    if [[ "$FORCE" == "true" ]]; then
-      dot_warning "Force removing: $dest"
-      dry_run rm -rf "$dest"
-    else
-      local backup="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
-      dot_info "Backing up: $dest -> $backup"
-      dry_run mv "$dest" "$backup"
-    fi
-  fi
-
-  # Create symlink
-  dot_info "Linking: $src -> $dest"
-  dry_run ln -sfn "$src" "$dest"
-}
+# Note: create_symlink is defined in install/symlinks.sh
 
 # Get all config directories
 get_config_list() {
