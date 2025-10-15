@@ -16,6 +16,11 @@ prepend_path "$HOME/.local/bin"
 prepend_path "$HOME/.local/share/pnpm"
 prepend_path "$HOME/.local/share/npm/bin"
 
+# Ubuntu-specific paths
+if [[ "$(uname -s)" == "Linux" ]]; then
+    prepend_path "/opt/nvim/bin"
+fi
+
 # Homebrew-specific paths (only if Homebrew is installed)
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
     prepend_path "$HOMEBREW_PREFIX/opt/ruby/bin"
