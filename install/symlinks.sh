@@ -86,46 +86,49 @@ check_symlink() {
     fi
 }
 
-# Clean broken symlinks in a directory
+# Clean broken symlinks in directories
 clean_broken_symlinks() {
-    local target_dir="${1:-$HOME/.config}"
-    local dry_run="${2:-${DRY_RUN:-}}"
+    local dry_run="${1:-${DRY_RUN:-}}"
+    local -a target_dirs=(
+        "$HOME/.config"
+        "$HOME/.local/bin"
+    )
     
     dot_title "Cleaning Broken Symlinks"
-    
-    # Check if target directory exists
-    if [[ ! -d "$target_dir" ]]; then
-        dot_info "Target directory does not exist: $target_dir"
-        return 0
-    fi
     
     local temp_file=$(mktemp)
     echo "0" > "$temp_file"
     
-    # Use lnclean if available
-    if command -v lnclean &>/dev/null; then
-        dot_info "Using lnclean to clean broken symlinks in $target_dir"
-        if [[ -n "$dry_run" ]]; then
-            find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null | while read -r link; do
-                print_status "broken" "Would remove: $link"
-                echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-            done
-        else
-            lnclean "$target_dir" 2>/dev/null || true
-        fi
-    else
-        # Fallback to find command
-        # Use process substitution to avoid subshell issues with set -e
-        while IFS= read -r link; do
+    # Check each target directory
+    for target_dir in "${target_dirs[@]}"; do
+        # Skip if directory doesn't exist
+        [[ ! -d "$target_dir" ]] && continue
+        
+        # Use lnclean if available
+        if command -v lnclean &>/dev/null; then
+            dot_info "Using lnclean to clean broken symlinks in $target_dir"
             if [[ -n "$dry_run" ]]; then
-                print_status "broken" "Would remove: $link"
+                find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null | while read -r link; do
+                    print_status "broken" "Would remove: $link"
+                    echo $(($(cat "$temp_file") + 1)) > "$temp_file"
+                done
             else
-                rm -f "$link"
-                print_status "ok" "Removed: $link"
+                lnclean "$target_dir" 2>/dev/null || true
             fi
-            echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-        done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
-    fi
+        else
+            # Fallback to find command
+            # Use process substitution to avoid subshell issues with set -e
+            while IFS= read -r link; do
+                if [[ -n "$dry_run" ]]; then
+                    print_status "broken" "Would remove: $link"
+                else
+                    rm -f "$link"
+                    print_status "ok" "Removed: $link"
+                fi
+                echo $(($(cat "$temp_file") + 1)) > "$temp_file"
+            done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
+        fi
+    done
     
     # Also clean home directory symlinks
     for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do

@@ -20,11 +20,29 @@ autoload -Uz compinit
 
 ZSH_COMPDUMP=$XDG_CACHE_HOME/zsh/zcompdump
 
-if [ $(date +'%j') != $(stat -f '%Sm' -t '%j' $ZSH_COMPDUMP) ]; then
+# Check if compdump needs regeneration (once per day)
+# Compare day of year to avoid regenerating multiple times per day
+if [[ -f $ZSH_COMPDUMP ]]; then
+    local current_day=$(get_day_of_year)
+    local dump_day
+
+    if is_macos; then
+        dump_day=$(stat -f '%Sm' -t '%j' "$ZSH_COMPDUMP" 2>/dev/null || echo "0")
+    else
+        # On Linux, convert modification time to day of year
+        local mtime=$(stat -c '%Y' "$ZSH_COMPDUMP" 2>/dev/null || echo "0")
+        dump_day=$(date -d "@$mtime" +'%j' 2>/dev/null || echo "0")
+    fi
+
+    if [[ "$current_day" != "$dump_day" ]]; then
+        compinit -d $ZSH_COMPDUMP
+        touch $ZSH_COMPDUMP
+    else
+        compinit -C -d $ZSH_COMPDUMP
+    fi
+else
     compinit -d $ZSH_COMPDUMP
     touch $ZSH_COMPDUMP
-else
-    compinit -C -d $ZSH_COMPDUMP
 fi
 unset ZSH_COMPDUMP
 _comp_options+=(globdots) 

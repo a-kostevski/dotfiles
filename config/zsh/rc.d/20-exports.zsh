@@ -10,12 +10,21 @@ export ZETDIR="$LIFE/0-inbox"
 export EXO_DATA_HOME="~/exo"
 export EXO_EDITOR="nvim"
 
-export GOROOT="/opt/homebrew/opt/go/libexec"
+# Go configuration
 export GOPATH="$XDG_DATA_HOME/go"
 export GOMODCACHE="$XDG_CACHE_HOME/go/mod"
 export GOCACHE="$XDG_CACHE_HOME/go/build"
 export GOENV="$XDG_CONFIG_HOME/go/env"
-path+=($GOPATH/bin $GOROOT/bin)
+
+# Set GOROOT based on platform and installation method
+if [[ -n "$HOMEBREW_PREFIX" ]] && [[ -d "$HOMEBREW_PREFIX/opt/go/libexec" ]]; then
+    export GOROOT="$HOMEBREW_PREFIX/opt/go/libexec"
+    path+=($GOROOT/bin)
+elif command_exists go; then
+    export GOROOT="$(go env GOROOT)"
+fi
+
+path+=($GOPATH/bin)
 
 export LESS_TERMCAP_mb=$'\e[6m'       # begin blinking
 export LESS_TERMCAP_md=$'\e[34m'      # begin bold
@@ -31,10 +40,11 @@ export MANPAGER='less'
 export CLICOLOR=1
 export TERM=${TERM:-xterm-256color}
 
-export HOMEBREW_PREFIX='/opt/homebrew'
-
-export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/zlib/lib -L${HOMEBREW_PREFIX}/opt/bzip2/lib -L${HOMEBREW_PREFIX}/opt/readline/lib"
-export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/zlib/include -I${HOMEBREW_PREFIX}/opt/bzip3/include -I${HOMEBREW_PREFIX}/opt/readline/include"
+# Homebrew-specific compiler flags (only set if Homebrew is installed)
+if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/zlib/lib -L${HOMEBREW_PREFIX}/opt/bzip2/lib -L${HOMEBREW_PREFIX}/opt/readline/lib"
+    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/zlib/include -I${HOMEBREW_PREFIX}/opt/bzip3/include -I${HOMEBREW_PREFIX}/opt/readline/include"
+fi
 
 # Python
 export PYTHONIOENCODING='UTF-8'
@@ -44,7 +54,9 @@ export PYTHON_CFLAGS='-march=native -mtune=native'
 # Avoid issues with `gpg` as installed via Homebrew.
 export GPG_TTY=$(tty)
 
-# Homebrew settings that require parameter expansion.
-export HOMEBREW_LOGS="$XDG_STATE_HOME/Homebrew/Logs"
+# Homebrew settings (only set if Homebrew is installed)
+if command_exists brew; then
+    export HOMEBREW_LOGS="$XDG_STATE_HOME/Homebrew/Logs"
+fi
 
 export REPORTTIME=10

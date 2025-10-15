@@ -21,15 +21,23 @@ alias c="clear"
 alias clr="clear"
 
 # --- Network ---
-alias getmac="ifconfig en0 | grep 'ether' | awk '{print \$2}'"
+if is_macos; then
+    alias getmac="ifconfig en0 | grep 'ether' | awk '{print \$2}'"
+    alias localip4="ipconfig getifaddr en0"
+    alias localip6="ifconfig en0 | grep inet6 | awk '{print \$2}'"
+    alias routerip="ipconfig getoption en0 router"
+else
+    # Linux equivalents - note: interface name may vary
+    alias getmac="ip link show | grep 'link/ether' | head -1 | awk '{print \$2}'"
+    alias localip4="hostname -I | awk '{print \$1}'"
+    alias localip6="ip -6 addr show scope global | grep inet6 | head -1 | awk '{print \$2}' | cut -d'/' -f1"
+    alias routerip="ip route | grep default | awk '{print \$3}'"
+fi
+
 alias geoip="curl ipinfo.io/"
-alias localip4="ipconfig getifaddr en0"
-alias localip6="ifconfig en0 | grep inet6 | awk '{print \$2}'"
 alias localip="localip4"
 alias publicip4="curl http://ipinfo.io/ip"
 alias publicip="publicip4"
-alias routerip="ipconfig getoption en0 router"
-
 alias openports="lsof -i -P -n | grep LISTEN"
 
 alias urlencode="python -c 'import sys, urllib.parse as parse; print(parse.quote_plus(sys.argv[1]));'"
@@ -41,8 +49,10 @@ alias zshconfig="cd $DOTDIR/config/zsh  && $EDITOR ."
 alias nvimconfig="cd $DOTDIR/config/nvim && $EDITOR ."
 
 # --- Macos bins ---
-alias plistbuddy="/usr/libexec/PlistBuddy"
-alias lsregister="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if is_macos; then
+    alias plistbuddy="/usr/libexec/PlistBuddy"
+    alias lsregister="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+fi
 
 # --- Command defaults ---
 alias diff="colordiff"
@@ -53,6 +63,8 @@ alias map="xargs -n1"
 alias vi="nvim"
 alias vim="nvim"
 alias zotify="zotify --config-location \"${XDG_CONFIG_HOME:-$HOME}/zotify/zconfig.json\""
+alias npm="pnpm"
+alias npx="pnpm"
 
  # --- ls ---
 alias ls="eza --git --icons --group-directories-first"
@@ -60,25 +72,137 @@ alias la="eza -a --git --icons --group-directories-first"
 alias ll="eza -ahlF --git --icons --group-directories-first"
 alias lt="eza --tree --level=2 --group-directories-first" 
 
+# --- Docker ---
+
+function dnames-fn {
+	for ID in `docker ps | awk '{print $1}' | grep -v 'CONTAINER'`
+	do
+    	docker inspect $ID | grep Name | head -1 | awk '{print $2}' | sed 's/,//g' | sed 's%/%%g' | sed 's/"//g'
+	done
+}
+
+function dip-fn {
+    echo "IP addresses of all named running containers"
+
+    for DOC in `dnames-fn`
+    do
+        IP=`docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$DOC"`
+        OUT+=$DOC'\t'$IP'\n'
+    done
+    echo -e $OUT | column -t
+    unset OUT
+}
+
+function dex-fn {
+	docker exec -it $1 ${2:-bash}
+}
+
+function di-fn {
+	docker inspect $1
+}
+
+function dl-fn {
+	docker logs -f $1
+}
+
+function drun-fn {
+	docker run -it $1 $2
+}
+
+function dcr-fn {
+	docker compose run $@
+}
+
+function dsr-fn {
+	docker stop $1;docker rm $1
+}
+
+function drmc-fn {
+       docker rm $(docker ps --all -q -f status=exited)
+}
+
+function drmid-fn {
+       imgs=$(docker images -q -f dangling=true)
+       [ ! -z "$imgs" ] && docker rmi "$imgs" || echo "no dangling images."
+}
+
+# in order to do things like dex $(dlab label) sh
+function dlab {
+       docker ps --filter="label=$1" --format="{{.ID}}"
+}
+
+function dc-fn {
+        docker compose $*
+}
+
+alias dc=dc-fn
+alias dcu="docker compose up -d"
+alias dcd="docker compose down"
+alias dcr=dcr-fn
+alias dex=dex-fn
+alias di=di-fn
+alias dim="docker images"
+alias dip=dip-fn
+alias dl=dl-fn
+alias dnames=dnames-fn
+alias dps="docker ps"
+alias dpsa="docker ps -a"
+alias drmc=drmc-fn
+alias drmid=drmid-fn
+alias drun=drun-fn
+alias dsp="docker system prune --all"
+alias dsr=dsr-fn
 
 for p in path fpath manpath infopath; do
     alias $p='echo "${'${(U)p}'}" | tr ":" "\n"'
 done
 
 # --- Utils ---
-alias cpwd='pwd | tr -d "\n" | pbcopy'
-alias finder='cd $(osascript -e "tell application 'Finder' to POSIX path of (target of window 1 as alias)")'
-alias mergepdf="gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=_merged.pdf"
+# Cross-platform clipboard copy
+if is_macos; then
+    alias cpwd='pwd | tr -d "\n" | pbcopy'
+    alias clip='pbcopy'
+    alias clippaste='pbpaste'
+    alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | pbcopy && echo \"Password copied to clipboard\""
+elif command_exists xclip; then
+    alias cpwd='pwd | tr -d "\n" | xclip -selection clipboard'
+    alias clip='xclip -selection clipboard'
+    alias clippaste='xclip -selection clipboard -o'
+    alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | xclip -selection clipboard && echo \"Password copied to clipboard\""
+elif command_exists wl-copy; then
+    alias cpwd='pwd | tr -d "\n" | wl-copy'
+    alias clip='wl-copy'
+    alias clippaste='wl-paste'
+    alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | wl-copy && echo \"Password copied to clipboard\""
+fi
 
-alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | pbcopy && echo \"Password copied to clipboard\""
+# Cross-platform open command
+if is_macos; then
+    # open is native on macOS
+    :
+elif command_exists xdg-open; then
+    alias open='xdg-open'
+fi
+
+# macOS-specific utilities
+if is_macos; then
+    alias finder='cd $(osascript -e "tell application '\''Finder'\'' to POSIX path of (target of window 1 as alias)")'
+    alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
+    alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
+    alias macos_config="source $XDG_CONFIG_HOME/macos/defaults && source $XDG_CONFIG_HOME/macos/harden"
+fi
+
+# Homebrew-specific (available on both macOS and Linux if installed)
+if command_exists brew; then
+    alias brewgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
+fi
+
+# PDF merge (requires ghostscript)
+if command_exists gs; then
+    alias mergepdf="gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=_merged.pdf"
+fi
 
 alias reload='[[ $SHLVL -eq 1 ]] && exec $SHELL || echo "Warning: Not reloading in subshell (level $SHLVL)"'
-
-alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
-alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
-
-alias brewgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
-alias macos_config="source $XDG_CONFIG_HOME/macos/defaults && source $XDG_CONFIG_HOME/macos/harden"
 
 # --- Profiling ---
 alias zshtimeprofile="time ZSH_PROFILING=true zsh -i -c exit;"

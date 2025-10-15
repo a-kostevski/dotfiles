@@ -14,7 +14,10 @@ for config_file ($ZDOTDIR/rc.d/*.zsh(N)); do
 done
 
 # Load theme
-[ -f $ZDOTDIR/theme/dir_colors ] && eval $(gdircolors -b $ZDOTDIR/theme/dir_colors)
+if [[ -f $ZDOTDIR/theme/dir_colors ]]; then
+    local dircolors_cmd=$(get_dircolors_command)
+    [[ -n "$dircolors_cmd" ]] && eval $($dircolors_cmd -b $ZDOTDIR/theme/dir_colors)
+fi
 
 if [[ -n $ZSH_PROFILING ]]; then
    zprof

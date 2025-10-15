@@ -6,7 +6,7 @@ export MANPATH
 
 # Next, set up Homebrew
 if [ -z $HOMEBREW_PREFIX ]; then
-   if [[ $(uname -m)="arm64" ]]; then
+   if [[ $(uname -m) == "arm64" ]]; then
       HOMEBREW_PREFIX="/opt/homebrew"
    else
       HOMEBREW_PREFIX="/usr/local"
