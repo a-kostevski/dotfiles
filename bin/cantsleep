@@ -1,20 +1,14 @@
 #!/bin/bash
 
-# Turn on Do Not Disturb
-defaults -currentHost write ~/Library/Preferences/ByHost/com.apple.notificationcenterui doNotDisturb -boolean true
-defaults -currentHost write ~/Library/Preferences/ByHost/com.apple.notificationcenterui doNotDisturbDate -date "`date -u +\"%Y-%m-%d %H:%M:%S +0000\"`"
-
 # Hide menu bar clock
-defaults write com.apple.menuextra.clock IsAnalog -bool true
-killall SystemUIServer
-
-# Dim screen brightness to 25%
-osascript -e 'tell application "System Events"' -e 'set brightness of display 1 to 0.25' -e 'end tell'
-
-# Play calming white noise (requires 'play' command from sox)
-if command -v play >/dev/null 2>&1; then
-    play -n synth brownnoise >/dev/null 2>&1 &
+if [ $(defaults read com.apple.menuextra.clock IsAnalog) = "1" ]; then
+  defaults write com.apple.menuextra.clock IsAnalog -bool false
+else
+  defaults write com.apple.menuextra.clock IsAnalog -bool true
+  echo ""
+  echo " Time to wind down. Take deep breaths."
+  echo " Remember: Your work will still be here tomorrow."
+  echo ""
 fi
 
-echo "Time to wind down. Take deep breaths."
-echo "Remember: Your work will still be here tomorrow."
+killall SystemUIServer

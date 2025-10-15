@@ -21,7 +21,6 @@ export VERBOSE=false
 # Source shared libraries
 source "$DOTFILES_ROOT/install/lib.sh"
 source "$DOTFILES_ROOT/install/symlinks.sh"
-source "$DOTFILES_ROOT/install/profiles.sh"
 
 # Configuration
 export MANIFEST_FILE="$HOME/.config/.dotfiles-manifest"
@@ -35,51 +34,13 @@ export OS_TYPE OS_VERSION
 
 # Command: sync - Update symlinks using bootstrap
 cmd_sync() {
-  local profile=""
-  local sync_all=false
   local args=()
 
-  # Parse arguments to check for profile or --all
+  # Pass through all arguments
   while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --profile | -p)
-        profile="$2"
-        args+=("$1" "$2")
-        shift 2
-        ;;
-      --all | -a)
-        sync_all=true
-        profile="all"
-        args+=("--profile" "all")
-        shift
-        ;;
-      *)
-        args+=("$1")
-        shift
-        ;;
-    esac
+    args+=("$1")
+    shift
   done
-
-  # If no profile specified and not syncing all, prompt for it
-  if [[ -z "$profile" ]] && [[ "$sync_all" == "false" ]]; then
-    # Check if we should skip interactive (e.g., in CI or with --yes flag)
-    local skip_interactive=false
-    for arg in "${args[@]}"; do
-      if [[ "$arg" == "--yes" ]] || [[ "$arg" == "-y" ]]; then
-        skip_interactive=true
-        break
-      fi
-    done
-
-    if [[ "$skip_interactive" == "false" ]] && [[ -t 0 ]]; then
-      # Interactive mode
-      profile=$(select_profile_with_current)
-      if [[ -n "$profile" ]]; then
-        args+=("--profile" "$profile")
-      fi
-      echo # Add spacing after selection
-    fi
-  fi
 
   dot_info "Syncing dotfiles configurations..."
   exec "$DOTFILES_ROOT/bootstrap.sh" --sync "${args[@]}"
@@ -108,7 +69,7 @@ cmd_clean() {
   done
 
   # Use the shared clean_broken_symlinks function
-  clean_broken_symlinks "$HOME/.config" "$dry_run"
+  clean_broken_symlinks "$dry_run"
 }
 
 # Command: status - Show symlink health
@@ -128,14 +89,11 @@ cmd_status() {
     dot_title "Dotfiles Symlink Status"
   fi
 
-  # Get current profile or use minimal as default
-  local current_profile
-  current_profile=$(detect_current_profile)
-  [[ -z "$current_profile" ]] && current_profile="minimal"
-
-  # Get config list for current profile
+  # Get all config directories
   local config_list
-  config_list=$(get_config_list "$current_profile" "$OS_TYPE")
+  config_list=$(find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while read -r dir; do
+    basename "$dir" | grep -v '^\.' || true
+  done | sort)
 
   # Check all config directories
   if [[ "$show_details" == "true" ]]; then
@@ -145,6 +103,7 @@ cmd_status() {
 
   local total_ok=0 total_broken=0 total_missing=0
 
+  # Check config directory symlinks
   while IFS= read -r config; do
     local config_path="$CONFIG_DIR/$config"
     [[ ! -d "$config_path" ]] && continue
@@ -165,14 +124,44 @@ cmd_status() {
       # Update counts based on exit status
       local status=$?
       case $status in
-        0) ((total_ok++)) ;;
-        1) ((total_broken++)) ;;
-        2) ((total_missing++)) ;;
+        0) ((total_ok++)) || true ;;
+        1) ((total_broken++)) || true ;;
+        2) ((total_missing++)) || true ;;
       esac
     done
 
     [[ "$show_details" == "true" ]] && echo
   done <<<"$config_list"
+
+  # Check bin directory symlinks
+  if [[ "$show_details" == "true" ]]; then
+    printf "%bbin scripts:%b\n" "$COLOR_HEADER" "$COLOR_RESET"
+  fi
+
+  # Check each script in bin
+  if [[ -d "$DOTFILES_ROOT/bin" ]]; then
+    while IFS= read -r script; do
+      local script_name
+      script_name=$(basename "$script")
+      local dest="$HOME/.local/bin/$script_name"
+
+      if [[ "$show_details" == "true" ]]; then
+        check_symlink "$script" "$dest" true
+      else
+        check_symlink "$script" "$dest" false >/dev/null 2>&1
+      fi
+
+      # Update counts based on exit status
+      local status=$?
+      case $status in
+        0) ((total_ok++)) || true ;;
+        1) ((total_broken++)) || true ;;
+        2) ((total_missing++)) || true ;;
+      esac
+    done < <(find "$DOTFILES_ROOT/bin" -type f -not -name ".*" 2>/dev/null)
+    
+    [[ "$show_details" == "true" ]] && echo
+  fi
 
   # Summary
   dot_title "Summary"
@@ -215,7 +204,7 @@ usage() {
 Usage: dotfiles <command> [options]
 
 Commands:
-    sync,   s      Update symlinks (interactive profile if not specified)
+    sync,   s      Update symlinks for all configs
     clean,  c      Remove broken symlinks
     status, st     Show symlink health and status
     watch,  w      Auto-sync on file changes (requires fswatch)
@@ -224,17 +213,12 @@ Commands:
 
 Options:
     -h, --help         Show this help message
-    -n, --dry-run      Show what would be done (for clean command)
+    -n, --dry-run      Show what would be done (for clean/sync commands)
     -v, --verbose      Show detailed output (for sync/clean commands)
     -s, --summary      Show summary only (for status command)
-    -p, --profile      Specify profile for sync (minimal/standard/full)
-    -a, --all          Sync all existing configs (for sync command)
-    -y, --yes          Skip interactive prompts
 
 Examples:
-    dotfiles s                 # Quick sync (interactive profile)
-    dotfiles s -p full         # Sync with full profile
-    dotfiles s --all           # Sync all existing configs
+    dotfiles s                 # Quick sync
     dotfiles st                # Quick status check
     dotfiles st -s             # Summary only
     dotfiles c -n              # Dry-run clean
