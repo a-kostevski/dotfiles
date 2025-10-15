@@ -45,6 +45,13 @@ create_symlink() {
     # Create parent directory if needed
     local dest_dir=$(dirname "$dest")
     if [[ ! -d "$dest_dir" ]]; then
+        # If path exists but is not a directory, back it up
+        if [[ -e "$dest_dir" ]]; then
+            local backup="${dest_dir}.backup.$(date +%Y%m%d_%H%M%S)"
+            dot_warning "Path exists but is not a directory: $dest_dir"
+            dot_info "Backing up: $dest_dir -> $backup"
+            dry_run mv "$dest_dir" "$backup"
+        fi
         dot_info "Creating directory: $dest_dir"
         dry_run mkdir -p "$dest_dir"
     fi
