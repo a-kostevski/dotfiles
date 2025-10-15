@@ -1,4 +1,4 @@
 return {
+   { "MunifTanjim/nui.nvim" },
    { import = "kostevski.plugins.ui" },
-   { "MunifTanjim/nui.nvim", lazy = true },
 }

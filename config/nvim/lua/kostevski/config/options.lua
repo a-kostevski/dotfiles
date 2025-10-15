@@ -2,8 +2,8 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
 -- Disable python providers
-vim.g.python3_host_prog = nil
-vim.g.python_host_prog = nil
+vim.g.python3_host_prog = "/Users/antonkostevski/.local/share/uv/venv/py3nvim/bin/python"
+vim.g.python_host_prog = "/Users/antonkostevski/.local/share/uv/venv/py3nvim/bin/python"
 
 -- Perl interpreter
 vim.g.loaded_ruby_provider = 0
@@ -14,7 +14,7 @@ local opt = vim.opt
 -- Make line numbers default
 opt.number = true
 
--- Enable mouse mode, can be useful for resizing splits for example!
+-- Enable mouse mode
 opt.mouse = "a"
 
 -- Sync clipboard between OS and Neovim.

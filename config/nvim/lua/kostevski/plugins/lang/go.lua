@@ -1,107 +1,91 @@
--- Root patterns for Go projects
-require("kostevski.utils.root").add_patterns("go", {
-   -- Go modules
-   "go.mod",
-   "go.sum",
-   "go.work",
-   "go.work.sum",
-   -- Legacy dependency management
-   "Gopkg.toml",
-   "Gopkg.lock",
-   "glide.yaml",
-   "glide.lock",
-   "vendor/",
-   -- Go-specific config
-   ".golangci.yml",
-   ".golangci.yaml",
-   ".golangci.toml",
-   ".goreleaser.yml",
-   ".goreleaser.yaml",
-   -- Testing
-   "testdata/",
-   -- Build
-   "Makefile",
-   "Taskfile.yml",
-   "Taskfile.yaml",
-   "magefile.go",
-})
+-- Refactored Go configuration using the new language utility
+-- This shows how the existing go.lua can be simplified
 
-return {
-   -- LSP Configuration
-   {
-      "mason",
-      optional = true,
-      opts = { ensure_installed = { "goimports", "gofumpt" } },
-   },
+local lang = require("kostevski.utils.lang")
 
-   -- Formatter Configuration
-   {
-      "stevearc/conform.nvim",
-      opts = {
-         formatters_by_ft = {
-            go = { "gofumpt", "goimports" },
-         },
+return lang.register({
+  name = "go",
+  filetypes = { "go", "gomod", "gowork", "gotmpl" },
+  root_markers = {
+    -- Go modules
+    "go.mod",
+    "go.sum",
+    "go.work",
+    "go.work.sum",
+    -- Legacy dependency management
+    "Gopkg.toml",
+    "Gopkg.lock",
+    "glide.yaml",
+    "glide.lock",
+    "vendor/",
+    -- Go-specific config
+    ".golangci.yml",
+    ".golangci.yaml",
+    ".golangci.toml",
+    ".goreleaser.yml",
+    ".goreleaser.yaml",
+    -- Testing
+    "testdata/",
+    -- Build
+    "Makefile",
+    "Taskfile.yml",
+    "Taskfile.yaml",
+    "magefile.go",
+
+    ".git",
+  },
+  lsp_server = "gopls",
+  formatters = {
+    list = { "gofumpt", "goimports" },
+    tools = { "goimports", "gofumpt" },
+  },
+  linters = {
+    list = { "golangci-lint" },
+    tools = { "golangci-lint" },
+  },
+  dap = {
+    -- Note: This requires custom setup for dap-go
+    setup = function()
+      require("dap-go").setup()
+    end,
+    adapters = {
+      delve = {
+        type = "server",
+        port = "${port}",
+        executable = {
+          command = "dlv",
+          args = { "dap", "-l", "127.0.0.1:${port}" },
+        },
       },
-   },
-
-   -- Linter Configuration
-   {
-      "mfussenegger/nvim-lint",
-      opts = {
-         linters_by_ft = {
-            go = { "golangci-lint" },
-         },
-      },
-   },
-
-   -- DAP Configuration
-   {
-      "mfussenegger/nvim-dap",
-      optional = true,
-      opts = function()
-         require("dap-go").setup()
-         return {
-            adapters = {
-               delve = {
-                  type = "server",
-                  port = "${port}",
-                  executable = {
-                     command = "dlv",
-                     args = { "dap", "-l", "127.0.0.1:${port}" },
-                  },
-               },
-            },
-         }
+    },
+  },
+  test_adapters = { "fredrikaverpil/neotest-golang" },
+  treesitter_parsers = { "go", "gomod", "gowork", "gosum" },
+  additional_plugins = {
+    -- Go-specific DAP plugin
+    {
+      "leoluz/nvim-dap-go",
+      ft = "go",
+      config = function()
+        require("dap-go").setup()
       end,
-   },
-
-   -- Neotest
-   {
+    },
+    -- Hugo support
+    {
+      "phelipetls/vim-hugo",
+    },
+    -- Additional neotest configuration for Go
+    {
       "nvim-neotest/neotest",
       optional = true,
-      dependencies = {
-         "fredrikaverpil/neotest-golang",
-      },
       opts = {
-         adapters = {
-            ["neotest-golang"] = {
-               -- Here we can set options for neotest-golang, e.g.
-               -- go_test_args = { "-v", "-race", "-count=1", "-timeout=60s" },
-               dap_go_enabled = true, -- requires leoluz/nvim-dap-go
-            },
-         },
+        adapters = {
+          ["neotest-golang"] = {
+            go_test_args = { "-v", "-race", "-count=1", "-timeout=60s" },
+            dap_go_enabled = true,
+          },
+        },
       },
-   },
-   -- Additional Tools
-   {
-      "nvim-treesitter/nvim-treesitter",
-      opts = function(_, opts)
-         if type(opts.ensure_installed) == "table" then
-            vim.list_extend(opts.ensure_installed, { "go", "gomod", "gowork", "gosum" })
-         end
-      end,
-   },
-   {
-      "phelipetls/vim-hugo",
-   },
-}
+    },
+  },
+})
