@@ -1,16 +1,16 @@
 [[ -n $ZSH_PROFILING ]] && zmodload zsh/zprof
 
-ZSH_FUNCTIONS=$ZDOTDIR/functions
+ZSH_FUNCTIONS="$ZDOTDIR/functions"
 if [[ -d "$ZSH_FUNCTIONS" ]]; then
-   for func in $ZSH_FUNCTIONS/*; do
-      autoload -Uz ${func:t}
+   for func in "$ZSH_FUNCTIONS"/*; do
+      autoload -Uz "${func:t}"
    done
 fi
 unset ZSH_FUNCTIONS
 
 # Load interactive shell configurations
-for config_file ($ZDOTDIR/rc.d/*.zsh(N)); do
-    source $config_file
+for config_file in "$ZDOTDIR"/rc.d/*.zsh(N); do
+    source "$config_file"
 done
 
 # Load theme

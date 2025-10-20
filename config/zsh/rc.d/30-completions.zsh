@@ -21,28 +21,20 @@ autoload -Uz compinit
 ZSH_COMPDUMP=$XDG_CACHE_HOME/zsh/zcompdump
 
 # Check if compdump needs regeneration (once per day)
-# Compare day of year to avoid regenerating multiple times per day
-if [[ -f $ZSH_COMPDUMP ]]; then
-    local current_day=$(get_day_of_year)
-    local dump_day
+# Cache the comparison result to avoid stat calls on every shell startup
+local cache_check_file="$XDG_CACHE_HOME/zsh/.compdump_check"
+local current_day=$(get_day_of_year)
+local cached_day=""
 
-    if is_macos; then
-        dump_day=$(stat -f '%Sm' -t '%j' "$ZSH_COMPDUMP" 2>/dev/null || echo "0")
-    else
-        # On Linux, convert modification time to day of year
-        local mtime=$(stat -c '%Y' "$ZSH_COMPDUMP" 2>/dev/null || echo "0")
-        dump_day=$(date -d "@$mtime" +'%j' 2>/dev/null || echo "0")
-    fi
+[[ -f "$cache_check_file" ]] && cached_day=$(cat "$cache_check_file" 2>/dev/null)
 
-    if [[ "$current_day" != "$dump_day" ]]; then
-        compinit -d $ZSH_COMPDUMP
-        touch $ZSH_COMPDUMP
-    else
-        compinit -C -d $ZSH_COMPDUMP
-    fi
-else
+if [[ "$current_day" != "$cached_day" ]]; then
+    # Day has changed or cache doesn't exist, regenerate compdump
     compinit -d $ZSH_COMPDUMP
-    touch $ZSH_COMPDUMP
+    echo "$current_day" > "$cache_check_file"
+else
+    # Same day, skip regeneration
+    compinit -C -d $ZSH_COMPDUMP
 fi
 unset ZSH_COMPDUMP
 _comp_options+=(globdots) 

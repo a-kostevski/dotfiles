@@ -13,10 +13,22 @@ if [ -z $HOMEBREW_PREFIX ]; then
    fi
 fi
 
-[ -x $HOMEBREW_PREFIX/bin/brew ] && eval "$($HOMEBREW_PREFIX/bin/brew shellenv)"
+# Cache brew shellenv for faster startup
+if [ -x $HOMEBREW_PREFIX/bin/brew ]; then
+   local brew_cache="$XDG_CACHE_HOME/zsh/brew_shellenv"
+   local brew_bin="$HOMEBREW_PREFIX/bin/brew"
 
-for config_file ($ZDOTDIR/profile.d/*.zsh(N)); do
-    source $config_file
+   # Regenerate cache if brew is newer than cache or cache doesn't exist
+   if [[ ! -f "$brew_cache" ]] || [[ "$brew_bin" -nt "$brew_cache" ]]; then
+      mkdir -p "${brew_cache:h}"
+      "$brew_bin" shellenv > "$brew_cache"
+   fi
+
+   source "$brew_cache"
+fi
+
+for config_file in $ZDOTDIR/profile.d/*.zsh(N); do
+    source "$config_file"
 done
 
 typeset -U PATH path

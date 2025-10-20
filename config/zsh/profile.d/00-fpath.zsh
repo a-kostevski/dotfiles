@@ -1,6 +1,6 @@
 append_fpath() {
-   local dir=$1
-   if [[ -d $dir && ! " ${fpath[*]} " =~ " ${dir} " ]]; then
+   local dir="$1"
+   if [[ -d "$dir" && ! " ${fpath[*]} " =~ " $dir " ]]; then
       fpath+=("$dir")
    fi
 }

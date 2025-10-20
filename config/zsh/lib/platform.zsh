@@ -19,9 +19,26 @@ is_arm() {
   [[ "$(uname -m)" == "arm64" ]] || [[ "$(uname -m)" == "aarch64" ]]
 }
 
-# Check if command exists
+# Command existence cache
+typeset -gA _cmd_cache
+
+# Check if command exists (with caching for performance)
 command_exists() {
-  command -v "$1" &>/dev/null
+  local cmd="$1"
+
+  # Check cache first
+  if (( ${+_cmd_cache[$cmd]} )); then
+    return $_cmd_cache[$cmd]
+  fi
+
+  # Not in cache, check and cache result
+  if command -v "$cmd" &>/dev/null; then
+    _cmd_cache[$cmd]=0
+    return 0
+  else
+    _cmd_cache[$cmd]=1
+    return 1
+  fi
 }
 
 # Get clipboard copy command

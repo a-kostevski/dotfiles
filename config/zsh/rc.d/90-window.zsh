@@ -1,5 +1,6 @@
 # https://github.com/holman/dotfiles/blob/master/zsh/window.zsh
 function title() {
+    local a
     # escape '%' chars in $1, make nonprintables visible
     a=${(V)1//\%/\%\%}
     # Truncate command, and join lines.

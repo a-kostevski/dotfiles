@@ -1,4 +1,16 @@
-## fzf
+## Lazy loading helper for commands
+_lazy_load_cmd() {
+  local cmd="$1"
+  local init_cmd="$2"
+
+  eval "$cmd() {
+    unfunction $cmd
+    $init_cmd
+    $cmd \"\$@\"
+  }"
+}
+
+## fzf - load immediately as it's frequently used
 if command_exists fzf; then
   # Try --zsh flag first (newer versions), fallback to shell-specific completion
   if fzf --zsh &>/dev/null; then
@@ -8,9 +20,9 @@ if command_exists fzf; then
   fi
 fi
 
-## The fuck?
+## thefuck - lazy load as it's not needed immediately
 if command_exists thefuck; then
-  eval "$(thefuck --alias)"
+  _lazy_load_cmd fuck 'eval "$(thefuck --alias)"'
 fi
 
 if test -n "$KITTY_INSTALLATION_DIR"; then
@@ -20,7 +32,7 @@ if test -n "$KITTY_INSTALLATION_DIR"; then
   unfunction kitty-integration
 fi
 
-## 1password
+## 1password - load immediately as it's security-critical
 if command_exists op; then
   eval "$(op completion zsh)"
   compdef _op op
@@ -28,7 +40,10 @@ if command_exists op; then
 
   # Set SSH_AUTH_SOCK for 1Password SSH agent (macOS only)
   if is_macos; then
-    export SSH_AUTH_SOCK=~/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock
+    local op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+    if [[ -S "$op_sock" ]]; then
+      export SSH_AUTH_SOCK="$op_sock"
+    fi
   fi
 fi
 
@@ -39,12 +54,13 @@ fi
 #   [[ -z "${PYENV_VIRTUALENV_INIT}" ]] && eval "$(pyenv virtualenv-init -)"
 # fi
 
+## uv and uvx completions - lazy load
 if command_exists uv; then
-  eval "$(uv generate-shell-completion zsh)"
+  _lazy_load_cmd uv 'eval "$(uv generate-shell-completion zsh)"'
 fi
 
 if command_exists uvx; then
-  eval "$(uvx --generate-shell-completion zsh)"
+  _lazy_load_cmd uvx 'eval "$(uvx --generate-shell-completion zsh)"'
 fi
 
 ##

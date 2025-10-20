@@ -1,4 +1,6 @@
 cd() {
    builtin cd "$@" || return 1
-   eza -al --group-directories-first --no-permissions --no-filesize --no-time --no-user --icons  
+   if command -v eza &>/dev/null; then
+      eza -al --group-directories-first --no-permissions --no-filesize --no-time --no-user --icons
+   fi
 }

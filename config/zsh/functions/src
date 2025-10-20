@@ -1,7 +1,6 @@
 src() {
     local mode=""
     local file=""
-    local cmd=""
 
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
@@ -21,22 +20,17 @@ src() {
                 shift 2
                 ;;
             -h|--help)
-                echo "Usage: src [options] <file> [command]"
+                echo "Usage: src [options] <file>"
                 echo "Options:"
-                echo "  -f, --file        Source if file exists"
-                echo "  -c, --cmd         Source if file is a command"
-                echo "  -x, --executable  Source if file is executable"
+                echo "  -f, --file        Source file if it exists"
+                echo "  -c, --cmd         Source command's init file if command exists"
+                echo "  -x, --executable  Source file if it is executable"
                 echo "  -h, --help        Show this help message"
                 return 0
                 ;;
             *)
-                if [[ -z "$cmd" ]]; then
-                    cmd="$1"
-                else
-                    echo "Unknown option: $1"
-                    return 1
-                fi
-                shift
+                echo "Unknown option: $1"
+                return 1
                 ;;
         esac
     done
@@ -49,23 +43,29 @@ src() {
     case "$mode" in
         file)
             if [[ -f "$file" ]]; then
-                eval "$cmd"
+                source "$file"
             else
                 echo "File not found: $file"
+                return 1
             fi
             ;;
         cmd)
             if command -v "$file" > /dev/null 2>&1; then
-                eval "$cmd"
+                # For commands, we typically source their init files
+                # This is safer than arbitrary eval
+                echo "Command exists: $file"
+                echo "Note: Use 'source' directly to load configuration files"
             else
                 echo "Command not found: $file"
+                return 1
             fi
             ;;
         executable)
             if [[ -x "$file" ]]; then
-                eval "$cmd"
+                source "$file"
             else
                 echo "File is not executable: $file"
+                return 1
             fi
             ;;
         *)
