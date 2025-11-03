@@ -251,21 +251,16 @@ link_binaries() {
   create_directory "$BIN_DEST"
 
   # Link all scripts
-  local count=0
   while IFS= read -r script; do
     # Skip ignored files
     if is_ignored "$script"; then
-      dot_info "Skipping ignored script: ${script#$SCRIPT_DIR/}"
+      [[ "$VERBOSE" == "true" ]] && dot_info "Skipping ignored script: ${script#$SCRIPT_DIR/}"
       continue
     fi
     create_symlink "$script" "$BIN_DEST/$(basename "$script")"
-    ((count++)) || true
   done < <(find "$SCRIPT_DIR/bin" -type f -not -name ".*" 2>/dev/null)
 
-  # Set permissions
-  [[ -d "$BIN_DEST" ]] && dry_run chmod -R 755 "$BIN_DEST"
-
-  dot_success "Linked $count binary scripts"
+  dot_success "Binary scripts linked"
 }
 
 # Run OS-specific installation

@@ -24,18 +24,22 @@ create_symlink() {
     if [[ -L "$dest" ]]; then
         local current_target=$(readlink "$dest")
         if [[ "$current_target" == "$src" ]]; then
-            dot_info "Already linked: $dest"
+            # Only show in verbose mode - symlink already correct
+            [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Already linked: $dest"
             return 0
         else
+            # Always show - symlink is being updated
             dot_info "Updating existing symlink: $dest"
             dry_run rm "$dest"
         fi
     # Handle existing file (non-symlink)
     elif [[ -e "$dest" ]]; then
         if [[ "${FORCE:-false}" == "true" ]]; then
+            # Always show - force removing existing file
             dot_warning "Force removing: $dest"
             dry_run rm -rf "$dest"
         else
+            # Always show - backing up existing file
             local backup="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
             dot_info "Backing up: $dest -> $backup"
             dry_run mv "$dest" "$backup"
@@ -52,14 +56,19 @@ create_symlink() {
             dot_info "Backing up: $dest_dir -> $backup"
             dry_run mv "$dest_dir" "$backup"
         fi
-        dot_info "Creating directory: $dest_dir"
+        # Only show in verbose mode - creating parent directory
+        [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Creating directory: $dest_dir"
         dry_run mkdir -p "$dest_dir"
     fi
 
     # Create symlink
-    dot_info "Linking: $src -> $dest"
+    # Only show in verbose mode if symlink didn't exist before
+    # (updates/backups are already shown above)
+    if [[ ! -L "$dest" ]] && [[ ! -e "$dest" ]] && [[ "${VERBOSE:-false}" == "true" ]]; then
+        dot_info "Linking: $src -> $dest"
+    fi
     dry_run ln -sfn "$src" "$dest"
-    
+
     # Update manifest
     if [[ -z "${DRY_RUN:-}" ]]; then
         update_manifest "$src" "$dest"
@@ -110,16 +119,24 @@ clean_broken_symlinks() {
     for target_dir in "${target_dirs[@]}"; do
         # Skip if directory doesn't exist
         [[ ! -d "$target_dir" ]] && continue
-        
+
         # Use lnclean if available
         if command -v lnclean &>/dev/null; then
-            dot_info "Using lnclean to clean broken symlinks in $target_dir"
+            [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Using lnclean to clean broken symlinks in $target_dir"
             if [[ -n "$dry_run" ]]; then
                 find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null | while read -r link; do
                     print_status "broken" "Would remove: $link"
                     echo $(($(cat "$temp_file") + 1)) > "$temp_file"
                 done
             else
+                # Count broken links before cleaning
+                local broken_links=$(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null)
+                if [[ -n "$broken_links" ]]; then
+                    while IFS= read -r link; do
+                        [[ -n "$link" ]] && print_status "ok" "Removed: $link"
+                        echo $(($(cat "$temp_file") + 1)) > "$temp_file"
+                    done <<< "$broken_links"
+                fi
                 lnclean "$target_dir" 2>/dev/null || true
             fi
         else
@@ -136,7 +153,7 @@ clean_broken_symlinks() {
             done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
         fi
     done
-    
+
     # Also clean home directory symlinks
     for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
         if [[ -L "$link" ]] && [[ ! -e "$link" ]]; then
