@@ -1,14 +1,150 @@
 #!/bin/bash
 
-# Hide menu bar clock
-if [ $(defaults read com.apple.menuextra.clock IsAnalog) = "1" ]; then
-  defaults write com.apple.menuextra.clock IsAnalog -bool false
+#######################################
+# Script Name: cantsleep
+# Description: Toggle macOS menu bar clock to remind yourself to wind down
+# Usage: cantsleep [--help|--status|--quiet]
+#######################################
+
+set -euo pipefail
+
+readonly SCRIPT_NAME=$(basename "$0")
+readonly CLOCK_DOMAIN="com.apple.menuextra.clock"
+
+# Color setup (if supported)
+if command -v tput >/dev/null 2>&1 && [[ -t 1 ]]; then
+  readonly GREEN=$(tput setaf 2)
+  readonly YELLOW=$(tput setaf 3)
+  readonly BLUE=$(tput setaf 4)
+  readonly RESET=$(tput sgr0)
 else
-  defaults write com.apple.menuextra.clock IsAnalog -bool true
-  echo ""
-  echo " Time to wind down. Take deep breaths."
-  echo " Remember: Your work will still be here tomorrow."
-  echo ""
+  readonly GREEN=""
+  readonly YELLOW=""
+  readonly BLUE=""
+  readonly RESET=""
 fi
 
-killall SystemUIServer
+QUIET=false
+
+# Error handler
+error_exit() {
+  echo "ERROR: $1" >&2
+  exit 1
+}
+
+# Platform check
+check_platform() {
+  [[ "$(uname -s)" == "Darwin" ]] || error_exit "This script only works on macOS"
+  command -v defaults >/dev/null 2>&1 || error_exit "defaults command not found"
+  command -v killall >/dev/null 2>&1 || error_exit "killall command not found"
+}
+
+# Get current clock state
+get_clock_state() {
+  defaults read "${CLOCK_DOMAIN}" IsAnalog 2>/dev/null || echo "0"
+}
+
+# Get time-based message
+get_time_message() {
+  local hour=$(date +%H)
+
+  if [[ $hour -ge 22 || $hour -lt 6 ]]; then
+    echo "${BLUE}🌙 It's late. Your body needs rest.${RESET}"
+  elif [[ $hour -ge 18 ]]; then
+    echo "${BLUE}🌅 Evening is here. Time to wind down.${RESET}"
+  else
+    echo "${YELLOW}⏰ Taking a break? Good idea.${RESET}"
+  fi
+}
+
+# Show help
+show_help() {
+  cat <<EOF
+${GREEN}${SCRIPT_NAME}${RESET} - Toggle menu bar clock as a reminder to wind down
+
+${YELLOW}USAGE:${RESET}
+    ${SCRIPT_NAME} [OPTIONS]
+
+${YELLOW}OPTIONS:${RESET}
+    --help      Show this help message
+    --status    Show current clock mode without toggling
+    --quiet     Toggle without messages
+
+${YELLOW}DESCRIPTION:${RESET}
+    Toggles the macOS menu bar clock between analog and digital modes.
+    When switching to digital mode, displays a gentle reminder to rest.
+
+${YELLOW}EXAMPLES:${RESET}
+    ${SCRIPT_NAME}              # Toggle clock mode
+    ${SCRIPT_NAME} --status     # Check current mode
+    ${SCRIPT_NAME} --quiet      # Toggle silently
+EOF
+}
+
+# Show current status
+show_status() {
+  local state=$(get_clock_state)
+  if [[ "$state" == "1" ]]; then
+    echo "Clock mode: ${GREEN}Analog${RESET}"
+  else
+    echo "Clock mode: ${BLUE}Digital${RESET}"
+  fi
+}
+
+# Main toggle function
+toggle_clock() {
+  local current_state=$(get_clock_state)
+
+  if [[ "$current_state" == "1" ]]; then
+    # Switch to digital (wind down mode OFF)
+    defaults write "${CLOCK_DOMAIN}" IsAnalog -bool false
+
+    if [[ "$QUIET" != true ]]; then
+      echo ""
+      echo "  ${GREEN}✓${RESET} Clock set to digital mode"
+      echo ""
+    fi
+  else
+    # Switch to analog (wind down mode ON)
+    defaults write "${CLOCK_DOMAIN}" IsAnalog -bool true
+
+    if [[ "$QUIET" != true ]]; then
+      echo ""
+      get_time_message
+      echo "  ${YELLOW}Take deep breaths.${RESET}"
+      echo "  ${YELLOW}Remember: Your work will still be here tomorrow.${RESET}"
+      echo ""
+    fi
+  fi
+
+  # Restart SystemUIServer to apply changes
+  killall SystemUIServer 2>/dev/null || true
+}
+
+# Parse arguments
+main() {
+  check_platform
+
+  case "${1:-}" in
+    --help | -h)
+      show_help
+      exit 0
+      ;;
+    --status | -s)
+      show_status
+      exit 0
+      ;;
+    --quiet | -q)
+      QUIET=true
+      toggle_clock
+      ;;
+    "")
+      toggle_clock
+      ;;
+    *)
+      error_exit "Unknown option: $1. Use --help for usage information."
+      ;;
+  esac
+}
+
+main "$@"
