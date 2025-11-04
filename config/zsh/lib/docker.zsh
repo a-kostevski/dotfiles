@@ -66,3 +66,7 @@ dlab() {
 dc-fn() {
   docker compose "$@"
 }
+
+dcl-fn() {
+  docker compose logs "$@"
+}

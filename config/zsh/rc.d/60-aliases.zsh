@@ -80,6 +80,7 @@ source "$ZDOTDIR/lib/docker.zsh"
 alias dc=dc-fn
 alias dcu="docker compose up -d"
 alias dcd="docker compose down"
+alias dcl=dcl-fn
 alias dcre="docker compose down && docker compose up -d && docker compose logs -f"
 alias dcr=dcr-fn
 alias dex=dex-fn
