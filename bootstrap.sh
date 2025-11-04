@@ -32,6 +32,7 @@ declare -g OS_TYPE
 declare -g OS_VERSION
 declare -g CONFIG_DEST
 declare -g BIN_DEST
+declare -g PROFILE="minimal"
 declare -g DRY_RUN=""
 declare -g VERBOSE=false
 declare -g SKIP_INSTALL=false
@@ -45,6 +46,7 @@ export CONFIG_DIR="$SCRIPT_DIR/config"
 # Source shared libraries
 source "$SCRIPT_DIR/install/lib.sh"
 source "$SCRIPT_DIR/install/symlinks.sh"
+source "$SCRIPT_DIR/install/profiles.sh"
 
 # Usage information
 usage() {
@@ -55,6 +57,8 @@ Bootstrap script for installing dotfiles across macOS and Ubuntu.
 Syncs all configurations in the config/ directory by default.
 
 OPTIONS:
+    -p, --profile <name>        Installation profile: minimal, standard, full, all
+                                (default: minimal)
     -c, --config-dest <path>    Config directory path (default: ~/.config)
     -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
     -s, --skip-install          Skip OS-specific installation scripts
@@ -64,7 +68,23 @@ OPTIONS:
     --sync                      Sync mode: only update symlinks (skip install)
     -h, --help                  Show this help message
 
+PROFILES:
+    minimal                     Essential configs: git, zsh, tmux
+    standard                    Development tools: minimal + nvim, bat, python
+    full                        Complete setup: standard + clang-format, lldb,
+                                GUI apps (macOS: karabiner, kitty, homebrew)
+    all                         All available configs in config/ directory
+
 EXAMPLES:
+    # Install with minimal profile (default)
+    $SCRIPT_NAME
+
+    # Install with standard profile
+    $SCRIPT_NAME --profile standard
+
+    # Install with full profile
+    $SCRIPT_NAME --profile full
+
     # Installation with dry run
     $SCRIPT_NAME --dry-run
 
@@ -77,6 +97,9 @@ EXAMPLES:
     # Sync configurations only (update symlinks)
     $SCRIPT_NAME --sync
 
+    # Sync with different profile
+    $SCRIPT_NAME --sync --profile standard
+
 EOF
   exit 0
 }
@@ -86,6 +109,12 @@ EOF
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      -p | --profile)
+        PROFILE="${2:-}"
+        [[ -z "$PROFILE" ]] && dot_error "Profile requires a value" && exit 1
+        validate_profile "$PROFILE" || exit 1
+        shift 2
+        ;;
       -c | --config-dest)
         CONFIG_DEST="${2:-}"
         [[ -z "$CONFIG_DEST" ]] && dot_error "Config destination requires a value" && exit 1
@@ -194,41 +223,25 @@ is_ignored() {
 }
 
 # Note: create_symlink is defined in install/symlinks.sh
-
-# Get all config directories
-get_config_list() {
-  local -a configs=()
-  
-  # Find all directories in the config directory
-  if [[ -d "$SCRIPT_DIR/config" ]]; then
-    while IFS= read -r dir; do
-      local config_name
-      config_name=$(basename "$dir")
-      # Skip hidden directories
-      if [[ ! "$config_name" =~ ^\. ]]; then
-        configs+=("$config_name")
-      fi
-    done < <(find "$SCRIPT_DIR/config" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
-  fi
-  
-  printf '%s\n' "${configs[@]}"
-}
+# Note: get_config_list is defined in install/profiles.sh
 
 
 # Link configuration files
 link_configs() {
   local config_list
-  config_list=$(get_config_list)
+  config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
 
   dot_title "Linking configuration files"
 
   if [[ "$VERBOSE" == "true" ]]; then
+    dot_info "Profile: $PROFILE ($(get_profile_description "$PROFILE"))"
     dot_info "OS: $OS_TYPE"
     dot_info "Configs to link: $(echo "$config_list" | xargs | sed 's/ /, /g')"
   fi
 
   # Link each config directory
   while IFS= read -r config; do
+    [[ -z "$config" ]] && continue
     local src="$SCRIPT_DIR/config/$config"
 
     if [[ -d "$src" ]]; then
@@ -306,6 +319,7 @@ create_directories() {
 show_summary() {
   dot_title "Installation Summary"
 
+  echo "  Profile:        $PROFILE ($(get_profile_description "$PROFILE"))"
   echo "  OS Type:        $OS_TYPE"
   echo "  OS Version:     $OS_VERSION"
   echo "  Config Path:    $CONFIG_DEST"
@@ -352,7 +366,7 @@ main() {
   # Export key variables for install scripts and shared libraries
   export dot_root="$SCRIPT_DIR"
   export CONFIG_DIR="$SCRIPT_DIR/config"
-  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE
+  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE
   export CONFIG_DEST BIN_DEST
 
   # Show header

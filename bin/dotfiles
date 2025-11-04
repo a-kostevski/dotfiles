@@ -21,10 +21,12 @@ export VERBOSE=false
 # Source shared libraries
 source "$DOTFILES_ROOT/install/lib.sh"
 source "$DOTFILES_ROOT/install/symlinks.sh"
+source "$DOTFILES_ROOT/install/profiles.sh"
 
 # Configuration
 export MANIFEST_FILE="$HOME/.config/.dotfiles-manifest"
 export CACHE_FILE="$HOME/.cache/dotfiles-status"
+export PROFILE_FILE="$HOME/.config/.dotfiles-profile"
 
 # Detect OS for profile management
 detect_os
@@ -32,18 +34,57 @@ detect_os
 # Ensure OS_TYPE is exported
 export OS_TYPE OS_VERSION
 
+# Get stored profile or default
+get_stored_profile() {
+  if [[ -f "$PROFILE_FILE" ]]; then
+    cat "$PROFILE_FILE"
+  else
+    echo "minimal"
+  fi
+}
+
+# Save profile to file
+save_profile() {
+  local profile="$1"
+  echo "$profile" > "$PROFILE_FILE"
+}
+
 # Command: sync - Update symlinks using bootstrap
 cmd_sync() {
+  local profile=""
   local args=()
 
-  # Pass through all arguments
+  # Parse arguments
   while [[ $# -gt 0 ]]; do
-    args+=("$1")
-    shift
+    case "$1" in
+      -p | --profile | minimal | standard | full | all)
+        # Handle both --profile <name> and direct profile name
+        if [[ "$1" =~ ^(minimal|standard|full|all)$ ]]; then
+          profile="$1"
+          shift
+        else
+          profile="${2:-}"
+          shift 2
+        fi
+        ;;
+      *)
+        args+=("$1")
+        shift
+        ;;
+    esac
   done
 
-  dot_info "Syncing dotfiles configurations..."
-  exec "$DOTFILES_ROOT/bootstrap.sh" --sync "${args[@]}"
+  # Use provided profile or get stored profile
+  if [[ -z "$profile" ]]; then
+    profile=$(get_stored_profile)
+    dot_info "Using stored profile: $profile"
+  else
+    # Save the new profile
+    save_profile "$profile"
+  fi
+
+  dot_info "Syncing dotfiles configurations with $profile profile..."
+  exec "$DOTFILES_ROOT/bootstrap.sh" --sync --profile "$profile" "${args[@]}"
 }
 
 # Command: clean - Remove broken symlinks
@@ -198,18 +239,53 @@ cmd_watch() {
   done
 }
 
+# Command: profile - Show or change profile
+cmd_profile() {
+  local new_profile="${1:-}"
+
+  if [[ -z "$new_profile" ]]; then
+    # Show current profile
+    local current_profile
+    current_profile=$(get_stored_profile)
+
+    dot_title "Current Profile"
+    echo "  Profile: $current_profile"
+    echo "  Description: $(get_profile_description "$current_profile")"
+    echo
+
+    # Show available profiles
+    dot_title "Available Profiles"
+    echo "  minimal   - $(get_profile_description "minimal")"
+    echo "  standard  - $(get_profile_description "standard")"
+    echo "  full      - $(get_profile_description "full")"
+    echo "  all       - $(get_profile_description "all")"
+    echo
+    dot_info "To switch profiles: dotfiles profile <name>"
+  else
+    # Validate and switch to new profile
+    if validate_profile "$new_profile"; then
+      save_profile "$new_profile"
+      dot_success "Switched to $new_profile profile"
+      dot_info "Run 'dotfiles sync' to apply changes"
+    else
+      exit 1
+    fi
+  fi
+}
+
 # Show usage
 usage() {
   cat <<EOF
 Usage: dotfiles <command> [options]
 
 Commands:
-    sync,   s      Update symlinks for all configs
-    clean,  c      Remove broken symlinks
-    status, st     Show symlink health and status
-    watch,  w      Auto-sync on file changes (requires fswatch)
-    help,   h      Show this help message
-    version        Show version information
+    sync,    s       Update symlinks (optional: specify profile)
+    profile, p       Show or change current profile
+    clean,   c       Remove broken symlinks
+    status,  st      Show symlink health and status
+    watch,   w       Auto-sync on file changes (requires fswatch)
+    help,    h       Show this help message
+    version          Show version information
 
 Options:
     -h, --help         Show this help message
@@ -217,8 +293,18 @@ Options:
     -v, --verbose      Show detailed output (for sync/clean commands)
     -s, --summary      Show summary only (for status command)
 
+Profiles:
+    minimal            Essential configs: git, zsh, tmux
+    standard           Development tools: minimal + nvim, bat, python
+    full               Complete setup: standard + clang-format, lldb, GUI apps
+    all                All available configs
+
 Examples:
-    dotfiles s                 # Quick sync
+    dotfiles s                 # Quick sync with current profile
+    dotfiles s standard        # Sync with standard profile
+    dotfiles s --profile full  # Sync with full profile
+    dotfiles p                 # Show current profile
+    dotfiles p standard        # Switch to standard profile
     dotfiles st                # Quick status check
     dotfiles st -s             # Summary only
     dotfiles c -n              # Dry-run clean
@@ -246,6 +332,9 @@ main() {
   case "$command" in
     sync | s)
       cmd_sync "$@"
+      ;;
+    profile | p)
+      cmd_profile "$@"
       ;;
     clean | c)
       cmd_clean "$@"
