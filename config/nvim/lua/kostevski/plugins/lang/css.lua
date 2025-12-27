@@ -86,6 +86,9 @@ return lang.register({
       "luckasRanarison/tailwind-tools.nvim",
       dependencies = { "nvim-treesitter/nvim-treesitter" },
       opts = {
+        server = {
+          override = false, -- Don't use lspconfig, use native vim.lsp.config
+        },
         document_color = {
           enabled = true,
           kind = "inline",
