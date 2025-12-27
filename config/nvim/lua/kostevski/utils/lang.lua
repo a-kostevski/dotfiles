@@ -76,6 +76,48 @@ function M.get_overrides(name)
   return config.overrides and config.overrides[name] or {}
 end
 
+---Get list of available language configurations
+---@return string[]
+function M.get_available()
+  if M._available then
+    return M._available
+  end
+
+  local lang_dir = vim.fn.stdpath("config") .. "/lua/kostevski/plugins/lang"
+  local files = vim.fn.glob(lang_dir .. "/*.lua", false, true)
+
+  M._available = {}
+  for _, file in ipairs(files) do
+    local name = vim.fn.fnamemodify(file, ":t:r")
+    table.insert(M._available, name)
+  end
+
+  return M._available
+end
+
+---Validate configuration and warn about unknown languages
+function M.validate()
+  local config = M.get_config()
+
+  if config.enabled == "all" then
+    return
+  end
+
+  if type(config.enabled) ~= "table" then
+    return
+  end
+
+  local available = M.get_available()
+  for _, name in ipairs(config.enabled) do
+    if not vim.tbl_contains(available, name) then
+      vim.notify(
+        string.format("[lang] '%s' is enabled but no config exists in plugins/lang/", name),
+        vim.log.levels.WARN
+      )
+    end
+  end
+end
+
 ---@class LanguageDefinition Complete language configuration specification
 ---@field name string Language identifier (e.g., "go", "python", "typescript")
 ---@field filetypes string[] Vim filetypes this language applies to
