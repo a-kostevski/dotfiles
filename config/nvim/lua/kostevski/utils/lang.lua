@@ -25,6 +25,57 @@
 ---@class LangUtils Language configuration utilities
 local M = {}
 
+-- Default configuration when no languages.lua exists
+local DEFAULT_CONFIG = {
+  enabled = { "lua" },
+  overrides = {},
+}
+
+---Load and cache language configuration
+---@return {enabled: string|string[], overrides: table}
+function M.get_config()
+  if M._config then
+    return M._config
+  end
+
+  local ok, config = pcall(require, "kostevski.config.languages")
+  if not ok or type(config) ~= "table" then
+    config = vim.deepcopy(DEFAULT_CONFIG)
+  end
+
+  -- Ensure required fields exist
+  config.enabled = config.enabled or DEFAULT_CONFIG.enabled
+  config.overrides = config.overrides or {}
+
+  M._config = config
+  return config
+end
+
+---Check if a language is enabled
+---@param name string Language name
+---@return boolean
+function M.is_enabled(name)
+  local config = M.get_config()
+
+  if config.enabled == "all" then
+    return true
+  end
+
+  if type(config.enabled) == "table" then
+    return vim.tbl_contains(config.enabled, name)
+  end
+
+  return false
+end
+
+---Get configuration overrides for a language
+---@param name string Language name
+---@return table
+function M.get_overrides(name)
+  local config = M.get_config()
+  return config.overrides and config.overrides[name] or {}
+end
+
 ---@class LanguageDefinition Complete language configuration specification
 ---@field name string Language identifier (e.g., "go", "python", "typescript")
 ---@field filetypes string[] Vim filetypes this language applies to
