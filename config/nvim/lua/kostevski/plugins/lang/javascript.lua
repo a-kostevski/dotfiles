@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "javascript",
   filetypes = { "javascript", "javascriptreact", "js", "jsx" },
+  native_lsp = true, -- lsp/ts_ls.lua handles LSP config
   root_markers = {
     "package.json",
     "tsconfig.json",

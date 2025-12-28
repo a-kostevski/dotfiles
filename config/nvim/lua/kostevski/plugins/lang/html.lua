@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "html",
   filetypes = { "html", "htm", "xhtml" },
+  native_lsp = true, -- lsp/html.lua handles LSP config
   root_markers = {
     "index.html",
     "package.json",

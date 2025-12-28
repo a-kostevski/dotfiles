@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "json",
   filetypes = { "json", "jsonc" },
+  native_lsp = true, -- lsp/jsonls.lua handles LSP config
   root_markers = {
     -- Node.js/JavaScript
     "package.json",

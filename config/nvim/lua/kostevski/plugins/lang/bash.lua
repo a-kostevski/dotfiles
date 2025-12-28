@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "bash",
   filetypes = { "sh", "bash" },
+  native_lsp = true, -- lsp/bashls.lua handles LSP config
   root_patterns = {
     -- Shell script indicators
     ".shellcheckrc",

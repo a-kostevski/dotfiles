@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "markdown",
   filetypes = { "markdown", "markdown.mdx" },
+  native_lsp = true, -- lsp/marksman.lua handles LSP config
   root_markers = {
     -- Documentation projects
     "index.md",

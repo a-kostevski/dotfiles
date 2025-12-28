@@ -131,6 +131,7 @@ end
 ---@field mason_packages? string[] Additional Mason packages (tools, linters, etc.)
 ---@field settings? table FileType-specific vim options (e.g., {expandtab=true, shiftwidth=4})
 ---@field additional_plugins? table[] Extra lazy.nvim plugin specifications
+---@field native_lsp? boolean If true, LSP config comes from lsp/<server>.lua, skip generating specs
 
 ---Register a complete language configuration and return plugin specs
 ---
@@ -309,8 +310,20 @@ function M.register(def)
     })
   end
 
-  -- LSP server configuration
-  if def.lsp_server then
+  -- LSP server configuration (skip if native_lsp = true, config comes from lsp/<server>.lua)
+  if def.native_lsp and def.lsp_server then
+    -- Validate that native LSP config exists
+    local server = type(def.lsp_server) == "string" and def.lsp_server or def.lsp_server.name
+    local lsp_file = vim.fn.stdpath("config") .. "/lsp/" .. server .. ".lua"
+    if vim.fn.filereadable(lsp_file) ~= 1 then
+      vim.notify(
+        string.format("[lang] '%s' has native_lsp=true but lsp/%s.lua doesn't exist", def.name, server),
+        vim.log.levels.WARN
+      )
+    end
+  end
+
+  if def.lsp_server and not def.native_lsp then
     -- Add LSP server to lspconfig servers
     table.insert(specs, {
       "neovim/nvim-lspconfig",

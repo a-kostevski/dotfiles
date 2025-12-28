@@ -6,6 +6,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "go",
   filetypes = { "go", "gomod", "gowork", "gotmpl" },
+  native_lsp = true, -- lsp/gopls.lua handles LSP config
   root_markers = {
     -- Go modules
     "go.mod",

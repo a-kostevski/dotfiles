@@ -3,6 +3,8 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "python",
   filetypes = { "python" },
+  lsp_server = "pyright",
+  native_lsp = true, -- lsp/pyright.lua handles LSP config
   root_markers = {
     -- Python-specific
     "pyproject.toml",
@@ -25,7 +27,6 @@ return lang.register({
     "pytest.ini",
     ".pytest.ini",
   },
-  -- lsp_server = "basedpyright",
   formatters = {
     list = { "black", "isort" },
     tools = { "black", "isort" },

@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "shell",
   filetypes = { "zsh", "sh" },
+  native_lsp = true, -- lsp/bashls.lua handles LSP config
   root_markers = {
     -- Zsh specific
     ".zshrc",

@@ -3,6 +3,7 @@ local lang = require("kostevski.utils.lang")
 return lang.register({
   name = "css",
   filetypes = { "css", "scss", "sass", "less", "stylus" },
+  native_lsp = true, -- lsp/cssls.lua handles LSP config
   root_markers = {
     "package.json",
     "postcss.config.js",
