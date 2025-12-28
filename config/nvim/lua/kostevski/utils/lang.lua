@@ -160,6 +160,17 @@ end
 function M.register(def)
   local specs = {}
 
+  -- Check if language is enabled
+  if not M.is_enabled(def.name) then
+    return {}
+  end
+
+  -- Merge any overrides from config
+  local overrides = M.get_overrides(def.name)
+  if next(overrides) then
+    def = vim.tbl_deep_extend("force", def, overrides)
+  end
+
   -- Support both root_patterns (legacy) and root_markers (0.11+)
   local root_markers = def.root_markers or def.root_markers
   if root_markers then
