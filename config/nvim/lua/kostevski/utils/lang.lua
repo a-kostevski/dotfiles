@@ -464,4 +464,9 @@ function M.create_simple(name, opts)
   return vim.tbl_deep_extend("force", base, opts or {})
 end
 
+-- Validate configuration after startup
+vim.defer_fn(function()
+  M.validate()
+end, 100)
+
 return M
