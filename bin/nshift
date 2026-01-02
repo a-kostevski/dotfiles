@@ -1,0 +1,287 @@
+#!/bin/zsh
+
+#######################################
+# Script Name: nshift
+# Description: Control macOS Night Shift from the command line
+# Usage: nshift [on|off|toggle|status|for [hours]|temp [0-100]]
+# Requires: Swift (Xcode Command Line Tools)
+#######################################
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0:t}"
+readonly TIMER_PID_FILE="${TMPDIR:-/tmp}/nshift-timer.pid"
+readonly HELPER="${0:A:h}/nightshift-helper.swift"
+readonly DEFAULT_HOURS=8
+
+# Color setup (if supported)
+if command -v tput >/dev/null 2>&1 && [[ -t 1 ]]; then
+  readonly GREEN=$(tput setaf 2)
+  readonly YELLOW=$(tput setaf 3)
+  readonly BLUE=$(tput setaf 4)
+  readonly RED=$(tput setaf 1)
+  readonly RESET=$(tput sgr0)
+else
+  readonly GREEN=""
+  readonly YELLOW=""
+  readonly BLUE=""
+  readonly RED=""
+  readonly RESET=""
+fi
+
+QUIET=false
+
+# Error handler
+error_exit() {
+  echo "${RED}ERROR:${RESET} $1" >&2
+  exit 1
+}
+
+# Platform check
+check_platform() {
+  [[ "$(uname -s)" == "Darwin" ]] || error_exit "This script only works on macOS"
+}
+
+# Check for Swift helper
+check_helper() {
+  if [[ ! -x "$HELPER" ]]; then
+    error_exit "nightshift-helper.swift not found at $HELPER"
+  fi
+  if ! command -v swift >/dev/null 2>&1; then
+    cat >&2 <<EOF
+${RED}ERROR:${RESET} Swift is required but not installed.
+
+Install Xcode Command Line Tools:
+    ${GREEN}xcode-select --install${RESET}
+EOF
+    exit 1
+  fi
+}
+
+# Run the Swift helper with error handling
+run_helper() {
+  local output
+  if ! output=$(swift "$HELPER" "$@" 2>&1); then
+    error_exit "Night Shift operation failed: $output"
+  fi
+  echo "$output"
+}
+
+# Get current Night Shift status
+get_status() {
+  run_helper status
+}
+
+# Cancel any existing timer
+cancel_timer() {
+  if [[ -f "$TIMER_PID_FILE" ]]; then
+    local pid
+    pid=$(cat "$TIMER_PID_FILE" 2>/dev/null)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      [[ "$QUIET" != true ]] && echo "  ${YELLOW}Cancelled previous timer${RESET}"
+    fi
+    rm -f "$TIMER_PID_FILE"
+  fi
+}
+
+# Enable Night Shift for a specified duration
+enable_for_duration() {
+  local hours="${1:-$DEFAULT_HOURS}"
+  local seconds=$((hours * 3600))
+
+  # Validate hours
+  if ! [[ "$hours" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (( $(echo "$hours <= 0" | bc -l) )); then
+    error_exit "Invalid duration: $hours (must be a positive number)"
+  fi
+
+  # Cancel any existing timer
+  cancel_timer
+
+  # Enable Night Shift
+  run_helper on >/dev/null
+
+  # Start background timer
+  (
+    sleep "$seconds"
+    swift "$HELPER" off 2>/dev/null
+    rm -f "$TIMER_PID_FILE"
+  ) &
+
+  echo $! > "$TIMER_PID_FILE"
+  disown
+
+  if [[ "$QUIET" != true ]]; then
+    echo ""
+    echo "  ${GREEN}Night Shift enabled for ${hours} hour(s)${RESET}"
+    echo "  ${BLUE}Will automatically disable at $(date -v+${seconds}S '+%H:%M')${RESET}"
+    echo ""
+  fi
+}
+
+# Set temperature
+set_temperature() {
+  local temp="$1"
+
+  if ! [[ "$temp" =~ ^[0-9]+$ ]] || (( temp < 0 || temp > 100 )); then
+    error_exit "Temperature must be between 0 and 100"
+  fi
+
+  run_helper temp "$temp" >/dev/null
+
+  if [[ "$QUIET" != true ]]; then
+    echo "  ${GREEN}Temperature set to ${temp}%${RESET}"
+  fi
+}
+
+# Show help
+show_help() {
+  cat <<EOF
+${GREEN}${SCRIPT_NAME}${RESET} - Control macOS Night Shift from the command line
+
+${YELLOW}USAGE:${RESET}
+    ${SCRIPT_NAME} [COMMAND] [OPTIONS]
+
+${YELLOW}COMMANDS:${RESET}
+    on              Enable Night Shift
+    off             Disable Night Shift
+    toggle          Toggle Night Shift (default if no command given)
+    status          Show current Night Shift status
+    for [HOURS]     Enable for HOURS hours (default: ${DEFAULT_HOURS})
+    temp [0-100]    Set color temperature
+    cancel          Cancel any scheduled auto-disable timer
+
+${YELLOW}OPTIONS:${RESET}
+    -h, --help      Show this help message
+    -q, --quiet     Suppress output messages
+    -s, --status    Show status (same as 'status' command)
+
+${YELLOW}EXAMPLES:${RESET}
+    ${SCRIPT_NAME}              # Toggle Night Shift
+    ${SCRIPT_NAME} on           # Enable Night Shift
+    ${SCRIPT_NAME} for          # Enable for 8 hours (default)
+    ${SCRIPT_NAME} for 2        # Enable for 2 hours
+    ${SCRIPT_NAME} temp 70      # Set temperature to 70%
+
+${YELLOW}REQUIREMENTS:${RESET}
+    Swift (Xcode Command Line Tools): xcode-select --install
+EOF
+}
+
+# Show status formatted
+show_status() {
+  local state
+  state=$(get_status)
+
+  if [[ "$state" == "on" ]]; then
+    echo "Night Shift: ${GREEN}ON${RESET}"
+  else
+    echo "Night Shift: ${BLUE}OFF${RESET}"
+  fi
+
+  # Show timer status
+  if [[ -f "$TIMER_PID_FILE" ]]; then
+    local pid
+    pid=$(cat "$TIMER_PID_FILE" 2>/dev/null)
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      echo "Timer: ${YELLOW}Active${RESET} (will auto-disable)"
+    fi
+  fi
+
+  # Show temperature
+  local temp
+  temp=$(run_helper temp 2>/dev/null)
+  [[ -n "$temp" ]] && echo "Temperature: ${temp}%"
+}
+
+# Main function
+main() {
+  check_platform
+
+  # Handle help before checking helper
+  for arg in "$@"; do
+    case "$arg" in
+      -h|--help)
+        show_help
+        exit 0
+        ;;
+    esac
+  done
+
+  check_helper
+
+  local cmd=""
+  local args=()
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -q|--quiet)
+        QUIET=true
+        shift
+        ;;
+      -s|--status)
+        cmd="status"
+        shift
+        ;;
+      *)
+        if [[ -z "$cmd" ]]; then
+          cmd="$1"
+        else
+          args+=("$1")
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  # Default to toggle
+  [[ -z "$cmd" ]] && cmd="toggle"
+
+  case "$cmd" in
+    on)
+      cancel_timer
+      run_helper on >/dev/null
+      [[ "$QUIET" != true ]] && echo "  ${GREEN}Night Shift enabled${RESET}"
+      ;;
+    off)
+      cancel_timer
+      run_helper off >/dev/null
+      [[ "$QUIET" != true ]] && echo "  ${BLUE}Night Shift disabled${RESET}"
+      ;;
+    toggle)
+      cancel_timer
+      local after
+      after=$(run_helper toggle)
+      if [[ "$QUIET" != true ]]; then
+        if [[ "$after" == "on" ]]; then
+          echo "  ${GREEN}Night Shift enabled${RESET}"
+        else
+          echo "  ${BLUE}Night Shift disabled${RESET}"
+        fi
+      fi
+      ;;
+    status)
+      show_status
+      ;;
+    for)
+      enable_for_duration "${args[1]:-$DEFAULT_HOURS}"
+      ;;
+    temp|temperature)
+      if [[ ${#args[@]} -eq 0 ]]; then
+        echo "Temperature: $(run_helper temp)%"
+      else
+        set_temperature "${args[1]}"
+      fi
+      ;;
+    cancel)
+      cancel_timer
+      [[ "$QUIET" != true ]] && echo "  ${GREEN}Timer cancelled${RESET}"
+      ;;
+    *)
+      error_exit "Unknown command: $cmd. Use --help for usage information."
+      ;;
+  esac
+}
+
+main "$@"
