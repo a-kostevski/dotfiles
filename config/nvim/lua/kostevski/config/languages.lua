@@ -10,6 +10,6 @@
 --   }
 
 return {
-  enabled = { "lua" },
+  enabled = { "lua", "terraform" },
   overrides = {},
 }
