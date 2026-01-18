@@ -25,7 +25,8 @@ return lang.register({
     list = { "tflint" },
     tools = { "tflint" },
   },
-  treesitter_parsers = { "terraform", "hcl" },
+  -- treesitter_parsers disabled: hcl/terraform have install issues on nvim-treesitter main branch
+  treesitter_parsers = {},
   settings = {
     expandtab = true,
     shiftwidth = 2,
