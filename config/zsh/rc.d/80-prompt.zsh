@@ -10,5 +10,5 @@ zstyle ':vcs_info:*' stagedstr ' %F{green}+%f'
 # Add vcs_info to precmd hooks instead of overwriting precmd
 add-zsh-hook precmd vcs_info
 
-PROMPT=$'%F{white}%~\n %B%F{blue}>%f%b '
+PROMPT=$'%F{cyan}[%n@%m]%f %F{white}%~\n %B%F{blue}>%f%b '
 RPROMPT='${vcs_info_msg_0_}'
