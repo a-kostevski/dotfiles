@@ -52,6 +52,7 @@ save_profile() {
 # Command: sync - Update symlinks using bootstrap
 cmd_sync() {
   local profile=""
+  local config=""
   local args=()
 
   # Parse arguments
@@ -67,12 +68,28 @@ cmd_sync() {
           shift 2
         fi
         ;;
+      --config)
+        config="${2:-}"
+        shift 2
+        ;;
       *)
-        args+=("$1")
-        shift
+        # If it matches a config directory name, treat as --config
+        if [[ -d "$CONFIG_DIR/$1" ]]; then
+          config="$1"
+          shift
+        else
+          args+=("$1")
+          shift
+        fi
         ;;
     esac
   done
+
+  # When syncing a specific config, skip profile logic
+  if [[ -n "$config" ]]; then
+    dot_info "Syncing $config configuration..."
+    exec "$DOTFILES_ROOT/bootstrap.sh" --sync --config "$config" "${args[@]}"
+  fi
 
   # Use provided profile or get stored profile
   if [[ -z "$profile" ]]; then
@@ -303,6 +320,8 @@ Examples:
     dotfiles s                 # Quick sync with current profile
     dotfiles s standard        # Sync with standard profile
     dotfiles s --profile full  # Sync with full profile
+    dotfiles s nvim            # Sync only nvim config
+    dotfiles s --config zsh    # Sync only zsh config
     dotfiles p                 # Show current profile
     dotfiles p standard        # Switch to standard profile
     dotfiles st                # Quick status check

@@ -38,6 +38,7 @@ declare -g VERBOSE=false
 declare -g SKIP_INSTALL=false
 declare -g FORCE=false
 declare -g SYNC_MODE=false
+declare -g SYNC_CONFIG=""
 
 # Export key variables early for shared libraries
 export dot_root="$SCRIPT_DIR"
@@ -59,6 +60,7 @@ Syncs all configurations in the config/ directory by default.
 OPTIONS:
     -p, --profile <name>        Installation profile: minimal, standard, full, all
                                 (default: minimal)
+    --config <name>             Sync only a specific config (e.g., nvim, zsh)
     -c, --config-dest <path>    Config directory path (default: ~/.config)
     -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
     -s, --skip-install          Skip OS-specific installation scripts
@@ -99,6 +101,9 @@ EXAMPLES:
 
     # Sync with different profile
     $SCRIPT_NAME --sync --profile standard
+
+    # Sync a specific config only
+    $SCRIPT_NAME --sync --config nvim
 
 EOF
   exit 0
@@ -145,6 +150,11 @@ parse_args() {
         SYNC_MODE=true
         SKIP_INSTALL=true
         shift
+        ;;
+      --config)
+        SYNC_CONFIG="${2:-}"
+        [[ -z "$SYNC_CONFIG" ]] && dot_error "Config requires a name" && exit 1
+        shift 2
         ;;
       -h | --help)
         usage
@@ -229,7 +239,17 @@ is_ignored() {
 # Link configuration files
 link_configs() {
   local config_list
-  config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
+
+  if [[ -n "$SYNC_CONFIG" ]]; then
+    local config_path="$SCRIPT_DIR/config/$SYNC_CONFIG"
+    if [[ ! -d "$config_path" ]]; then
+      dot_error "Config not found: $SYNC_CONFIG (no directory at config/$SYNC_CONFIG)"
+      exit 1
+    fi
+    config_list="$SYNC_CONFIG"
+  else
+    config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
+  fi
 
   dot_title "Linking configuration files"
 
@@ -366,7 +386,7 @@ main() {
   # Export key variables for install scripts and shared libraries
   export dot_root="$SCRIPT_DIR"
   export CONFIG_DIR="$SCRIPT_DIR/config"
-  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE
+  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG
   export CONFIG_DEST BIN_DEST
 
   # Show header
@@ -393,8 +413,10 @@ main() {
     # Link configurations
     link_configs
 
-    # Link binaries
-    link_binaries
+    # Link binaries (skip when syncing a specific config)
+    if [[ -z "$SYNC_CONFIG" ]]; then
+      link_binaries
+    fi
 
     dot_success "Sync completed successfully!"
     echo
