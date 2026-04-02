@@ -29,15 +29,15 @@ local Notify = {}
 -- Default configuration
 ---@type NotifyConfig
 Notify.config = {
-   timeout = 5000,
-   max_width = 80,
-   max_height = 20,
+   timeout = 2500,
+   max_width = 50,
+   max_height = 10,
    icons = {
-      ERROR = " ",
-      WARN = " ",
-      INFO = " ",
-      DEBUG = " ",
-      TRACE = "✎ ",
+      ERROR = "",
+      WARN = "",
+      INFO = "",
+      DEBUG = "",
+      TRACE = "",
    },
    spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
 }
@@ -45,6 +45,17 @@ Notify.config = {
 -- Progress tracking for LSP
 ---@type table<string, NotifyProgressData>
 local progress_notifications = {}
+
+-- Duplicate notification tracking
+---@class ActiveNotification
+---@field handle any Notification handle
+---@field count integer Duplicate count
+---@field original_msg string Original message text
+---@field level integer Log level
+---@field opts table Notification options
+
+---@type table<string, ActiveNotification>
+local active_notifications = {}
 
 ---Setup notification module with custom configuration
 ---@param opts? NotifyConfig Configuration options
@@ -75,7 +86,16 @@ function Notify.setup(opts)
    vim.notify = enhanced_notify
 end
 
+---Generate a dedup key from message and level
+---@param msg string
+---@param level integer
+---@return string
+local function dedup_key(msg, level)
+   return string.format("%d:%s", level, msg)
+end
+
 ---Send a notification with formatting and options
+---Duplicate messages within the timeout window are collapsed with a counter badge.
 ---@param msg string|table|any Message content (will be formatted)
 ---@param level? NotifyLevel Log level (number or string)
 ---@param opts? NotifyOptions Additional options
@@ -104,7 +124,6 @@ function Notify.notify(msg, level, opts)
    -- Merge options
    opts = vim.tbl_deep_extend("force", {
       timeout = Notify.config.timeout,
-      icon = Notify.config.icons[vim.log.levels[level]] or "",
    }, opts or {})
 
    -- Format title if provided
@@ -112,7 +131,45 @@ function Notify.notify(msg, level, opts)
       opts.title = Utils.strings.title(opts.title, level)
    end
 
-   -- Send notification
+   -- Check for duplicate: skip dedup if this is a replacement notification (e.g. progress)
+   if not opts.replace then
+      local key = dedup_key(formatted_msg, level)
+      local existing = active_notifications[key]
+
+      if existing and existing.handle then
+         -- Increment counter and update existing notification
+         existing.count = existing.count + 1
+         local display_msg = string.format("%s (x%d)", existing.original_msg, existing.count)
+
+         local new_handle = vim.notify(display_msg, level, vim.tbl_deep_extend("force", opts, {
+            replace = existing.handle,
+         }))
+         existing.handle = new_handle
+         return new_handle
+      end
+
+      -- New notification: track it
+      local handle = vim.notify(formatted_msg, level, opts)
+      active_notifications[key] = {
+         handle = handle,
+         count = 1,
+         original_msg = formatted_msg,
+         level = level,
+         opts = opts,
+      }
+
+      -- Clean up tracking after timeout
+      local timeout = opts.timeout or Notify.config.timeout
+      if timeout and timeout ~= false then
+         vim.defer_fn(function()
+            active_notifications[key] = nil
+         end, timeout + 500)
+      end
+
+      return handle
+   end
+
+   -- Send notification (for replace/progress notifications, no dedup)
    return vim.notify(formatted_msg, level, opts)
 end
 
