@@ -6,7 +6,6 @@ return {
   cmd = "ConformInfo",
     event = { "BufReadPre", "BufNewFile" },
     init = function()
-      vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
       Utils.format.register({
         name = "conform.nvim",
         priority = 100,

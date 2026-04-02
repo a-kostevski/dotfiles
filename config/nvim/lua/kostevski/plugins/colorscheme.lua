@@ -1,55 +1,57 @@
 return {
-   {
-      "catppuccin/nvim",
-      name = "catppuccin",
-      priority = 1000,
-      config = function()
-         require("catppuccin").setup({
-            flavour = "latte",
-            integrations = {
-               blink_cmp = true,
-               flash = true,
-               dap = true,
-               dap_ui = true,
-               gitsigns = true,
-               grug_far = true,
-               indent_blankline = { enabled = true },
-               mason = true,
-               markdown = true,
-               mini = true,
-               native_lsp = {
-                  enabled = true,
-                  underlines = {
-                     errors = { "undercurl" },
-                     hints = { "undercurl" },
-                     warnings = { "undercurl" },
-                     information = { "undercurl" },
-                  },
-               },
-               neotree = true,
-               notify = true,
-               render_markdown = true,
-               telescope = true,
-               treesitter = true,
-               treesitter_context = true,
-               which_key = true,
+  {
+    "catppuccin/nvim",
+    enabled = false,
+    name = "catppuccin",
+    priority = 1000,
+    config = function()
+      require("catppuccin").setup({
+        flavour = "latte",
+        integrations = {
+          blink_cmp = true,
+          flash = true,
+          dap = true,
+          dap_ui = true,
+          gitsigns = true,
+          grug_far = true,
+          indent_blankline = { enabled = true },
+          mason = true,
+          markdown = true,
+          mini = true,
+          native_lsp = {
+            enabled = true,
+            underlines = {
+              errors = { "undercurl" },
+              hints = { "undercurl" },
+              warnings = { "undercurl" },
+              information = { "undercurl" },
             },
-         })
-      end,
-   },
-   {
-      "folke/tokyonight.nvim",
-      lazy = false,
-      priority = 1000,
-      init = function()
-         vim.cmd.colorscheme("tokyonight")
-      end,
-      opts = {
-         style = "night",
-      },
-   },
-   {
-      "shaunsingh/nord.nvim",
-      priority = 1000,
-   },
+          },
+          neotree = true,
+          notify = true,
+          render_markdown = true,
+          telescope = true,
+          treesitter = true,
+          treesitter_context = true,
+          which_key = true,
+        },
+      })
+    end,
+  },
+  {
+    "folke/tokyonight.nvim",
+    lazy = false,
+    priority = 1000,
+    init = function()
+      vim.cmd.colorscheme("tokyonight")
+    end,
+    opts = {
+      style = "night",
+    },
+  },
+  {
+    "shaunsingh/nord.nvim",
+    enabled = false,
+    priority = 1000,
+  },
 }

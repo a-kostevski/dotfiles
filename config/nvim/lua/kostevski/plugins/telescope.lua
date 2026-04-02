@@ -126,7 +126,7 @@ return {
     opts = function()
       local actions = require("telescope.actions")
       local open_with_trouble = function(...)
-        return require("trouble.providers.telescope").open_with_trouble(...)
+        return require("trouble.sources.telescope").open(...)
       end
 
       local find_files_no_ignore = function()

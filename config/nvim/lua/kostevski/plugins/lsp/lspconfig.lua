@@ -127,34 +127,6 @@ return {
         root_markers = { ".git" },
       })
 
-      -- Setup each server
-      -- Neovim automatically merges configs from:
-      -- 1. lsp/<server_name>.lua (if exists)
-      -- 2. vim.lsp.config('*', {...}) global defaults
-      -- 3. server_opts passed here
-      -- local function setup(server_name, server_opts)
-      --   server_opts = server_opts or {}
-      --
-      --   -- Check for custom setup function
-      --   if opts.setup[server_name] then
-      --     if type(opts.setup[server_name]) == "function" and opts.setup[server_name](server_name, server_opts) then
-      --       return -- Custom setup handled it
-      --     end
-      --   elseif opts.setup["*"] then
-      --     if type(opts.setup["*"]) == "function" and opts.setup["*"](server_name, server_opts) then
-      --       return -- Custom setup handled it
-      --     end
-      --   end
-      --
-      --   -- Configure server if we have opts to apply
-      --   if vim.tbl_count(server_opts) > 0 then
-      --     vim.lsp.config(server_name, server_opts)
-      --   end
-      --
-      --   -- Enable the server (Neovim handles file loading and merging)
-      --   vim.lsp.enable(server_name)
-      -- end
-
       -- Get all the servers that are available through mason-lspconfig
 
       local have_mason, mlsp = pcall(require, "mason-lspconfig")

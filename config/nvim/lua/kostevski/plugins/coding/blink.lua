@@ -101,13 +101,8 @@ return {
               },
               source_name = {
                 text = function(ctx)
-                  local source, client = ctx.item.source_id, ctx.item.client_id
-
-                  if client and vim.lsp.get_client_by_id(client).name then
-                    source = vim.lsp.get_client_by_id(client).name
-                  else
-                    source = ctx.item.source_name
-                  end
+                  local client = ctx.item.client_id and vim.lsp.get_client_by_id(ctx.item.client_id)
+                  local source = (client and client.name) or ctx.item.source_name
                   return "[ " .. source .. " ]"
                 end,
               },
