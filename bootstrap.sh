@@ -67,7 +67,7 @@ OPTIONS:
     -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
     -s, --skip-install          Skip OS-specific installation scripts
     -f, --force                 Force overwrite existing files without backup
-    -d, --dry-run               Show what would be done without making changes
+    -n, --dry-run               Show what would be done without making changes
     -v, --verbose               Enable verbose output
     --sync                      Sync mode: only update symlinks (skip install)
     -h, --help                  Show this help message
@@ -140,7 +140,7 @@ parse_args() {
         FORCE=true
         shift
         ;;
-      -d | --dry-run)
+      -n | --dry-run)
         DRY_RUN="dry_run"
         shift
         ;;
