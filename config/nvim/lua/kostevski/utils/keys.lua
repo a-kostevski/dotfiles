@@ -17,17 +17,9 @@ Keys.keys = {
 
    { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp Info" },
    { "gd", vim.lsp.buf.definition, desc = "Goto Definition", has = "definition" },
-   { "gr", vim.lsp.buf.references, desc = "References", nowait = true },
-   { "gI", vim.lsp.buf.implementation, desc = "Goto Implementation" },
+   { "grr", vim.lsp.buf.references, desc = "References", nowait = true },
    { "gy", vim.lsp.buf.type_definition, desc = "Goto Type Definition" },
    { "gD", vim.lsp.buf.declaration, desc = "Goto Declaration" },
-   {
-      "K",
-      function()
-         vim.lsp.buf.hover({ border = "rounded", max_width = 80, max_height = 20 })
-      end,
-      desc = "Hover",
-   },
    {
       "gK",
       function()
@@ -36,25 +28,7 @@ Keys.keys = {
       desc = "Signature Help",
       has = "signatureHelp",
    },
-   {
-      "<c-k>",
-      function()
-         vim.lsp.buf.signature_help({ border = "rounded", max_width = 80 })
-      end,
-      mode = "i",
-      desc = "Signature Help",
-      has = "signatureHelp",
-   },
    { "<leader>ca", vim.lsp.buf.code_action, desc = "Code Action", mode = { "n", "v" }, has = "codeAction" },
-   {
-      "<leader>cA",
-      function()
-         local Utils = require("kostevski.utils")
-         return Utils.lsp and Utils.lsp.actions and Utils.lsp.actions.source()
-      end,
-      desc = "Source Action",
-      has = "codeAction",
-   },
    { "<leader>cc", vim.lsp.codelens.run, desc = "Run Codelens", mode = { "n", "v" }, has = "codeLens" },
    {
       "<leader>cC",
@@ -70,8 +44,14 @@ Keys.keys = {
       "<leader>cR",
       function()
          local Utils = require("kostevski.utils")
-         if Utils.lsp and Utils.lsp.clients then
-            Utils.lsp.clients.rename_file()
+         if Utils.lsp then
+            local from = vim.api.nvim_buf_get_name(0)
+            vim.ui.input({ prompt = "New filename: ", default = from }, function(to)
+               if to and to ~= "" and to ~= from then
+                  Utils.lsp.on_rename(from, to)
+                  vim.cmd.edit(to)
+               end
+            end)
          end
       end,
       desc = "Rename File",

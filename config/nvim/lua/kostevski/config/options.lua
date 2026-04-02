@@ -55,11 +55,6 @@ opt.colorcolumn = "120"
 
 -- Folding
 opt.foldlevel = 99
-opt.formatexpr = "v:lua.Utils.format.formatexpr()"
-opt.formatoptions = "jcroqlnt"
 opt.foldmethod = "expr"
-opt.foldexpr = "v:lua.Utils.ui.foldexpr()"
+opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 opt.foldtext = ""
-
-opt.redrawtime = 1500
-opt.maxmempattern = 2000

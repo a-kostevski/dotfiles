@@ -4,10 +4,10 @@ return {
     enabled = true,
     event = { "BufReadPost", "BufNewFile", "BufWritePost" },
     opts = {
-    events = { "BufWritePost", "BufReadPost", "InsertLeave" },
-    linters_by_ft = {
-      fish = { "fish" },
-      zsh = { "zsh" },
+      events = { "BufWritePost", "BufReadPost", "InsertLeave" },
+      linters_by_ft = {
+        fish = { "fish" },
+        zsh = { "zsh" },
       },
       linters = {},
     },

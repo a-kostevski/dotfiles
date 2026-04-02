@@ -17,10 +17,6 @@
 ---@field on_open? fun(win: integer) Callback when window opens
 ---@field hide_from_history? boolean Hide from notification history
 
----@class NotifyProgressData
----@field client_name string LSP client name
----@field title? string Progress title
-
 ---@class UtilsNotify Notification utilities
 ---@field config NotifyConfig Module configuration
 local Notify = {}
@@ -40,10 +36,6 @@ Notify.config = {
   },
   spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
 }
-
--- Progress tracking for LSP
----@type table<string, NotifyProgressData>
-local progress_notifications = {}
 
 -- Duplicate notification tracking
 ---@class ActiveNotification
@@ -195,80 +187,6 @@ end
 ---@return any? notification_handle
 function Notify.trace(msg, opts)
   return Notify.notify(msg, vim.log.levels.TRACE, opts)
-end
-
----@class LspProgressValue
----@field kind "begin"|"report"|"end" Progress kind
----@field title? string Progress title
----@field message? string Progress message
----@field percentage? number Progress percentage
-
----@class LspProgressResult
----@field token string|integer Progress token
----@field value LspProgressValue Progress value
-
----@class LspProgressContext
----@field client_id integer LSP client ID
-
----Handle LSP progress notifications
----
----Only shows a notification on completion. Live progress is handled by the
----statusline via lsp.progress.statusline().
----@param result LspProgressResult Progress result
----@param ctx LspProgressContext Context with client_id
-function Notify.progress(result, ctx)
-  local client_id = ctx.client_id
-  local value = result.value
-  if not value or not value.kind then
-    return
-  end
-
-  local key = string.format("%s:%s", client_id, result.token)
-
-  if value.kind == "begin" then
-    local client = vim.lsp.get_client_by_id(client_id)
-    progress_notifications[key] = {
-      client_name = client and client.name or "LSP",
-      title = value.title,
-    }
-  elseif value.kind == "end" then
-    local data = progress_notifications[key]
-    progress_notifications[key] = nil
-    if data then
-      Notify.info(value.message or "Complete", {
-        title = data.client_name,
-        timeout = 2000,
-      })
-    end
-  end
-end
-
----Setup LSP handlers for notifications and progress
----@deprecated Use lsp.handlers and lsp.progress modules instead
-function Notify.setup_lsp_handlers()
-  -- No-op: LSP handlers are now managed by lsp.handlers and lsp.progress modules
-end
-
----@class NotifyFormatOptions
----@field progress? number Progress percentage
-
----Format a message for display using string utilities
----@param msg any Message to format
----@param opts? NotifyFormatOptions Formatting options
----@return string? formatted Formatted message or nil
-function Notify.format_message(msg, opts)
-  local Utils = require("kostevski.utils")
-  return Utils.strings.message(msg, opts and opts.progress)
-end
-
----Format a title for display using string utilities
----@param title string Title to format
----@param level? integer Log level (vim.log.levels)
----@param prefix? string Optional prefix
----@return string formatted Formatted title
-function Notify.format_title(title, level, prefix)
-  local Utils = require("kostevski.utils")
-  return Utils.strings.title(title, level, prefix)
 end
 
 return Notify

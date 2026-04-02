@@ -11,6 +11,7 @@ return {
         config = function(_)
           Utils.plugin.on_load("telescope.nvim", function()
             require("telescope").load_extension("fzf")
+            require("telescope").load_extension("ui-select")
           end)
         end,
       },

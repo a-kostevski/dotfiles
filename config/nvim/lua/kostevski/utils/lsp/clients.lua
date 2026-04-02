@@ -1,89 +1,27 @@
 ---@class LspClients LSP client management utilities
 local M = {}
 
----@class ClientCacheEntry
----@field clients table[] LSP clients
----@field time integer Cache timestamp
-
----@type table<string, ClientCacheEntry> Client cache by key
-local client_cache = {}
-
----@class GetClientsOptions
----@field method? string LSP method to filter by
----@field filter? fun(client: table): boolean Custom filter function
-
----Get LSP clients for a buffer with caching
+---Get LSP clients for a buffer
 ---@param bufnr? integer Buffer number (0 or nil for current)
----@param opts? GetClientsOptions Additional options
+---@param opts? {method?: string, filter?: fun(client: table): boolean}
 ---@return table[] clients Array of LSP clients
 function M.get_clients(bufnr, opts)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   opts = opts or {}
 
-  -- Check cache validity
-  local cache_key = string.format("%d:%s", bufnr, opts.method or "all")
-  local cached = client_cache[cache_key]
-  if cached and (vim.uv.now() - cached.time) < 1000 then -- 1 second cache
-    return cached.clients
-  end
-
-  -- Get clients
   local clients = vim.lsp.get_clients({ bufnr = bufnr })
 
-  -- Filter by method support
   if opts.method then
     clients = vim.tbl_filter(function(client)
       return client:supports_method(opts.method)
     end, clients)
   end
 
-  -- Apply custom filter
   if opts.filter then
     clients = vim.tbl_filter(opts.filter, clients)
   end
 
-  -- Update cache
-  client_cache[cache_key] = {
-    clients = clients,
-    time = vim.uv.now(),
-  }
-
   return clients
-end
-
----Get client by name for a buffer
----@param name string Client name to find
----@param bufnr? integer Buffer number (0 or nil for current)
----@return table? client LSP client or nil if not found
-function M.get_client_by_name(name, bufnr)
-  local clients = M.get_clients(bufnr)
-  for _, client in ipairs(clients) do
-    if client.name == name then
-      return client
-    end
-  end
-  return nil
-end
-
----Get combined client capabilities for a buffer
----@param bufnr? integer Buffer number (0 or nil for current)
----@return table capabilities Combined server capabilities from all clients
-function M.get_capabilities(bufnr)
-  local capabilities = {}
-  local clients = M.get_clients(bufnr)
-
-  for _, client in ipairs(clients) do
-    if client.server_capabilities then
-      capabilities = vim.tbl_deep_extend("force", capabilities, client.server_capabilities)
-    end
-  end
-
-  return capabilities
-end
-
----Clear client cache for all buffers
-function M.clear_cache()
-  client_cache = {}
 end
 
 ---Rename file across LSP clients
@@ -107,12 +45,5 @@ function M.rename_file(from, to)
     end
   end
 end
-
--- Auto-clear cache on client changes
-vim.api.nvim_create_autocmd({ "LspAttach", "LspDetach" }, {
-  callback = function()
-    M.clear_cache()
-  end,
-})
 
 return M

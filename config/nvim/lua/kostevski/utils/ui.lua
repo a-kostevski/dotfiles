@@ -75,13 +75,11 @@ local icons = {
       Array = " ",
       Boolean = "󰨙 ",
       Class = " ",
-      Codeium = "󰘦 ",
       Color = " ",
       Control = " ",
       Collapsed = " ",
       Constant = "󰏿 ",
       Constructor = " ",
-      Copilot = " ",
       Enum = " ",
       EnumMember = " ",
       Event = " ",
@@ -105,7 +103,6 @@ local icons = {
       Snippet = " ",
       String = " ",
       Struct = "󰆼 ",
-      TabNine = "󰏚 ",
       Text = " ",
       TypeParameter = " ",
       Unit = " ",
@@ -155,43 +152,7 @@ local icons = {
    },
 }
 
-function icons.get_kind_filter(buf)
-   buf = (buf == nil or buf == 0) and vim.api.nvim_get_current_buf() or buf
-   local ft = vim.bo[buf].filetype
-   if icons.kind_filter == false then
-      return
-   end
-   if icons.kind_filter[ft] == false then
-      return
-   end
-   if type(icons.kind_filter[ft]) == "table" then
-      return icons.kind_filter[ft]
-   end
-   return type(icons.kind_filter) == "table"
-         and type(icons.kind_filter.default) == "table"
-         and icons.kind_filter.default
-      or nil
-end
-
 M.icons = icons
-
-function M.foldtext()
-   local ok = pcall(vim.treesitter.get_parser, vim.api.nvim_get_current_buf())
-   local ret = ok and vim.treesitter.foldtext and vim.treesitter.foldtext()
-   if not ret or type(ret) == "string" then
-      ret = { { vim.api.nvim_buf_get_lines(0, vim.v.lnum - 1, vim.v.lnum, false)[1], {} } }
-   end
-   table.insert(ret, { " " .. require("config.icons").misc.dots })
-   if not vim.treesitter.foldtext then
-      return table.concat(
-         vim.tbl_map(function(line)
-            return line[1]
-         end, ret),
-         " "
-      )
-   end
-   return ret
-end
 
 function M.bufremove(buf)
    buf = buf or 0
@@ -233,40 +194,6 @@ function M.bufremove(buf)
    if vim.api.nvim_buf_is_valid(buf) then
       pcall(vim.cmd, "bdelete! " .. buf)
    end
-end
-
-M.skip_foldexpr = {}
-local skip_check = assert(vim.uv.new_check())
-
-function M.foldexpr()
-   local buf = vim.api.nvim_get_current_buf()
-   -- still in the same tick and no parser
-   if M.skip_foldexpr[buf] then
-      return "0"
-   end
-
-   -- don't use treesitter folds for non-file buffers
-   if vim.bo[buf].buftype ~= "" then
-      return "0"
-   end
-
-   -- as long as we don't have a filetype, don't bother
-   -- checking if treesitter is available (it won't)
-   if vim.bo[buf].filetype == "" then
-      return "0"
-   end
-
-   local ok = pcall(vim.treesitter.get_parser, buf)
-   if ok then
-      return vim.treesitter.foldexpr()
-   end
-
-   M.skip_foldexpr[buf] = true
-   skip_check:start(function()
-      M.skip_foldexpr = {}
-      skip_check:stop()
-   end)
-   return "0"
 end
 
 function M.get_kind_filter(buf)

@@ -62,7 +62,6 @@ function M.setup()
                "zipPlugin",
                "2html_plugin",
                "matchit",
-               "matchparen",
             },
          },
       },
