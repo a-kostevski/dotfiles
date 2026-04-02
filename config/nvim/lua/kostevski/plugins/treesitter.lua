@@ -1,6 +1,7 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
+    branch = "main",
     lazy = false,
     build = ":TSUpdate",
     dependencies = {
@@ -14,8 +15,10 @@ return {
         "c",
         "diff",
         "html",
+        "ini",
         "javascript",
-        "jsdoc",
+        "json",
+        "json5",
         "lua",
         "luadoc",
         "luap",
@@ -30,15 +33,21 @@ return {
       },
     },
     config = function(_, opts)
-      -- Remove duplicate parsers from ensure_installed
-      opts.ensure_installed = Utils.dedup(opts.ensure_installed)
+      local parsers = Utils.dedup(opts.ensure_installed or {})
 
-      -- Enable built-in modules
-      opts.highlight = { enable = true }
-      opts.indent = { enable = true }
+      local ts = require("nvim-treesitter")
+      ts.install(parsers)
 
-      -- Setup nvim-treesitter (handles ensure_installed automatically)
-      require("nvim-treesitter.configs").setup(opts)
+      vim.api.nvim_create_autocmd("FileType", {
+        callback = function(args)
+          local ft = args.match
+          local lang = vim.treesitter.language.get_lang(ft) or ft
+          if pcall(vim.treesitter.language.inspect, lang) then
+            vim.treesitter.start()
+            vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
+        end,
+      })
     end,
   },
 }
