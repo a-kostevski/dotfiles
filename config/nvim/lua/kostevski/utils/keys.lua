@@ -24,19 +24,23 @@ Keys.keys = {
    {
       "K",
       function()
-         vim.lsp.buf.hover()
+         vim.lsp.buf.hover({ border = "rounded", max_width = 80, max_height = 20 })
       end,
       desc = "Hover",
    },
    {
       "gK",
-      vim.lsp.buf.signature_help,
+      function()
+         vim.lsp.buf.signature_help({ border = "rounded", max_width = 80 })
+      end,
       desc = "Signature Help",
       has = "signatureHelp",
    },
    {
       "<c-k>",
-      vim.lsp.buf.signature_help,
+      function()
+         vim.lsp.buf.signature_help({ border = "rounded", max_width = 80 })
+      end,
       mode = "i",
       desc = "Signature Help",
       has = "signatureHelp",
@@ -52,7 +56,15 @@ Keys.keys = {
       has = "codeAction",
    },
    { "<leader>cc", vim.lsp.codelens.run, desc = "Run Codelens", mode = { "n", "v" }, has = "codeLens" },
-   { "<leader>cC", vim.lsp.codelens.refresh, desc = "Refresh & Display Codelens", mode = { "n" }, has = "codeLens" },
+   {
+      "<leader>cC",
+      function()
+         vim.lsp.codelens.enable(not vim.lsp.codelens.is_enabled({ bufnr = 0 }), { bufnr = 0 })
+      end,
+      desc = "Toggle Codelens",
+      mode = { "n" },
+      has = "codeLens",
+   },
    { "<leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" },
    {
       "<leader>cR",

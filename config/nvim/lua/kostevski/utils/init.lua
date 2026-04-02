@@ -22,7 +22,6 @@
 ---@field toggle ToggleUtils Feature toggle system with keybindings
 ---@field root Root Project root detection utilities
 ---@field cache UtilsCache Caching utilities for performance optimization
----@field ai UtilsAi AI assistant integration utilities
 ---@field keys Keys Keymap management utilities
 ---@field strings StringUtils String manipulation functions
 ---@field errors UtilsErrors Error handling and validation utilities
@@ -41,7 +40,6 @@ local Utils = {
     toggle = "kostevski.utils.toggle",
     root = "kostevski.utils.root",
     cache = "kostevski.utils.cache",
-    ai = "kostevski.utils.ai",
     keys = "kostevski.utils.keys",
     strings = "kostevski.utils.strings",
     errors = "kostevski.utils.errors",

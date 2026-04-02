@@ -3,23 +3,8 @@ local M = {}
 
 ---Configure LSP handlers with better UI
 function M.setup()
-  -- Hover handler with border and modern configuration
-  vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-    border = "rounded",
-    max_width = 80,
-    max_height = 20,
-    focusable = false,
-    close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
-  })
-
-  -- Signature help with border and modern configuration
-  vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-    border = "rounded",
-    focusable = false,
-    relative = "cursor",
-    max_width = 80,
-    close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
-  })
+  -- Configure hover and signature help via vim.lsp.buf options
+  -- These are passed at call-time in keymaps, not via deprecated vim.lsp.with()
 
   -- Create a reusable message handler with modern message type mapping
   local function handleMessage(_, result, ctx)
@@ -45,13 +30,13 @@ function M.setup()
 
   -- Log message handler (usually less important)
   vim.lsp.handlers["window/logMessage"] = function(_, result, ctx)
-    -- Only show errors in log messages (not warnings)
+    -- Only show errors in log messages
     if result.type == vim.lsp.protocol.MessageType.Error then
       handleMessage(_, result, ctx)
     end
   end
 
-  -- Rename handler with better UI and modern workspace edit handling
+  -- Rename handler with summary notification
   local orig_rename = vim.lsp.handlers["textDocument/rename"]
   vim.lsp.handlers["textDocument/rename"] = function(err, result, ctx, config)
     if err then
@@ -62,7 +47,7 @@ function M.setup()
     -- Call original handler
     orig_rename(err, result, ctx, config)
 
-    -- Show rename summary for both workspace edits and document changes
+    -- Show rename summary
     local num_files = 0
     local num_changes = 0
 
@@ -82,26 +67,6 @@ function M.setup()
 
     if num_files > 0 then
       vim.notify(string.format("Renamed %d occurrences in %d files", num_changes, num_files), vim.log.levels.INFO)
-    end
-  end
-
-  -- Code action handler with modern filtering and command support
-  local orig_code_action = vim.lsp.handlers["textDocument/codeAction"]
-  if orig_code_action then
-    vim.lsp.handlers["textDocument/codeAction"] = function(err, result, ctx, config)
-      if err then
-        vim.notify("Code action failed: " .. err.message, vim.log.levels.ERROR)
-        return
-      end
-
-      -- Filter out empty results and validate code actions
-      if result and type(result) == "table" then
-        result = vim.tbl_filter(function(action)
-          return action and (action.title or action.command) and (action.edit or action.command or action.data)
-        end, result)
-      end
-
-      orig_code_action(err, result, ctx, config)
     end
   end
 end
@@ -160,14 +125,13 @@ function M.info()
     "workspace/symbol",
     "window/showMessage",
     "window/logMessage",
-    "$/progress",
   }
 
   local lines = { "# LSP Handlers\n" }
 
   for _, handler in ipairs(handlers) do
     local has_handler = vim.lsp.handlers[handler] ~= nil
-    local status = has_handler and "" or ""
+    local status = has_handler and "" or ""
     table.insert(lines, string.format("%s %s", status, handler))
   end
 
@@ -182,26 +146,24 @@ function M.toggle_verbose()
   M.verbose = not M.verbose
 
   if M.verbose then
-    -- Show all messages
+    -- Show all log messages
     vim.lsp.handlers["window/logMessage"] = vim.lsp.handlers["window/showMessage"]
 
-    -- Enable progress notifications
-    vim.lsp.handlers["$/progress"] = function(_, result, ctx)
-      local Utils = require("kostevski.utils")
-      if Utils and Utils.notify and Utils.notify.progress then
-        Utils.notify.progress(result, ctx)
-      end
+    -- Enable progress notifications via autocmd
+    local Utils = require("kostevski.utils")
+    if Utils and Utils.lsp and Utils.lsp.progress then
+      Utils.lsp.progress.set_notify(true)
     end
 
     vim.notify("Verbose LSP notifications enabled", vim.log.levels.INFO)
   else
-    -- Restore quiet handlers
+    -- Restore quiet log handler
     M.setup()
 
-    -- Ensure progress is still tracked silently
+    -- Disable progress notifications
     local Utils = require("kostevski.utils")
     if Utils and Utils.lsp and Utils.lsp.progress then
-      Utils.lsp.progress.setup()
+      Utils.lsp.progress.set_notify(false)
     end
 
     vim.notify("Verbose LSP notifications disabled", vim.log.levels.INFO)

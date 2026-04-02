@@ -26,20 +26,23 @@ return {
                { "filename" },
                {
                   function()
-                     ---@diagnostic disable-next-line: undefined-field
-                     return require("noice").api.status.mode.get()
+                     local ok, progress = pcall(function()
+                        return require("kostevski.utils").lsp.progress.statusline()
+                     end)
+                     return ok and progress or ""
                   end,
-                  cond = function()
-                     ---@diagnostic disable-next-line: undefined-field
-                     return package.loaded["noice"] and require("noice").api.status.mode.has()
-                  end,
-                  fmt = function()
+               },
+               {
+                  function()
                      local recording_register = vim.fn.reg_recording()
                      if recording_register == "" then
                         return ""
                      else
                         return "Recording @" .. recording_register
                      end
+                  end,
+                  cond = function()
+                     return vim.fn.reg_recording() ~= ""
                   end,
                },
             },

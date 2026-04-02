@@ -228,14 +228,10 @@ end
 ---  require("kostevski.utils.lsp").setup()
 function Lsp.setup()
   -- Setup handlers with modern configuration
-  if rawget(Lsp, "handlers") then
-    Lsp.handlers.setup()
-  end
+  Lsp.handlers.setup()
 
-  -- Setup progress tracking
-  if rawget(Lsp, "progress") then
-    Lsp.progress.setup()
-  end
+  -- Setup progress tracking via LspProgress autocmd
+  Lsp.progress.setup()
 
   -- Setup document highlighting words
   if rawget(Lsp, "words") then
