@@ -91,17 +91,16 @@ cmd_sync() {
     exec "$DOTFILES_ROOT/bootstrap.sh" --sync --config "$config" "${args[@]}"
   fi
 
-  # Use provided profile or get stored profile
-  if [[ -z "$profile" ]]; then
-    profile=$(get_stored_profile)
-    dot_info "Using stored profile: $profile"
-  else
-    # Save the new profile
+  # When a profile is explicitly specified, use it
+  if [[ -n "$profile" ]]; then
     save_profile "$profile"
+    dot_info "Syncing dotfiles configurations with $profile profile..."
+    exec "$DOTFILES_ROOT/bootstrap.sh" --sync --profile "$profile" "${args[@]}"
   fi
 
-  dot_info "Syncing dotfiles configurations with $profile profile..."
-  exec "$DOTFILES_ROOT/bootstrap.sh" --sync --profile "$profile" "${args[@]}"
+  # Default: re-sync only previously synced configs
+  dot_info "Re-syncing previously synced configs..."
+  exec "$DOTFILES_ROOT/bootstrap.sh" --sync --synced "${args[@]}"
 }
 
 # Command: clean - Remove broken symlinks
@@ -317,7 +316,7 @@ Profiles:
     all                All available configs
 
 Examples:
-    dotfiles s                 # Quick sync with current profile
+    dotfiles s                 # Re-sync previously synced configs
     dotfiles s standard        # Sync with standard profile
     dotfiles s --profile full  # Sync with full profile
     dotfiles s nvim            # Sync only nvim config

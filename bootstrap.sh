@@ -39,6 +39,7 @@ declare -g SKIP_INSTALL=false
 declare -g FORCE=false
 declare -g SYNC_MODE=false
 declare -g SYNC_CONFIG=""
+declare -g SYNC_SYNCED=false
 
 # Export key variables early for shared libraries
 export dot_root="$SCRIPT_DIR"
@@ -61,6 +62,7 @@ OPTIONS:
     -p, --profile <name>        Installation profile: minimal, standard, full, all
                                 (default: minimal)
     --config <name>             Sync only a specific config (e.g., nvim, zsh)
+    --synced                    Re-sync only previously synced configs
     -c, --config-dest <path>    Config directory path (default: ~/.config)
     -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
     -s, --skip-install          Skip OS-specific installation scripts
@@ -156,6 +158,10 @@ parse_args() {
         [[ -z "$SYNC_CONFIG" ]] && dot_error "Config requires a name" && exit 1
         shift 2
         ;;
+      --synced)
+        SYNC_SYNCED=true
+        shift
+        ;;
       -h | --help)
         usage
         ;;
@@ -247,6 +253,14 @@ link_configs() {
       exit 1
     fi
     config_list="$SYNC_CONFIG"
+  elif [[ "$SYNC_SYNCED" == "true" ]]; then
+    config_list=$(get_synced_configs "$CONFIG_DEST")
+    if [[ -z "$config_list" ]]; then
+      dot_warning "No previously synced configs detected, falling back to profile: $PROFILE"
+      config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
+    else
+      dot_info "Detected synced configs: $(echo "$config_list" | xargs | sed 's/ /, /g')"
+    fi
   else
     config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
   fi
@@ -386,7 +400,7 @@ main() {
   # Export key variables for install scripts and shared libraries
   export dot_root="$SCRIPT_DIR"
   export CONFIG_DIR="$SCRIPT_DIR/config"
-  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG
+  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG SYNC_SYNCED
   export CONFIG_DEST BIN_DEST
 
   # Show header
@@ -413,8 +427,12 @@ main() {
     # Link configurations
     link_configs
 
-    # Link binaries (skip when syncing a specific config)
-    if [[ -z "$SYNC_CONFIG" ]]; then
+    # Link binaries (skip when syncing a specific config, or when --synced with no binaries linked)
+    if [[ -n "$SYNC_CONFIG" ]]; then
+      : # skip binaries for single-config sync
+    elif [[ "$SYNC_SYNCED" == "true" ]] && ! has_synced_binaries "$BIN_DEST"; then
+      [[ "$VERBOSE" == "true" ]] && dot_info "No previously synced binaries detected, skipping"
+    else
       link_binaries
     fi
 

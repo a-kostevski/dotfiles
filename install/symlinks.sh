@@ -202,6 +202,75 @@ read_manifest() {
     fi
 }
 
+# Get list of configs that are currently synced (have symlinks pointing to dotfiles)
+get_synced_configs() {
+    local config_dest="${1:-$HOME/.config}"
+    local config_src="${CONFIG_DIR:-$dot_root/config}"
+    local -a synced=()
+
+    # Check ~/.config subdirectories for symlinks pointing to our config source
+    for config_dir in "$config_dest"/*/; do
+        [[ -d "$config_dir" ]] || continue
+        local config_name
+        config_name=$(basename "$config_dir")
+
+        # Check if any symlink in this dir points back to our config source
+        local found=false
+        while IFS= read -r link; do
+            local target
+            target=$(readlink "$link" 2>/dev/null || true)
+            if [[ "$target" == "$config_src/$config_name"* ]]; then
+                found=true
+                break
+            fi
+        done < <(find "$config_dir" -maxdepth 2 -type l 2>/dev/null)
+
+        [[ "$found" == "true" ]] && synced+=("$config_name")
+    done
+
+    # Check special home-directory symlinks (zsh, lldb)
+    if [[ -L "$HOME/.zshenv" ]]; then
+        local target
+        target=$(readlink "$HOME/.zshenv" 2>/dev/null || true)
+        if [[ "$target" == "$config_src/zsh"* ]]; then
+            # Add zsh if not already detected
+            local has_zsh=false
+            for s in "${synced[@]}"; do [[ "$s" == "zsh" ]] && has_zsh=true; done
+            [[ "$has_zsh" == "false" ]] && synced+=("zsh")
+        fi
+    fi
+
+    if [[ -L "$HOME/.lldbinit" ]]; then
+        local target
+        target=$(readlink "$HOME/.lldbinit" 2>/dev/null || true)
+        if [[ "$target" == "$config_src/lldb"* ]]; then
+            local has_lldb=false
+            for s in "${synced[@]}"; do [[ "$s" == "lldb" ]] && has_lldb=true; done
+            [[ "$has_lldb" == "false" ]] && synced+=("lldb")
+        fi
+    fi
+
+    printf '%s\n' "${synced[@]}" | sort -u
+}
+
+# Check if any binaries are currently synced
+has_synced_binaries() {
+    local bin_dest="${1:-$HOME/.local/bin}"
+    local bin_src="${dot_root:-}/bin"
+
+    [[ ! -d "$bin_dest" ]] && return 1
+
+    while IFS= read -r link; do
+        local target
+        target=$(readlink "$link" 2>/dev/null || true)
+        if [[ "$target" == "$bin_src"* ]]; then
+            return 0
+        fi
+    done < <(find "$bin_dest" -maxdepth 1 -type l 2>/dev/null)
+
+    return 1
+}
+
 # Get all expected symlinks for a config
 get_config_symlinks() {
     local config_name="$1"
