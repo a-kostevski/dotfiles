@@ -155,12 +155,15 @@ function M.safe_require(module, opts)
    return opts.default, false
 end
 
----Validate function arguments using vim.validate
----@param validations table<string, any> Validation spec (same as vim.validate)
+---Validate a single function argument using vim.validate
+---@param name string Argument name
+---@param value any Argument value
+---@param validator string|string[] Expected type(s)
+---@param optional? boolean Whether the argument is optional (nil allowed)
 ---@return boolean valid Whether validation passed
 ---@return string? error Error message if validation failed
-function M.validate(validations)
-   local ok, err = pcall(vim.validate, validations)
+function M.validate(name, value, validator, optional)
+   local ok, err = pcall(vim.validate, name, value, validator, optional)
 
    if not ok then
       return false, err

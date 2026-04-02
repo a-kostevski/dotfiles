@@ -203,7 +203,7 @@ function Utils.norm(path)
 
   -- Replace ~ with the home directory
   if path:sub(1, 1) == "~" then
-    local home = vim.loop.os_homedir()
+    local home = vim.uv.os_homedir()
     if home then
       path = home .. path:sub(2)
     end

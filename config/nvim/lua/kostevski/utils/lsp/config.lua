@@ -72,7 +72,7 @@ function M.setup_root_markers(markers)
     return { markers }
   elseif type(markers) == "table" then
     -- Check if it's already properly formatted
-    if vim.tbl_islist(markers) then
+    if vim.islist(markers) then
       return markers
     else
       -- Convert single-level table to list

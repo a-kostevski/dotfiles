@@ -244,13 +244,11 @@ function M.get_supported_methods(bufnr)
       end
     end
 
-    -- Check dynamic capabilities using modern API
-    if client.supports_method then
-      for method, _ in pairs(method_capabilities) do
-        if client:supports_method(method) and not seen[method] then
-          table.insert(methods, method)
-          seen[method] = true
-        end
+    -- Check dynamic capabilities
+    for method, _ in pairs(method_capabilities) do
+      if client:supports_method(method) and not seen[method] then
+        table.insert(methods, method)
+        seen[method] = true
       end
     end
   end

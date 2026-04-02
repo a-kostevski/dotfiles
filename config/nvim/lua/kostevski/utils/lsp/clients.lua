@@ -23,7 +23,7 @@ function M.get_clients(bufnr, opts)
   -- Check cache validity
   local cache_key = string.format("%d:%s", bufnr, opts.method or "all")
   local cached = client_cache[cache_key]
-  if cached and (vim.loop.now() - cached.time) < 1000 then -- 1 second cache
+  if cached and (vim.uv.now() - cached.time) < 1000 then -- 1 second cache
     return cached.clients
   end
 
@@ -45,7 +45,7 @@ function M.get_clients(bufnr, opts)
   -- Update cache
   client_cache[cache_key] = {
     clients = clients,
-    time = vim.loop.now(),
+    time = vim.uv.now(),
   }
 
   return clients

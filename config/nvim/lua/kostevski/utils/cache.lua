@@ -91,7 +91,7 @@ function Cache._create_interface(name)
   ---@param key string Cache key
   ---@return any? value Cached value or nil if not found/expired
   function interface.get(key)
-    vim.validate({ key = { key, "string" } })
+    vim.validate("key", key, "string")
 
     local entry = store.data[key]
     if not entry then
@@ -100,7 +100,7 @@ function Cache._create_interface(name)
     end
 
     -- Check TTL
-    if vim.loop.now() - entry.timestamp > store.ttl then
+    if vim.uv.now() - entry.timestamp > store.ttl then
       interface.delete(key)
       store.stats.misses = store.stats.misses + 1
       return nil
@@ -117,7 +117,7 @@ function Cache._create_interface(name)
   ---@param key string Cache key
   ---@param value any Value to cache
   function interface.set(key, value)
-    vim.validate({ key = { key, "string" } })
+    vim.validate("key", key, "string")
 
     -- Estimate size
     local size = estimate_size(value)
@@ -135,7 +135,7 @@ function Cache._create_interface(name)
     -- Add new entry
     store.data[key] = {
       value = value,
-      timestamp = vim.loop.now(),
+      timestamp = vim.uv.now(),
       hits = 0,
       size = size,
     }
@@ -205,7 +205,7 @@ function Cache._create_interface(name)
   ---@return number score Lower score = evict first
   function interface._calculate_eviction_score(entry)
     local policy = store.eviction_policy
-    local now = vim.loop.now()
+    local now = vim.uv.now()
 
     if policy == "lru" then
       -- Least Recently Used: score by last access time
@@ -277,10 +277,8 @@ end
 ---@param opts? CacheOptions Configuration options
 ---@return CacheInterface cache_interface Cache interface with methods
 function Cache.create(name, opts)
-  vim.validate({
-    name = { name, "string" },
-    opts = { opts, "table", true },
-  })
+  vim.validate("name", name, "string")
+  vim.validate("opts", opts, "table", true)
 
   -- Return existing store interface if it already exists
   if stores[name] then
@@ -352,13 +350,13 @@ Cache.filesystem = Cache.create("filesystem", { ttl = 5000 }) -- 5 seconds
 
 -- Periodic cleanup
 ---@type uv_timer_t
-local cleanup_timer = vim.loop.new_timer()
+local cleanup_timer = vim.uv.new_timer()
 cleanup_timer:start(
   60000,
   60000,
   vim.schedule_wrap(function()
     for name, store in pairs(stores) do
-      local now = vim.loop.now()
+      local now = vim.uv.now()
       local expired = {}
 
       for key, entry in pairs(store.data) do

@@ -151,11 +151,9 @@ end
 ---@param rhs function|string
 ---@param opts? table
 function Keys.map(lhs, rhs, opts)
-   vim.validate({
-      lhs = { lhs, "string" },
-      rhs = { rhs, { "function", "string" } },
-      opts = { opts, "table", true },
-   })
+   vim.validate("lhs", lhs, "string")
+   vim.validate("rhs", rhs, { "function", "string" })
+   vim.validate("opts", opts, "table", true)
 
    opts = opts or {}
    local keymap_def = {
@@ -196,17 +194,15 @@ function Keys.on_attach(client, buffer)
       if keymap.has then
          -- Skip if no client supports this method
          local has_capability = false
-         if client.supports_method then
-            if type(keymap.has) == "table" then
-               for _, method in ipairs(keymap.has) do
-                  if client:supports_method("textDocument/" .. method) then
-                     has_capability = true
-                     break
-                  end
+         if type(keymap.has) == "table" then
+            for _, method in ipairs(keymap.has) do
+               if client:supports_method("textDocument/" .. method) then
+                  has_capability = true
+                  break
                end
-            else
-               has_capability = client:supports_method("textDocument/" .. keymap.has)
             end
+         else
+            has_capability = client:supports_method("textDocument/" .. keymap.has)
          end
 
          if not has_capability then
@@ -270,13 +266,13 @@ function Keys.debug()
             if type(keymap.has) == "table" then
                has_cap = false
                for _, method in ipairs(keymap.has) do
-                  if client.supports_method and client:supports_method("textDocument/" .. method) then
+                  if client:supports_method("textDocument/" .. method) then
                      has_cap = true
                      break
                   end
                end
             else
-               has_cap = client.supports_method and client:supports_method("textDocument/" .. keymap.has) or false
+               has_cap = client:supports_method("textDocument/" .. keymap.has)
             end
          end
          if has_cap then

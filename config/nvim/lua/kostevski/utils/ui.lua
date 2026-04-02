@@ -293,7 +293,7 @@ end
 
 function M.spinner(interval)
    local spinner = M.icons.misc.spinner_frames
-   local ms = (vim.uv or vim.loop).hrtime() / 1000000
+   local ms = vim.uv.hrtime() / 1000000
    local frame = math.floor(ms / interval) % #spinner
    return spinner[frame + 1]
 end

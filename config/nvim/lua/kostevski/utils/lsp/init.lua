@@ -173,7 +173,7 @@ function Lsp.on_attach(fn)
 
   -- Also register with existing clients
   for _, client in ipairs(vim.lsp.get_clients()) do
-    for _, bufnr in ipairs(vim.lsp.get_buffers_by_client_id(client.id)) do
+    for bufnr in pairs(client.attached_buffers) do
       fn(client, bufnr)
     end
   end
@@ -192,7 +192,7 @@ function Lsp.on_dynamic_capability(fn)
     -- Call our handler
     local client = vim.lsp.get_client_by_id(ctx.client_id)
     if client then
-      for _, bufnr in ipairs(vim.lsp.get_buffers_by_client_id(client.id)) do
+      for bufnr in pairs(client.attached_buffers) do
         fn(client, bufnr)
       end
     end
