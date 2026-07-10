@@ -96,8 +96,9 @@ function ai_config.whichkey(opts)
    mappings.goto_right = nil
 
    for name, prefix in pairs(mappings) do
-      name = name:gsub("^around_", ""):gsub("^inside_", "")
-      ret[#ret + 1] = { prefix, group = name }
+      -- loop variables are <const> in Lua 5.4, so use a new local
+      local group = name:gsub("^around_", ""):gsub("^inside_", "")
+      ret[#ret + 1] = { prefix, group = group }
       for _, obj in ipairs(objects) do
          local desc = obj.desc
          if prefix:sub(1, 1) == "i" then
