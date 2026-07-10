@@ -107,6 +107,21 @@ assert_contains "restore warns when dest exists" "already exists" "$restore_out"
 assert_eq "dest untouched by refused restore" "oldest" "$(cat "$tmp_bak/cfg")"
 rm -rf "$tmp_bak"
 
+# mv failure must fail loudly (skip as root: root ignores mode bits)
+if [[ $EUID -ne 0 ]]; then
+  tmp_ro="$(mktemp -d)"
+  echo "content" >"$tmp_ro/cfg.backup.20240101_000000"
+  chmod 555 "$tmp_ro"
+  ro_out="$(restore_newest_backup "$tmp_ro/cfg" 2>&1)"
+  ro_rc=$?
+  assert_eq "restore returns rc 1 when mv fails" "1" "$ro_rc"
+  assert_contains "restore reports mv failure" "Failed to restore" "$ro_out"
+  assert_eq "backup still exists after failed restore" \
+    "yes" "$([[ -f "$tmp_ro/cfg.backup.20240101_000000" ]] && echo yes || echo no)"
+  chmod 755 "$tmp_ro"
+  rm -rf "$tmp_ro"
+fi
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

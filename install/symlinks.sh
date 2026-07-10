@@ -228,10 +228,13 @@ restore_newest_backup() {
         dot_warning "Not restoring $backup: $dest already exists"
         return 1
     fi
-    mv "$backup" "$dest"
+    if ! mv "$backup" "$dest"; then
+        dot_error "Failed to restore: $backup -> $dest"
+        return 1
+    fi
     print_status "ok" "Restored: $dest (from ${backup##*/})"
 
-    # Spec: older backups are left in place and reported
+    # Older backups are left in place and reported
     local other
     for other in "$dest".backup.*; do
         [[ -e "$other" || -L "$other" ]] || continue
