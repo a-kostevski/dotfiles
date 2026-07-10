@@ -135,15 +135,8 @@
 [init]
 	defaultBranch = main
 
-[gpg]
-    format = ssh
-
-[gpg "ssh"]
-    program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
-
-[commit]
-    gpgSign = true
-
+# Identity and commit signing are machine-specific and live in
+# gitconfig.local (untracked). Copy gitconfig.local.example to get started.
 [include]
     path = gitconfig.local
 

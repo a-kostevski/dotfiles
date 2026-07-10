@@ -1,0 +1,23 @@
+# Machine-specific git configuration.
+# Copy this file to gitconfig.local (same directory) and fill in your details.
+# gitconfig.local is git-ignored, so nothing here gets committed.
+
+[user]
+	name = Your Name
+	email = you@example.com
+	# SSH public key used for commit signing (optional, see below)
+	# signingkey = ssh-ed25519 AAAA...
+
+# Commit signing via SSH key (optional).
+# On macOS with 1Password, uncomment all three sections below.
+# On Linux or without 1Password, set program to your ssh-keygen-compatible
+# signer (or omit [gpg "ssh"] to use the default ssh-keygen).
+#
+# [gpg]
+# 	format = ssh
+#
+# [gpg "ssh"]
+# 	program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+#
+# [commit]
+# 	gpgSign = true
