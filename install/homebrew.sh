@@ -57,7 +57,7 @@ install_packages() {
     return 1
   fi
 
-  if execute_cmd "brew bundle --file='$brewfile' --no-lock"; then
+  if execute_cmd "brew bundle --file='$brewfile'"; then
     dot_success "Installed Homebrew packages"
   else
     dot_error "Failed to install some Homebrew packages"

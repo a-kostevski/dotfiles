@@ -1,7 +1,3 @@
-tap "homebrew/core"
-tap "homebrew/cask"
-tap "homebrew/bundle"
-
 # Essential command line tools
 brew "git"
 brew "curl"
