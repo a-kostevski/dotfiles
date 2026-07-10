@@ -204,6 +204,41 @@ find_owned_symlinks() {
     return 0
 }
 
+# Print the mtime-newest backup for a destination, if any.
+# (The .N collision suffix breaks lexical ordering, so compare with -nt.)
+newest_backup_path() {
+    local dest="$1"
+    local newest="" b
+    for b in "$dest".backup.*; do
+        [[ -e "$b" || -L "$b" ]] || continue
+        if [[ -z "$newest" || "$b" -nt "$newest" ]]; then
+            newest="$b"
+        fi
+    done
+    [[ -n "$newest" ]] || return 1
+    printf '%s\n' "$newest"
+}
+
+# Move the newest backup back into place. Never overwrites.
+restore_newest_backup() {
+    local dest="$1"
+    local backup
+    backup=$(newest_backup_path "$dest") || return 1
+    if [[ -e "$dest" || -L "$dest" ]]; then
+        dot_warning "Not restoring $backup: $dest already exists"
+        return 1
+    fi
+    mv "$backup" "$dest"
+    print_status "ok" "Restored: $dest (from ${backup##*/})"
+
+    # Spec: older backups are left in place and reported
+    local other
+    for other in "$dest".backup.*; do
+        [[ -e "$other" || -L "$other" ]] || continue
+        print_status "info" "Older backup kept: $other"
+    done
+}
+
 # Update manifest file with symlink information
 update_manifest() {
     local src="$1"

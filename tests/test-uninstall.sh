@@ -76,6 +76,37 @@ assert_eq "real file -> 1" "1" \
   "$(is_owned_symlink "$tmp_scan/home/.config/realfile" "$tmp_scan/owner"; echo $?)"
 rm -rf "$tmp_scan"
 
+echo "== newest_backup_path / restore_newest_backup =="
+tmp_bak="$(mktemp -d)"
+echo "oldest" >"$tmp_bak/cfg.backup.20240101_000000"
+echo "newest" >"$tmp_bak/cfg.backup.20250101_000000"
+echo "collision" >"$tmp_bak/cfg.backup.20240101_000000.1"
+# mtime decides, not the name: make the lexically-oldest file the newest
+touch "$tmp_bak/cfg.backup.20240101_000000.1"
+sleep 1 2>/dev/null || true
+touch "$tmp_bak/cfg.backup.20240101_000000"
+
+assert_eq "newest_backup_path picks by mtime" \
+  "$tmp_bak/cfg.backup.20240101_000000" \
+  "$(newest_backup_path "$tmp_bak/cfg")"
+
+assert_eq "no backups -> rc 1, empty output" "1|" \
+  "$(out=$(newest_backup_path "$tmp_bak/other"); echo "$?|$out")"
+
+restore_newest_backup "$tmp_bak/cfg" >/dev/null
+assert_eq "restore moves newest backup into place" \
+  "oldest" "$(cat "$tmp_bak/cfg" 2>/dev/null || echo MISSING)"
+assert_eq "older backups are left alone" \
+  "yes" "$([[ -f "$tmp_bak/cfg.backup.20250101_000000" ]] && echo yes || echo no)"
+
+# Refuses to overwrite: cfg now exists, another backup remains
+restore_out="$(restore_newest_backup "$tmp_bak/cfg" 2>&1)"
+restore_rc=$?
+assert_eq "restore refuses to overwrite existing dest" "1" "$restore_rc"
+assert_contains "restore warns when dest exists" "already exists" "$restore_out"
+assert_eq "dest untouched by refused restore" "oldest" "$(cat "$tmp_bak/cfg")"
+rm -rf "$tmp_bak"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]
