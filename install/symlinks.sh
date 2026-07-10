@@ -242,6 +242,44 @@ restore_newest_backup() {
     done
 }
 
+# Remove one owned symlink; restore its newest backup unless RESTORE=false.
+# rc 0 when a link was (or would be) removed, rc 1 when dest is not a link.
+# Increments UNINSTALL_RESTORED (caller-initialized) on restore.
+uninstall_symlink() {
+    local dest="$1"
+
+    [[ -L "$dest" ]] || return 1
+    dry_run rm "$dest"
+    [[ -z "${DRY_RUN:-}" ]] && print_status "ok" "Removed: $dest"
+
+    if [[ "${RESTORE:-true}" == "true" ]]; then
+        local backup
+        if backup=$(newest_backup_path "$dest"); then
+            if [[ -n "${DRY_RUN:-}" ]]; then
+                echo "[DRY-RUN] mv $backup $dest"
+                UNINSTALL_RESTORED=$((${UNINSTALL_RESTORED:-0} + 1))
+            elif restore_newest_backup "$dest"; then
+                UNINSTALL_RESTORED=$((${UNINSTALL_RESTORED:-0} + 1))
+            fi
+        fi
+    fi
+    return 0
+}
+
+# Depth-first removal of empty directories under and including root
+prune_empty_dirs() {
+    local root="$1"
+
+    [[ -d "$root" ]] || return 0
+    if [[ -n "${DRY_RUN:-}" ]]; then
+        find "$root" -depth -type d -empty -print 2>/dev/null |
+            sed 's/^/[DRY-RUN] rmdir /'
+    else
+        find "$root" -depth -type d -empty -delete 2>/dev/null
+    fi
+    return 0
+}
+
 # Update manifest file with symlink information (one line per dest: any
 # previous entry for the same dest is rewritten away before appending)
 update_manifest() {

@@ -159,6 +159,62 @@ assert_eq "read_manifest is gone" "1" \
   "$(type read_manifest >/dev/null 2>&1; echo $?)"
 rm -rf "$tmp_man"
 
+echo "== uninstall_symlink =="
+tmp_un="$(mktemp -d)"
+echo "src" >"$tmp_un/src"
+ln -s "$tmp_un/src" "$tmp_un/link"
+echo "original" >"$tmp_un/link.backup.20250101_000000"
+echo "keep me" >"$tmp_un/notalink"
+
+UNINSTALL_RESTORED=0
+RESTORE=true DRY_RUN="" uninstall_symlink "$tmp_un/link" >/dev/null
+assert_eq "removes the link and restores backup" \
+  "original" "$(cat "$tmp_un/link" 2>/dev/null || echo MISSING)"
+assert_eq "restore counter incremented" "1" "$UNINSTALL_RESTORED"
+assert_eq "restored dest is a regular file, not a link" \
+  "no" "$([[ -L "$tmp_un/link" ]] && echo yes || echo no)"
+
+assert_eq "non-symlink dest -> rc 1, untouched" "1" \
+  "$(RESTORE=true DRY_RUN="" uninstall_symlink "$tmp_un/notalink" >/dev/null; echo $?)"
+assert_eq "real file survives" "keep me" "$(cat "$tmp_un/notalink")"
+
+# --no-restore path: link removed, backup stays put
+ln -s "$tmp_un/src" "$tmp_un/link2"
+echo "bak2" >"$tmp_un/link2.backup.20250101_000000"
+UNINSTALL_RESTORED=0
+RESTORE=false DRY_RUN="" uninstall_symlink "$tmp_un/link2" >/dev/null
+assert_eq "no-restore removes link" \
+  "no" "$([[ -e "$tmp_un/link2" || -L "$tmp_un/link2" ]] && echo yes || echo no)"
+assert_eq "no-restore leaves backup in place" \
+  "yes" "$([[ -f "$tmp_un/link2.backup.20250101_000000" ]] && echo yes || echo no)"
+assert_eq "no-restore does not bump counter" "0" "$UNINSTALL_RESTORED"
+
+# Dry run: nothing changes, planned actions are printed
+ln -s "$tmp_un/src" "$tmp_un/link3"
+echo "bak3" >"$tmp_un/link3.backup.20250101_000000"
+UNINSTALL_RESTORED=0
+dry_out="$(RESTORE=true DRY_RUN="dry_run" uninstall_symlink "$tmp_un/link3")"
+assert_contains "dry run announces rm" "[DRY-RUN] rm $tmp_un/link3" "$dry_out"
+assert_contains "dry run announces restore" "[DRY-RUN] mv $tmp_un/link3.backup.20250101_000000" "$dry_out"
+assert_eq "dry run leaves the link" \
+  "yes" "$([[ -L "$tmp_un/link3" ]] && echo yes || echo no)"
+
+echo "== prune_empty_dirs =="
+mkdir -p "$tmp_un/tree/a/b" "$tmp_un/tree/c"
+echo "file" >"$tmp_un/tree/c/file"
+DRY_RUN="" prune_empty_dirs "$tmp_un/tree"
+assert_eq "empty subtree pruned" \
+  "no" "$([[ -d "$tmp_un/tree/a" ]] && echo yes || echo no)"
+assert_eq "non-empty dirs survive" \
+  "yes" "$([[ -f "$tmp_un/tree/c/file" ]] && echo yes || echo no)"
+mkdir -p "$tmp_un/empty-tree/x"
+DRY_RUN="" prune_empty_dirs "$tmp_un/empty-tree"
+assert_eq "fully-empty root is removed too" \
+  "no" "$([[ -d "$tmp_un/empty-tree" ]] && echo yes || echo no)"
+assert_eq "missing root is rc 0" "0" \
+  "$(DRY_RUN="" prune_empty_dirs "$tmp_un/nope"; echo $?)"
+rm -rf "$tmp_un"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]
