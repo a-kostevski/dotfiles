@@ -3,14 +3,26 @@
 # Commands: sync, clean, status, watch
 # Version: 1.0.0
 
+# install/profiles.sh needs associative arrays; stock macOS bash is 3.2
+if ((BASH_VERSINFO[0] < 4)); then
+  echo "Error: dotfiles requires bash 4 or newer (found $BASH_VERSION)." >&2
+  echo "On macOS: brew install bash, then re-run." >&2
+  exit 1
+fi
+
 set -uo pipefail
 
 # Script version
 readonly DOTFILES_VERSION="1.0.0"
 
-# Script directory - find the real location even if symlinked
+# Script directory - resolve every symlink hop to find the real location
 SCRIPT_PATH="${BASH_SOURCE[0]}"
-SCRIPT_DIR="$(cd "$(dirname "$(readlink "$SCRIPT_PATH" || echo "$SCRIPT_PATH")")" && pwd)"
+while [[ -L "$SCRIPT_PATH" ]]; do
+  link_target="$(readlink "$SCRIPT_PATH")"
+  [[ "$link_target" != /* ]] && link_target="$(dirname "$SCRIPT_PATH")/$link_target"
+  SCRIPT_PATH="$link_target"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 DOTFILES_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Export key variables for shared libraries
@@ -248,8 +260,8 @@ cmd_watch() {
   dot_info "Press Ctrl+C to stop"
   echo
 
-  # Watch for changes and sync
-  fswatch -o "$CONFIG_DIR" | while read -r event; do
+  # Watch for changes and sync (fswatch -o emits event counts we don't need)
+  fswatch -o "$CONFIG_DIR" | while read -r _; do
     printf "${COLOR_INFO}[%s]${COLOR_RESET} Change detected, syncing...\n" "$(date '+%H:%M:%S')"
     "$DOTFILES_ROOT/bootstrap.sh" --sync --verbose
     echo

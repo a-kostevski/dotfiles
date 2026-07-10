@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Sourced by bootstrap.sh (same options); flags matter when run directly
+set -euo pipefail
+
 # Source shared library
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
 

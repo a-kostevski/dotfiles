@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # -S error now; drop to warning once the ~18 legacy warnings are fixed
-      - name: shellcheck (error severity)
+      - name: shellcheck (warning severity)
         run: |
-          shellcheck -S error bootstrap.sh install/*.sh bin/dotfiles tests/*.sh
+          shellcheck -S warning bootstrap.sh install/*.sh bin/dotfiles tests/*.sh
 
   lua-syntax:
     runs-on: ubuntu-latest

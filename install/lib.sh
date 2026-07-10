@@ -43,7 +43,7 @@ create_directory() {
   local dir="$1"
   if [[ ! -d "$dir" ]]; then
     dot_info "Creating directory: $dir"
-    ${DRY_RUN:-} mkdir -p "$dir"
+    dry_run mkdir -p "$dir"
   fi
 }
 
@@ -90,8 +90,12 @@ safe_sudo() {
     return 1
   fi
 
-  # Execute command with timeout
-  timeout "$timeout" sudo "$@"
+  # Execute command with timeout (GNU timeout is absent on stock macOS)
+  if command_exists timeout; then
+    timeout "$timeout" sudo "$@"
+  else
+    sudo "$@"
+  fi
 }
 
 # Check if command exists
@@ -166,6 +170,8 @@ print_status() {
 
 # OS detection function
 detect_os() {
+  OS_TYPE="unsupported"
+  OS_VERSION=""
   case "$(uname -s)" in
     Darwin)
       OS_TYPE="macos"
@@ -174,21 +180,13 @@ detect_os() {
     Linux)
       if [[ -f /etc/os-release ]]; then
         . /etc/os-release
-        case "$ID" in
+        case "${ID:-}" in
           ubuntu | debian)
             OS_TYPE="ubuntu"
-            OS_VERSION="$VERSION_ID"
-            ;;
-          *)
-            OS_TYPE="unsupported"
+            OS_VERSION="${VERSION_ID:-}"
             ;;
         esac
-      else
-        OS_TYPE="unsupported"
       fi
-      ;;
-    *)
-      OS_TYPE="unsupported"
       ;;
   esac
 
@@ -203,7 +201,8 @@ resolve_path() {
   if [[ "$(uname)" == "Darwin" ]]; then
     # macOS: Use a different approach
     while [[ -L "$path" ]]; do
-      local dir="$(cd "$(dirname "$path")" && pwd)"
+      local dir
+      dir="$(cd "$(dirname "$path")" && pwd)"
       path="$(readlink "$path")"
       [[ "$path" != /* ]] && path="$dir/$path"
     done

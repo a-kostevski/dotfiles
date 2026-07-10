@@ -12,6 +12,22 @@ fi
 MANIFEST_FILE="${MANIFEST_FILE:-$HOME/.config/.dotfiles-manifest}"
 CACHE_DIR="${CACHE_DIR:-$HOME/.cache/dotfiles}"
 
+# Pick a backup destination that does not clobber an existing backup
+# (second-granularity timestamps collide when several files are backed up
+# in the same second)
+unique_backup_path() {
+    local path="$1"
+    local base
+    base="${path}.backup.$(date +%Y%m%d_%H%M%S)"
+    local candidate="$base"
+    local i=1
+    while [[ -e "$candidate" || -L "$candidate" ]]; do
+        candidate="$base.$i"
+        i=$((i + 1))
+    done
+    echo "$candidate"
+}
+
 # Create symlink with backup
 create_symlink() {
     local src="$1"
@@ -22,7 +38,8 @@ create_symlink() {
 
     # Handle existing symlink
     if [[ -L "$dest" ]]; then
-        local current_target=$(readlink "$dest")
+        local current_target
+        current_target=$(readlink "$dest")
         if [[ "$current_target" == "$src" ]]; then
             # Only show in verbose mode - symlink already correct
             [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Already linked: $dest"
@@ -40,18 +57,21 @@ create_symlink() {
             dry_run rm -rf "$dest"
         else
             # Always show - backing up existing file
-            local backup="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
+            local backup
+            backup=$(unique_backup_path "$dest")
             dot_info "Backing up: $dest -> $backup"
             dry_run mv "$dest" "$backup"
         fi
     fi
 
     # Create parent directory if needed
-    local dest_dir=$(dirname "$dest")
+    local dest_dir
+    dest_dir=$(dirname "$dest")
     if [[ ! -d "$dest_dir" ]]; then
         # If path exists but is not a directory, back it up
         if [[ -e "$dest_dir" ]]; then
-            local backup="${dest_dir}.backup.$(date +%Y%m%d_%H%M%S)"
+            local backup
+            backup=$(unique_backup_path "$dest_dir")
             dot_warning "Path exists but is not a directory: $dest_dir"
             dot_info "Backing up: $dest_dir -> $backup"
             dry_run mv "$dest_dir" "$backup"
@@ -109,49 +129,27 @@ clean_broken_symlinks() {
         "$HOME/.config"
         "$HOME/.local/bin"
     )
-    
+
     dot_title "Cleaning Broken Symlinks"
-    
-    local temp_file=$(mktemp)
-    echo "0" > "$temp_file"
-    
+
+    local count=0
+    local target_dir link
+
     # Check each target directory
+    # (process substitution keeps the counter in the main shell)
     for target_dir in "${target_dirs[@]}"; do
-        # Skip if directory doesn't exist
         [[ ! -d "$target_dir" ]] && continue
 
-        # Use lnclean if available
-        if command -v lnclean &>/dev/null; then
-            [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Using lnclean to clean broken symlinks in $target_dir"
+        while IFS= read -r link; do
+            [[ -z "$link" ]] && continue
             if [[ -n "$dry_run" ]]; then
-                find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null | while read -r link; do
-                    print_status "broken" "Would remove: $link"
-                    echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-                done
+                print_status "broken" "Would remove: $link"
             else
-                # Count broken links before cleaning
-                local broken_links=$(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null)
-                if [[ -n "$broken_links" ]]; then
-                    while IFS= read -r link; do
-                        [[ -n "$link" ]] && print_status "ok" "Removed: $link"
-                        echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-                    done <<< "$broken_links"
-                fi
-                lnclean "$target_dir" 2>/dev/null || true
+                rm -f "$link"
+                print_status "ok" "Removed: $link"
             fi
-        else
-            # Fallback to find command
-            # Use process substitution to avoid subshell issues with set -e
-            while IFS= read -r link; do
-                if [[ -n "$dry_run" ]]; then
-                    print_status "broken" "Would remove: $link"
-                else
-                    rm -f "$link"
-                    print_status "ok" "Removed: $link"
-                fi
-                echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-            done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
-        fi
+            count=$((count + 1))
+        done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
     done
 
     # Also clean home directory symlinks
@@ -163,19 +161,20 @@ clean_broken_symlinks() {
                 rm -f "$link"
                 print_status "ok" "Removed: $link"
             fi
-            echo $(($(cat "$temp_file") + 1)) > "$temp_file"
+            count=$((count + 1))
         fi
     done
-    
-    local count=$(cat "$temp_file")
-    rm -f "$temp_file"
-    
+
     if [[ $count -gt 0 ]]; then
-        dot_success "Found $count broken symlinks"
+        if [[ -n "$dry_run" ]]; then
+            dot_success "Would remove $count broken symlink(s)"
+        else
+            dot_success "Removed $count broken symlink(s)"
+        fi
     else
         dot_success "No broken symlinks found"
     fi
-    
+
     return 0
 }
 
@@ -183,10 +182,12 @@ clean_broken_symlinks() {
 update_manifest() {
     local src="$1"
     local dest="$2"
-    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-    
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+
     # Create manifest directory if needed
-    local manifest_dir=$(dirname "$MANIFEST_FILE")
+    local manifest_dir
+    manifest_dir=$(dirname "$MANIFEST_FILE")
     [[ ! -d "$manifest_dir" ]] && mkdir -p "$manifest_dir"
     
     # Add entry to manifest
@@ -300,7 +301,8 @@ get_config_symlinks() {
             continue
         fi
         
-        local basename=$(basename "$file")
+        local basename
+        basename=$(basename "$file")
         
         # Skip special cases already handled
         if [[ "$config_name" == "zsh" && "$basename" == "zshenv" ]]; then
@@ -346,9 +348,10 @@ check_symlink_health() {
     done
     
     # Return counts
-    local ok_count=$(cat "$temp_dir/ok_count")
-    local broken_count=$(cat "$temp_dir/broken_count")
-    local missing_count=$(cat "$temp_dir/missing_count")
+    local ok_count broken_count missing_count
+    ok_count=$(cat "$temp_dir/ok_count")
+    broken_count=$(cat "$temp_dir/broken_count")
+    missing_count=$(cat "$temp_dir/missing_count")
     
     rm -rf "$temp_dir"
     

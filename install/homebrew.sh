@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 
+# Sourced by install-macos.sh under bootstrap (same options); flags matter
+# when this script is executed directly
+set -euo pipefail
+
 # Source shared library
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
+
+: "${DRY_RUN:=}"
 
 # Get the appropriate Homebrew prefix
 BREW_PREFIX=$(get_brew_prefix)
@@ -12,7 +18,14 @@ install_homebrew() {
     dot_info "Installing Homebrew..."
     if execute_cmd 'NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'; then
       # Add Homebrew to PATH for the current session
-      [[ -z "$DRY_RUN" ]] && eval "$($BREW_PREFIX/bin/brew shellenv)"
+      if [[ -z "$DRY_RUN" ]]; then
+        if [[ -x "$BREW_PREFIX/bin/brew" ]]; then
+          eval "$("$BREW_PREFIX/bin/brew" shellenv)"
+        else
+          dot_error "brew not found at $BREW_PREFIX/bin/brew after install"
+          return 1
+        fi
+      fi
     else
       dot_error "Failed to install Homebrew"
       return 1

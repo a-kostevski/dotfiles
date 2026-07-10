@@ -45,10 +45,13 @@ get_all_existing_configs() {
     while IFS= read -r dir; do
       local config_name
       config_name=$(basename "$dir")
-      # Skip hidden directories and special cases
-      if [[ ! "$config_name" =~ ^\. ]]; then
-        configs+=("$config_name")
-      fi
+      # Skip hidden directories
+      [[ "$config_name" =~ ^\. ]] && continue
+      # Skip installer/scaffolding dirs that are not ~/.config configs
+      case "$config_name" in
+        macos | ubuntu | defaults | security) continue ;;
+      esac
+      configs+=("$config_name")
     done < <(find "$config_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
   fi
 
@@ -255,8 +258,7 @@ select_custom_components() {
   # Sort the configs for consistent presentation
   local -a available_configs=()
   if [[ ${#all_existing[@]} -gt 0 ]]; then
-    IFS=$'\n' available_configs=($(sort <<<"${all_existing[*]}"))
-    unset IFS
+    mapfile -t available_configs < <(printf '%s\n' "${all_existing[@]}" | sort)
   fi
 
   for config in "${available_configs[@]}"; do

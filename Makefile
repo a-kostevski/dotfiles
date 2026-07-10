@@ -74,7 +74,7 @@ install-full:
 ## Update existing installation
 update:
 	@echo -e "$(YELLOW)Updating dotfiles...$(NC)"
-	@git pull origin main
+	@git pull --ff-only
 	@$(BOOTSTRAP) --profile $(PROFILE) $(if $(filter true,$(VERBOSE)),--verbose)
 	@echo -e "$(GREEN)Update complete!$(NC)"
 
@@ -96,7 +96,7 @@ clean:
 	while IFS= read -r link; do \
 		echo "Removing: $$link"; \
 		rm "$$link"; \
-		((count++)); \
+		count=$$((count + 1)); \
 	done < <(find ~/.config ~/.local/bin -type l ! -exec test -e {} \; -print 2>/dev/null); \
 	echo -e "$(GREEN)Removed $$count broken symlinks$(NC)"
 
@@ -132,7 +132,7 @@ deps:
 			echo -e "$(GREEN)✓$(NC) $$cmd"; \
 		else \
 			echo -e "$(RED)✗$(NC) $$cmd"; \
-			((missing++)); \
+			missing=$$((missing + 1)); \
 		fi \
 	done; \
 	if [ $$missing -gt 0 ]; then \
@@ -181,7 +181,7 @@ bootstrap-help:
 
 .lint-shell:
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck bootstrap.sh install/*.sh; \
+		shellcheck -S warning bootstrap.sh install/*.sh bin/dotfiles tests/*.sh; \
 	else \
 		echo "shellcheck not installed"; \
 	fi

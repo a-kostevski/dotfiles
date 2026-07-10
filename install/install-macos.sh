@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
+# Sourced by bootstrap.sh (same options); flags matter when run directly
+set -euo pipefail
+
 # Source shared library
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
+
+: "${DRY_RUN:=}"
 
 dot_title "Installing macOS"
 
@@ -90,7 +95,8 @@ dot_header "Cleaning up"
 # Kill affected applications
 dot_info "Restarting affected applications..."
 for app in "Finder" "Dock" "SystemUIServer" "cfprefsd"; do
-  execute_cmd "killall '${app}' &>/dev/null"
+  # killall fails when the app is not running; that must not abort setup
+  execute_cmd "killall '${app}' &>/dev/null" || true
 done
 
 dot_success "macOS setup completed successfully"

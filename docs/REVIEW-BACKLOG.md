@@ -8,44 +8,22 @@ ordered by value within each group.
 ## Install / shell tooling
 
 - [ ] **`dotfiles uninstall` command.** The manifest (`~/.config/.dotfiles-manifest`)
-  is written on every link (`install/symlinks.sh:183-203`) but never consumed;
+  is written on every link (`install/symlinks.sh`) but never consumed;
   it grows unbounded with no dedup, and `read_manifest` is dead code. An
   uninstall/restore-from-backup command is the natural consumer.
-- [ ] **Legacy shellcheck warnings (~18).** CI gates at `-S error`; fix the
-  warnings and tighten CI to `-S warning`. Known ones: SC2207 in
-  `install/profiles.sh:258` (custom selector sort), SC2154 `dot_root` in
-  `install/homebrew.sh:74`, SC2034 unused `event` in `bin/dotfiles` watch loop.
-- [ ] **Bash version guard.** `bootstrap.sh` uses `declare -gA` (bash 4+) but
-  macOS ships bash 3.2 — add a `BASH_VERSINFO` check with a clear error.
-- [ ] **Stricter shell options.** `bootstrap.sh` is `set -e` only (no `-u`,
-  no `pipefail`); `install/*.sh` have no set flags at all when run directly.
-- [ ] **Deduplicate helpers.** `is_ignored`, `create_directory`, and the color
-  constants exist in both `bootstrap.sh` and `install/lib.sh` with divergent
-  variants — single-source them in `lib.sh`.
-- [ ] **Backup timestamp collisions.** `install/symlinks.sh` backups use
-  second-granularity timestamps; two files backed up in the same second
-  overwrite each other. Add a counter/nanosecond suffix.
 - [ ] **`config/clang-format` is a file, not a directory.** The full profile
   lists it but `link_configs` only handles directories, so it is silently
   skipped — and `~/.config/clang-format/` wouldn't be read by clang-format
   anyway. Decide: move into a directory with special-case linking to
   `~/.clang-format`, or drop it from the profile.
-- [ ] **`all` profile links non-config dirs** (`macos/`, `ubuntu/`,
-  `homebrew/`, empty `defaults/`, `security/`) into `~/.config`. Add an
-  exclusion list in `get_all_existing_configs`.
 - [ ] **`custom` profile unreachable non-interactively** and missing from
   `--help`; either wire it up or drop the CLI-side validation for it.
 - [ ] **Empty scaffolding dirs**: `config/security/`, `config/defaults/`,
   `config/ubuntu/apt/` — delete or populate.
-- [ ] **Smaller robustness nits**: `bin/dotfiles:13` resolves only one symlink
-  hop (use `realpath`/`resolve_path`); `safe_sudo` uses GNU `timeout` (absent
-  on stock macOS); `clean_broken_symlinks` double-reports when `lnclean` is on
-  PATH and prints "Found N" after removal; `bin/nshift:94` uses `bc` without
-  checking it exists; `make update` hard-codes `git pull origin main`;
-  `install/homebrew.sh:15` evals `brew shellenv` without checking the binary
-  exists; `config/homebrew/brew.env` sets `HOMEBREW_NO_INSTALL_FROM_API=`
-  empty and is never sourced (dead config); Makefile `((count++))` idioms
-  return non-zero at 0 (fragile under stricter shells).
+- [ ] **Smaller robustness nits**: `bin/nshift:94` uses `bc` without checking
+  it exists (and computes `seconds` before validating, which breaks on
+  fractional hours); `config/homebrew/brew.env` sets
+  `HOMEBREW_NO_INSTALL_FROM_API=` empty and is never sourced (dead config).
 - [ ] **`bin/osx-clock-toggle`**: fragile `grep -q '1'` match (matches "10"),
   writes `-int` where `cantsleep` writes `-bool` for the same key. Consider
   deleting it in favor of `cantsleep`.

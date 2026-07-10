@@ -5,7 +5,7 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$REPO_ROOT"
+cd "$REPO_ROOT" || exit 1
 
 PASS=0
 FAIL=0
@@ -39,6 +39,8 @@ echo "== get_config_list =="
 source "$REPO_ROOT/install/lib.sh"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/install/profiles.sh"
+# shellcheck source=/dev/null
+source "$REPO_ROOT/install/symlinks.sh"
 
 # Named profiles must emit one config per line (regression: a quoting bug
 # once made every named profile emit a single space-joined line, which the
@@ -85,6 +87,77 @@ assert_contains "dry run processes git" "Processing git configuration" "$dry_out
 assert_contains "dry run processes zsh" "Processing zsh configuration" "$dry_out"
 assert_contains "dry run processes tmux" "Processing tmux configuration" "$dry_out"
 assert_eq "dry run emits no [DEBUG] noise" "" "$(grep -F '[DEBUG]' <<<"$dry_out" || true)"
+
+echo "== all profile exclusions =="
+# `all` must only emit real user configs; installer/scaffolding dirs under
+# config/ must never be linked into ~/.config
+all_list="$(get_config_list all)"
+for excluded in macos ubuntu defaults security; do
+  assert_eq "all profile excludes $excluded" "" "$(grep -x "$excluded" <<<"$all_list" || true)"
+done
+assert_contains "all profile still includes real configs" "nvim" "$all_list"
+
+echo "== bash version guard =="
+# Stock macOS bash is 3.2; profiles.sh needs bash 4+ (declare -gA). The entry
+# points must fail with a clear message instead of a parse error.
+if [[ -x /bin/bash ]] && [[ "$(/bin/bash -c 'echo "${BASH_VERSINFO[0]}"')" -lt 4 ]]; then
+  guard_out="$(/bin/bash "$REPO_ROOT/bootstrap.sh" --help 2>&1 || true)"
+  assert_contains "bootstrap.sh rejects bash 3 clearly" "requires bash 4" "$guard_out"
+  guard_out="$(/bin/bash "$REPO_ROOT/bin/dotfiles" --help 2>&1 || true)"
+  assert_contains "bin/dotfiles rejects bash 3 clearly" "requires bash 4" "$guard_out"
+else
+  echo "  skip: system bash is >= 4, guard not exercisable"
+fi
+
+echo "== backup collisions =="
+# Two backups of the same path in the same second must not overwrite each
+# other. `date` is stubbed inside a subshell to force the collision.
+tmp_backup="$(mktemp -d)"
+(
+  date() { echo "20260101_000000"; }
+  # shellcheck disable=SC2034  # consumed by the sourced create_symlink
+  MANIFEST_FILE="$tmp_backup/manifest"
+  # shellcheck disable=SC2034
+  DRY_RUN="" FORCE=false VERBOSE=false
+  echo "real config" >"$tmp_backup/settings"
+  echo "earlier backup" >"$tmp_backup/settings.backup.20260101_000000"
+  echo "source" >"$tmp_backup/src"
+  create_symlink "$tmp_backup/src" "$tmp_backup/settings" >/dev/null
+)
+assert_eq "existing same-second backup preserved" \
+  "earlier backup" "$(cat "$tmp_backup/settings.backup.20260101_000000")"
+assert_eq "displaced file backed up under a suffixed name" \
+  "real config" "$(cat "$tmp_backup/settings.backup.20260101_000000.1" 2>/dev/null || echo MISSING)"
+assert_eq "dest is linked to src" \
+  "$tmp_backup/src" "$(readlink "$tmp_backup/settings")"
+rm -rf "$tmp_backup"
+
+echo "== clean_broken_symlinks =="
+tmp_clean="$(mktemp -d)"
+mkdir -p "$tmp_clean/.config"
+ln -s "$tmp_clean/nonexistent" "$tmp_clean/.config/deadlink"
+clean_dry_out="$(HOME="$tmp_clean" clean_broken_symlinks dry_run)"
+assert_contains "dry clean reports the broken link" \
+  "Would remove: $tmp_clean/.config/deadlink" "$clean_dry_out"
+assert_contains "dry clean says would-remove, not found" \
+  "Would remove 1 broken symlink" "$clean_dry_out"
+assert_eq "dry clean leaves the link in place" \
+  "yes" "$([[ -L "$tmp_clean/.config/deadlink" ]] && echo yes || echo no)"
+clean_out="$(HOME="$tmp_clean" clean_broken_symlinks "")"
+assert_contains "real clean reports removal count" \
+  "Removed 1 broken symlink" "$clean_out"
+assert_eq "real clean removes the link" \
+  "no" "$([[ -L "$tmp_clean/.config/deadlink" ]] && echo yes || echo no)"
+rm -rf "$tmp_clean"
+
+echo "== sync mode dry run =="
+# Safety net for set -u/pipefail: the full sync path must still run clean
+tmp_sync="$(mktemp -d)"
+sync_out="$(HOME="$tmp_sync" ./bootstrap.sh --sync --dry-run --profile minimal 2>&1)"
+sync_rc=$?
+assert_eq "sync dry run exits 0" "0" "$sync_rc"
+assert_contains "sync dry run completes" "Sync completed successfully" "$sync_out"
+rm -rf "$tmp_sync"
 
 echo
 echo "Results: $PASS passed, $FAIL failed"
