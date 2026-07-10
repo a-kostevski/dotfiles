@@ -24,7 +24,7 @@ end
 
 return {
    "echasnovski/mini.starter",
-   event = "VimEnter",
+   lazy = false,
    opts = function()
       local pad = string.rep("-", 22)
       local new_section = function(name, action, section)

@@ -3,9 +3,10 @@ local icons = Utils.ui.icons
 return {
   {
     "neovim/nvim-lspconfig",
+    event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "mason.nvim",
-      { "mason-org/mason-lspconfig.nvim", config = function() end },
+      { "mason-org/mason-lspconfig.nvim", event = { "BufReadPre", "BufNewFile" }, config = function() end },
     },
     opts = function()
       local ret = {
@@ -171,6 +172,7 @@ return {
   {
     "mason-org/mason.nvim",
     name = "mason.nvim",
+    cmd = "Mason",
     opts_extend = { "ensure_installed" },
     opts = {
       ensure_installed = {

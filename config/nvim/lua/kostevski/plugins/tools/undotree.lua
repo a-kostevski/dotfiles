@@ -1,6 +1,7 @@
 return {
    "mbbill/undotree",
    name = "undotree",
+   cmd = { "UndotreeToggle", "UndotreeShow" },
    dependencies = "nvim-lua/plenary.nvim",
    init = function()
       vim.g.undotree_enabled = vim.g.undotree_enabled or true

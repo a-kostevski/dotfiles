@@ -35,7 +35,7 @@ function M.setup()
          { import = "kostevski.plugins.lang" },
       },
       defaults = {
-         lazy = false,
+         lazy = true,
          version = false,
       },
       checker = {

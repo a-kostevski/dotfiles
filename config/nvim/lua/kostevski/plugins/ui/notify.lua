@@ -65,6 +65,13 @@ local function accent_render(bufnr, notif, highlights, config)
    end
 end
 
+-- Queue notifications fired before nvim-notify has loaded so nothing is lost
+-- while the plugin is lazy-loaded on VeryLazy/keys.
+local notify_queue = {}
+local function queue_notify(msg, level, opts)
+   table.insert(notify_queue, { msg, level, opts })
+end
+
 -- Link notification highlight groups to Diagnostic groups for colorscheme integration
 local function setup_highlights()
    local links = {
@@ -93,8 +100,9 @@ return {
    {
       "rcarriga/nvim-notify",
       name = "notify",
+      event = "VeryLazy",
       init = function()
-         vim.notify = require("notify")
+         vim.notify = queue_notify
       end,
       keys = {
          {
@@ -294,6 +302,13 @@ return {
          vim.api.nvim_create_autocmd("ColorScheme", {
             callback = setup_highlights,
          })
+         -- Flush any notifications that fired before the plugin loaded
+         vim.notify = require("notify")
+         local queued = notify_queue
+         notify_queue = {}
+         for _, n in ipairs(queued) do
+            vim.notify(n[1], n[2], n[3])
+         end
       end,
    },
    {

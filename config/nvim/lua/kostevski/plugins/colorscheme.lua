@@ -2,6 +2,7 @@ return {
   {
     "catppuccin/nvim",
     enabled = false,
+    lazy = true,
     name = "catppuccin",
     priority = 1000,
     config = function()
@@ -52,6 +53,7 @@ return {
   {
     "shaunsingh/nord.nvim",
     enabled = false,
+    lazy = true,
     priority = 1000,
   },
 }
