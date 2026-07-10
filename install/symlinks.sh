@@ -242,29 +242,36 @@ restore_newest_backup() {
     done
 }
 
-# Update manifest file with symlink information
+# Update manifest file with symlink information (one line per dest: any
+# previous entry for the same dest is rewritten away before appending)
 update_manifest() {
     local src="$1"
     local dest="$2"
     local timestamp
     timestamp=$(date +"%Y-%m-%d %H:%M:%S")
 
-    # Create manifest directory if needed
     local manifest_dir
     manifest_dir=$(dirname "$MANIFEST_FILE")
     [[ ! -d "$manifest_dir" ]] && mkdir -p "$manifest_dir"
-    
-    # Add entry to manifest
-    echo "${timestamp}|${src}|${dest}" >> "$MANIFEST_FILE"
+
+    if [[ -f "$MANIFEST_FILE" ]]; then
+        local tmp="$MANIFEST_FILE.tmp.$$"
+        awk -F'|' -v d="$dest" '$3 != d' "$MANIFEST_FILE" >"$tmp"
+        mv "$tmp" "$MANIFEST_FILE"
+    fi
+    echo "${timestamp}|${src}|${dest}" >>"$MANIFEST_FILE"
 }
 
-# Read manifest and return symlink mappings
-read_manifest() {
-    local manifest="${1:-$MANIFEST_FILE}"
-    
-    if [[ -f "$manifest" ]]; then
-        cat "$manifest"
-    fi
+# Rewrite the manifest without the given destinations
+remove_manifest_entries() {
+    [[ -f "$MANIFEST_FILE" ]] || return 0
+    [[ $# -gt 0 ]] || return 0
+
+    local tmp="$MANIFEST_FILE.tmp.$$"
+    printf '%s\n' "$@" |
+        awk -F'|' 'NR == FNR { drop[$0] = 1; next } !($3 in drop)' \
+            - "$MANIFEST_FILE" >"$tmp"
+    mv "$tmp" "$MANIFEST_FILE"
 }
 
 # Get list of configs that are currently synced (have symlinks pointing to dotfiles)

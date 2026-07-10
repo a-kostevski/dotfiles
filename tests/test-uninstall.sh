@@ -122,6 +122,43 @@ if [[ $EUID -ne 0 ]]; then
   rm -rf "$tmp_ro"
 fi
 
+echo "== manifest hygiene =="
+tmp_man="$(mktemp -d)"
+(
+  # shellcheck disable=SC2030  # subshell scoping is deliberate
+  MANIFEST_FILE="$tmp_man/manifest"
+  update_manifest "/src/a" "/dest/a"
+  update_manifest "/src/b" "/dest/b"
+  update_manifest "/src/a2" "/dest/a"   # same dest again -> replaces, not appends
+)
+assert_eq "update_manifest dedups by dest" "2" \
+  "$(wc -l <"$tmp_man/manifest" | tr -d ' ')"
+assert_contains "latest src wins for duplicated dest" "|/src/a2|/dest/a" \
+  "$(cat "$tmp_man/manifest")"
+assert_eq "a dest similar to another is not clobbered" "1" \
+  "$(grep -c "|/dest/b$" "$tmp_man/manifest")"
+
+(
+  # shellcheck disable=SC2030,SC2031
+  MANIFEST_FILE="$tmp_man/manifest"
+  remove_manifest_entries "/dest/a"
+)
+assert_eq "remove_manifest_entries drops only the named dest" \
+  "1" "$(wc -l <"$tmp_man/manifest" | tr -d ' ')"
+assert_contains "surviving entry is the other dest" "|/dest/b" \
+  "$(cat "$tmp_man/manifest")"
+
+(
+  # shellcheck disable=SC2030,SC2031,SC2034
+  MANIFEST_FILE="$tmp_man/missing-manifest"
+  remove_manifest_entries "/dest/a"
+)
+assert_eq "remove on missing manifest is rc 0" "0" "$?"
+
+assert_eq "read_manifest is gone" "1" \
+  "$(type read_manifest >/dev/null 2>&1; echo $?)"
+rm -rf "$tmp_man"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]
