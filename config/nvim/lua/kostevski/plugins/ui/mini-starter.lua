@@ -63,7 +63,7 @@ return {
 
             new_section("Recent", "Telescope oldfiles", "Files"),
             new_section("Grep", "Telescope live_grep", "Files"),
-            new_section("Browse", "Telescope file_browser", "Files"),
+            new_section("Browse", "e .", "Files"),
 
             new_section("Vim", "e $MYVIMRC", "Config"),
             new_section("Zsh", "e $ZDOTDIR", "Config"),

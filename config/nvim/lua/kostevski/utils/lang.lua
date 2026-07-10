@@ -173,7 +173,7 @@ function M.register(def)
   end
 
   -- Support both root_patterns (legacy) and root_markers (0.11+)
-  local root_markers = def.root_markers or def.root_markers
+  local root_markers = def.root_markers or def.root_patterns
   if root_markers then
     require("kostevski.utils.root").add_patterns(def.name, root_markers)
   end
@@ -310,7 +310,9 @@ function M.register(def)
     })
   end
 
-  -- LSP server configuration (skip if native_lsp = true, config comes from lsp/<server>.lua)
+  -- LSP server configuration (settings come from lsp/<server>.lua when
+  -- native_lsp = true, but the server must still be registered in
+  -- opts.servers so lspconfig's configure loop installs and enables it)
   if def.native_lsp and def.lsp_server then
     -- Validate that native LSP config exists
     local server = type(def.lsp_server) == "string" and def.lsp_server or def.lsp_server.name
@@ -321,6 +323,15 @@ function M.register(def)
         vim.log.levels.WARN
       )
     end
+
+    table.insert(specs, {
+      "neovim/nvim-lspconfig",
+      opts = function(_, opts)
+        opts.servers = opts.servers or {}
+        -- Empty config: the real settings merge in from lsp/<server>.lua
+        opts.servers[server] = opts.servers[server] or {}
+      end,
+    })
   end
 
   if def.lsp_server and not def.native_lsp then

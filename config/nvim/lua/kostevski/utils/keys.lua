@@ -59,6 +59,14 @@ Keys.keys = {
       has = { "workspace/didRenameFiles", "workspace/willRenameFiles" },
    },
    {
+      "<leader>ch",
+      "<cmd>LspClangdSwitchSourceHeader<cr>",
+      desc = "Switch Source/Header (C/C++)",
+      cond = function(client)
+         return client ~= nil and client.name == "clangd"
+      end,
+   },
+   {
       "]]",
       function()
          local Utils = require("kostevski.utils")
@@ -164,6 +172,13 @@ local function apply_keymap(keymap, opts)
    return true
 end
 
+---Qualify a short capability name; leave full method paths (workspace/…) alone
+---@param method string
+---@return string
+local function resolve_method(method)
+   return method:find("/") and method or ("textDocument/" .. method)
+end
+
 ---Attach keymaps to buffer
 ---@param client table LSP client
 ---@param buffer number Buffer number
@@ -176,13 +191,13 @@ function Keys.on_attach(client, buffer)
          local has_capability = false
          if type(keymap.has) == "table" then
             for _, method in ipairs(keymap.has) do
-               if client:supports_method("textDocument/" .. method) then
+               if client:supports_method(resolve_method(method)) then
                   has_capability = true
                   break
                end
             end
          else
-            has_capability = client:supports_method("textDocument/" .. keymap.has)
+            has_capability = client:supports_method(resolve_method(keymap.has))
          end
 
          if not has_capability then
@@ -190,8 +205,9 @@ function Keys.on_attach(client, buffer)
          end
       end
 
-      -- Check conditions
-      if keymap.cond and not keymap.cond() then
+      -- Check conditions (cond receives the attaching client; older conds
+      -- that take no arguments simply ignore it)
+      if keymap.cond and not keymap.cond(client) then
          goto continue
       end
 

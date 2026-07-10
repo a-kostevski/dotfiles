@@ -15,7 +15,7 @@ return {
             "Cargo.toml",
             "yarn.lock",
          },
-         ignore_lsp = { "efm", "sumneko_lua", "tsserver" },
+         ignore_lsp = { "efm", "lua_ls", "ts_ls" },
       },
       config = function(_, opts)
          require("project_nvim").setup(opts)

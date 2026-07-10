@@ -4,22 +4,9 @@ return {
    cmd = { "UndotreeToggle", "UndotreeShow" },
    dependencies = "nvim-lua/plenary.nvim",
    keys = {
+      -- UndotreeToggle is already a toggle; no Utils.toggle wrapper needed
+      -- (the old one double-mapped <leader>tu and tracked a state var that
+      -- never updated)
       { "<leader>tu", "<cmd>UndotreeToggle<cr>", desc = "Undotree" },
    },
-   init = function()
-      vim.g.undotree_enabled = vim.g.undotree_enabled or true
-   end,
-   config = function(_, opts)
-      Utils.toggle.create({
-         name = "undotree",
-         get = function()
-            return vim.g.undotree_enabled
-         end,
-         set = function(_)
-            return vim.cmd.UndotreeToggle()
-         end,
-         keymap = "<leader>tu",
-         desc = "Undotree",
-      })
-   end,
 }

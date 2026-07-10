@@ -4,10 +4,9 @@
 ---
 --- LLVM's language server for C/C++/Objective-C.
 
+-- Note: <leader>ch (Switch Source/Header) is registered in utils/keys.lua;
+-- vim.lsp.config files do not support a `keys` field.
 return {
-  keys = {
-    { "<leader>ch", "<cmd>LspClangdSwitchSourceHeader<cr>", desc = "Switch Source/Header (C/C++)" },
-  },
   cmd = {
     "clangd",
     "--background-index",

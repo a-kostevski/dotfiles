@@ -84,7 +84,7 @@ return lang.register({
       ft = { "markdown" },
       keys = {
         {
-          "<leader>tm",
+          "<leader>tp",
           "<cmd>MarkdownPreviewToggle<cr>",
           ft = "markdown",
           desc = "Markdown Preview",
