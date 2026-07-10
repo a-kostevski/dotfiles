@@ -1,8 +1,7 @@
 return {
   {
     "saghen/blink.cmp",
-    enabled = true,
-    version = "*",
+    version = "1.*",
     dependencies = {
       {
         "L3MON4D3/LuaSnip",
@@ -25,26 +24,23 @@ return {
       { "rafamadriz/friendly-snippets" },
     },
     opts_extend = {
-      "sources.completion.enabled_providers",
       "sources.default",
     },
-    event = "InsertEnter",
+    -- blink actually loads earlier than these events in practice: nvim-lspconfig's
+    -- `config` fn (event = { "BufReadPre", "BufNewFile" }, see plugins/lsp/lspconfig.lua)
+    -- synchronously calls Utils.lsp.capabilities.get_default_capabilities(), which
+    -- pcall-requires "blink.cmp" to merge in its LSP capabilities -- that require is
+    -- what actually triggers lazy.nvim to load the plugin for any real file. These
+    -- events remain as a fallback so blink still loads for buffers with no LSP client
+    -- (InsertEnter) and for cmdline completion used before any buffer is opened
+    -- (CmdlineEnter).
+    event = { "InsertEnter", "CmdlineEnter" },
     opts = {
       appearance = {
-        nerd_font_variant = "mono",
         kind_icons = Utils.ui.icons.kinds,
       },
       completion = {
-        accept = {
-          auto_brackets = {
-            enabled = true,
-          },
-        },
         trigger = {
-          show_on_insert_on_trigger_character = true,
-          show_on_keyword = true,
-          show_on_trigger_character = true,
-          show_on_accept_on_trigger_character = true,
           show_on_x_blocked_trigger_characters = { "'", '"', "(" },
         },
         ghost_text = {
@@ -67,8 +63,6 @@ return {
           border = "single",
           min_width = 25,
           max_height = 30,
-          scrollbar = true,
-          direction_priority = { "s", "n" },
           draw = {
             columns = { { "label", "label_description", gap = 1 }, { "kind" } },
             components = {
@@ -112,6 +106,11 @@ return {
         },
       },
       sources = {
+        -- Kept even though it matches blink's own built-in default: lazydev.lua's
+        -- blink spec fragment sets sources.default = { "lazydev" }, and this key is
+        -- in opts_extend, so lazy.nvim concatenates the two fragments' lists. Without
+        -- a base list here, lazydev's fragment would be the *only* one contributing
+        -- to the merged sources.default, dropping lsp/path/snippets/buffer.
         default = { "lsp", "path", "snippets", "buffer" },
         min_keyword_length = 1,
       },
@@ -137,13 +136,6 @@ return {
         enabled = true,
         window = {
           border = "single",
-        },
-      },
-      fuzzy = {
-        use_proximity = true,
-        prebuilt_binaries = {
-          download = true,
-          force_version = nil,
         },
       },
     },
