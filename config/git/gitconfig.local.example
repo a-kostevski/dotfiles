@@ -27,16 +27,4 @@
 # [merge]
 # 	conflictStyle = zdiff3
 
-# Commit signing via SSH key (optional).
-# On macOS with 1Password, uncomment all three sections below.
-# On Linux or without 1Password, set program to your ssh-keygen-compatible
-# signer (or omit [gpg "ssh"] to use the default ssh-keygen).
-#
-# [gpg]
-# 	format = ssh
-#
-# [gpg "ssh"]
-# 	program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
-#
-# [commit]
-# 	gpgSign = true
+
