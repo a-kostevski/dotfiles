@@ -3,9 +3,10 @@ export REPOS="$DEVDIR/repos"
 export GHDIR="$REPOS/github.com/a-kostevski"
 export DOTDIR="$GHDIR/dotfiles"
 export EXO="$HOME/exo"
+export LIFE="$HOME/life"
 export ZETDIR="$LIFE/0-inbox"
 
-export EXO_DATA_HOME="~/exo"
+export EXO_DATA_HOME="$EXO"
 export EXO_EDITOR="nvim"
 
 # Go configuration
@@ -32,7 +33,7 @@ export TERM=${TERM:-xterm-256color}
 # Homebrew-specific compiler flags (only set if Homebrew is installed)
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
     export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/zlib/lib -L${HOMEBREW_PREFIX}/opt/bzip2/lib -L${HOMEBREW_PREFIX}/opt/readline/lib"
-    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/zlib/include -I${HOMEBREW_PREFIX}/opt/bzip3/include -I${HOMEBREW_PREFIX}/opt/readline/include"
+    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/zlib/include -I${HOMEBREW_PREFIX}/opt/bzip2/include -I${HOMEBREW_PREFIX}/opt/readline/include"
 fi
 
 # Python

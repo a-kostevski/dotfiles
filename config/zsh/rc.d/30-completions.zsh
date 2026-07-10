@@ -12,11 +12,17 @@ setopt no_list_beep         # Don't beep.
 setopt list_packed          # Packed list.
 setopt list_types           # List all types when listing completions.
 setopt path_dirs            # Perform path search even for command names with slashes.
-
-setopt menu_complete      # Do not autoselect the first completion entry.
+setopt no_menu_complete     # First Tab lists matches; never auto-insert the first entry.
 
 zmodload zsh/complist
 autoload -Uz compinit
+
+# zsh-completions must be in fpath before compinit registers completions.
+# The plugin is cloned by 71-plugins.zsh; on a fresh install it is picked
+# up by the next shell (and the next daily compdump regeneration).
+if [[ -d "$ZDOTDIR/plugins/zsh-completions/src" ]]; then
+    fpath=("$ZDOTDIR/plugins/zsh-completions/src" $fpath)
+fi
 
 ZSH_COMPDUMP=$XDG_CACHE_HOME/zsh/zcompdump
 
@@ -44,7 +50,10 @@ _comp_options+=(globdots)
 zstyle ':completion:*' completer _expand _complete _match _approximate
 
 # General completion settings
+# Menu selection only on second Tab (auto_menu); nothing is preselected on first Tab
 zstyle ':completion:*' menu select
+# Per-match descriptions (set to false to pack candidates into a column grid)
+zstyle ':completion:*' verbose true
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path $XDG_CACHE_HOME/zsh/zcompcache
 
@@ -91,7 +100,12 @@ zstyle ':completion:*' squeeze-slashes true
 
 # Autocomplete options for cd instead of directory stack
 zstyle ':completion:*' complete-options true
+
+# Sort file completions by modification time, newest first
 zstyle ':completion:*' file-sort modification
+# ...but keep cd's directory grid name-sorted (column-major, 1/2/3 down the
+# first column) — time sorting would scramble the grid
+zstyle ':completion:*:*:cd:*' file-sort name
 
 # --- Users ---
 zstyle ':completion:*:*:*:users' ignored-patterns adm daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody systemd-timesync systemd-network systemd-resolve systemd-bus-proxy syslog messagebus _apt uuidd tcpdump avahi-autoipd usbmux dnsmasq rtkit cups-pk-helper speech-dispatcher colord saned hplip pulse geoclue gnome-initial-setup gdm flatpak

@@ -14,8 +14,10 @@ alias zets="cd ~/life/00-zettelkasten/"
 alias conf="cd $XDG_CONFIG_HOME"
 alias config="cd $XDG_CONFIG_HOME"
 alias repos="cd ~/dev/repos"
-alias ghrepos="cd ~/dev/repos/github.com/a-kostevski"
-alias gorepos="cd $GOPATH"
+alias yrepo="cd ~/dev/repos/ymsen.com"
+alias yrepos="cd ~/dev/repos/ymsen.com"
+alias ghrepo="cd ~/dev/repos/github.com/a-kostevski"
+alias gorepo="cd $GOPATH"
 alias clconfig="cd ~/Library/Application Support/Claude/"
 alias c="clear"
 alias clr="clear"
@@ -40,8 +42,8 @@ alias publicip4="curl http://ipinfo.io/ip"
 alias publicip="publicip4"
 alias openports="lsof -i -P -n | grep LISTEN"
 
-alias urlencode="python -c 'import sys, urllib.parse as parse; print(parse.quote_plus(sys.argv[1]));'"
-alias urldecode="python -c 'import sys, urllib.parse as parse; print(parse.unquote(sys.argv[1]));'"
+alias urlencode="python3 -c 'import sys, urllib.parse as parse; print(parse.quote_plus(sys.argv[1]));'"
+alias urldecode="python3 -c 'import sys, urllib.parse as parse; print(parse.unquote(sys.argv[1]));'"
 
 # --- Config editing ---
 alias dotconfig="cd $DOTDIR && $EDITOR ."
@@ -55,22 +57,25 @@ if is_macos; then
 fi
 
 # --- Command defaults ---
-alias diff="colordiff"
-alias grep='grep --color=auto' 
-alias cat="bat"
+command_exists colordiff && alias diff="colordiff"
+alias grep='grep --color=auto'
+command_exists bat && alias cat="bat"
 
 alias map="xargs -n1"
 alias vi="nvim"
 alias vim="nvim"
 alias zotify="zotify --config-location \"${XDG_CONFIG_HOME:-$HOME}/zotify/zconfig.json\""
-alias npm="pnpm"
-alias npx="pnpm"
 
- # --- ls ---
-alias ls="eza --git --icons --group-directories-first"
-alias la="eza -a --git --icons --group-directories-first"
-alias ll="eza -ahlF --git --icons --group-directories-first"
-alias lt="eza --tree --level=2 --group-directories-first" 
+# --- ls ---
+if command_exists eza; then
+    alias ls="eza --git --icons --group-directories-first"
+    alias la="eza -a --git --icons --group-directories-first"
+    alias ll="eza -ahlF --git --icons --group-directories-first"
+    alias lt="eza --tree --level=2 --group-directories-first"
+else
+    alias la="ls -A"
+    alias ll="ls -ahlF"
+fi
 
 # --- Docker ---
 # Load Docker utility functions
@@ -104,20 +109,19 @@ done
 # --- Utils ---
 # Cross-platform clipboard copy
 if is_macos; then
-    alias cpwd='pwd | tr -d "\n" | pbcopy'
     alias clip='pbcopy'
     alias clippaste='pbpaste'
-    alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | pbcopy && echo \"Password copied to clipboard\""
 elif command_exists xclip; then
-    alias cpwd='pwd | tr -d "\n" | xclip -selection clipboard'
     alias clip='xclip -selection clipboard'
     alias clippaste='xclip -selection clipboard -o'
-    alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | xclip -selection clipboard && echo \"Password copied to clipboard\""
 elif command_exists wl-copy; then
-    alias cpwd='pwd | tr -d "\n" | wl-copy'
     alias clip='wl-copy'
     alias clippaste='wl-paste'
-    alias newpasswd="LC_ALL=C tr -dc \"[:rune:]\" < /dev/urandom | head -c 25 | wl-copy && echo \"Password copied to clipboard\""
+fi
+
+if alias clip &>/dev/null; then
+    alias cpwd='pwd | tr -d "\n" | clip'
+    alias newpasswd="LC_ALL=C tr -dc '[:alnum:][:punct:]' < /dev/urandom | head -c 25 | clip && echo \"Password copied to clipboard\""
 fi
 
 # Cross-platform open command
@@ -138,7 +142,8 @@ fi
 
 # Homebrew-specific (available on both macOS and Linux if installed)
 if command_exists brew; then
-    alias brewgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
+    alias brgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
+    alias brup="brew update && brew upgrade"
 fi
 
 # PDF merge (requires ghostscript)

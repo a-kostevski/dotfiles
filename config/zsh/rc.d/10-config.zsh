@@ -7,9 +7,9 @@ setopt pushd_silent         # Do not print the directory stack after pushd or po
  
 
 # --- Expansion and globbing ---
-setopt extended_glob        # Use extended globbing syntax. # Change directory to a path stored in a variable.
+setopt extended_glob        # Use extended globbing syntax.
 setopt no_glob_dots         # Do not include . and .. in globbing.
-unsetopt no_match           # Do not print an error message if no matches are found.
+setopt nomatch              # Print an error if a glob has no matches.
 setopt numericglobsort      # Sort filenames numerically when it makes sense.
 
 # --- I/O ---
@@ -17,7 +17,6 @@ setopt correct              # Spelling correction
 setopt no_correct_all       # Don't correct all arguments in a line.
 setopt ignore_eof           # Do not exit upon reading EOF (Ctrl^D).
 setopt interactivecomments  # Allow comments even in interactive shells.
-setopt no_dvorak            # Do not use Dvorak key bindings.
 setopt aliases              # Enable alias expansion.
 setopt no_beep              # Do not beep on errors.
 

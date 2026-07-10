@@ -69,7 +69,6 @@ export BUNDLE_USER_PLUGIN=$XDG_DATA_HOME/bundle
 
 # sqlite and postgres
 export SQLITE_HISTORY=$XDG_DATA_HOME/sqlite_history
-export PSQL_HISTORY=$XDG_DATA_HOME/psql_history
 export PSQLRC=$XDG_CONFIG_HOME/pg/psqlrc
 export PSQL_HISTORY=$XDG_STATE_HOME/psql_history
 export PGPASSFILE=$XDG_CONFIG_HOME/pg/pgpass

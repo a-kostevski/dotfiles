@@ -2,7 +2,7 @@
 
 ZSH_FUNCTIONS="$ZDOTDIR/functions"
 if [[ -d "$ZSH_FUNCTIONS" ]]; then
-   for func in "$ZSH_FUNCTIONS"/*; do
+   for func in "$ZSH_FUNCTIONS"/*(N); do
       autoload -Uz "${func:t}"
    done
 fi

@@ -34,7 +34,14 @@ fi
 
 ## 1password - load immediately as it's security-critical
 if command_exists op; then
-  eval "$(op completion zsh)"
+  # Cache completion script for faster startup (mirrors brew_shellenv caching)
+  local op_cache="$XDG_CACHE_HOME/zsh/op_completion"
+  local op_bin="$(command -v op)"
+  if [[ ! -f "$op_cache" ]] || [[ "$op_bin" -nt "$op_cache" ]]; then
+    mkdir -p "${op_cache:h}"
+    op completion zsh > "$op_cache"
+  fi
+  source "$op_cache"
   compdef _op op
   export OP_BIOMETRIC_UNLOCK_ENABLED=1
 
@@ -63,15 +70,18 @@ if command_exists uvx; then
   _lazy_load_cmd uvx 'eval "$(uvx --generate-shell-completion zsh)"'
 fi
 
-##
-_plug_load "zsh-users/zsh-completions"
+## zsh-defer - loads synchronously; subsequent _plug_load calls defer
+_plug_load "romkatv/zsh-defer"
+
+## zsh-completions - clone only; 30-completions.zsh adds it to fpath before compinit
+_plug_clone "zsh-users/zsh-completions"
 
 ## zsh-syntax-highlighting
-_plug_load "zsh-users/zsh-syntax-highlighting"
 export ZSH_HIGHLIGHT_MAXLENGTH=200
+export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
+_plug_load "zsh-users/zsh-syntax-highlighting"
 
 ## zsh-autosuggestions
-_plug_load "zsh-users/zsh-autosuggestions"
 export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 export ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
-export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
+_plug_load "zsh-users/zsh-autosuggestions"

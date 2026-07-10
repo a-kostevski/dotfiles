@@ -26,7 +26,9 @@ zle -N zle-keymap-select
 echo -ne '\e[5 q'
 
 # Use beam cursor for each new prompt
-preexec() { echo -ne '\e[5 q' }
+autoload -Uz add-zsh-hook
+_cursor_beam() { echo -ne '\e[5 q' }
+add-zsh-hook preexec _cursor_beam
 
 # History search
 bindkey -M vicmd '?' history-incremental-search-backward
