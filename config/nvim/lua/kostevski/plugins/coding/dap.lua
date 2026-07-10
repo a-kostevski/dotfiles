@@ -7,6 +7,7 @@ return {
          opts = {},
       },
    },
+   cmd = { "DapContinue", "DapToggleBreakpoint" },
   -- stylua: ignore
   keys = {
     { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input('Breakpoint condition: ')) end, desc = "Breakpoint Condition" },

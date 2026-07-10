@@ -1,6 +1,5 @@
 return {
-   -- MunifTanjim/nui.nvim intentionally not declared standalone here: see the
-   -- plenary.nvim comment in plugins/tools.lua for why a bare top-level entry
-   -- breaks the merged dependency-detection used by the Step 3 coverage check.
+   -- No standalone nui.nvim entry: every consumer declares it in dependencies,
+   -- so a bare top-level entry is redundant.
    { import = "kostevski.plugins.ui" },
 }

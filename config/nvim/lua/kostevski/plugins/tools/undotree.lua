@@ -3,6 +3,9 @@ return {
    name = "undotree",
    cmd = { "UndotreeToggle", "UndotreeShow" },
    dependencies = "nvim-lua/plenary.nvim",
+   keys = {
+      { "<leader>tu", "<cmd>UndotreeToggle<cr>", desc = "Undotree" },
+   },
    init = function()
       vim.g.undotree_enabled = vim.g.undotree_enabled or true
    end,

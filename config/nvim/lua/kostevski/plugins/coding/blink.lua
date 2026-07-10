@@ -31,7 +31,8 @@ return {
     -- synchronously calls Utils.lsp.capabilities.get_default_capabilities(), which
     -- pcall-requires "blink.cmp" to merge in its LSP capabilities -- that require is
     -- what actually triggers lazy.nvim to load the plugin for any real file. These
-    -- events remain as a fallback so blink still loads for buffers with no LSP client
+    -- events remain as a fallback so blink still loads for buffers that never fire
+    -- BufReadPre/BufNewFile (e.g. the initial unnamed scratch buffer, :enew)
     -- (InsertEnter) and for cmdline completion used before any buffer is opened
     -- (CmdlineEnter).
     event = { "InsertEnter", "CmdlineEnter" },

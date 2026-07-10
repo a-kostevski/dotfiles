@@ -6,7 +6,7 @@ return {
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "mason.nvim",
-      { "mason-org/mason-lspconfig.nvim", event = { "BufReadPre", "BufNewFile" }, config = function() end },
+      { "mason-org/mason-lspconfig.nvim", config = function() end },
     },
     opts = function()
       local ret = {
