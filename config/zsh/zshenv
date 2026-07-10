@@ -6,8 +6,9 @@ export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 
-export XDG_RUNTIME_DIR=${TMPDIR%/}/run
-[ ! -d $XDG_RUNTIME_DIR ] && mkdir -m 0700 -p $XDG_RUNTIME_DIR
+# Respect an existing runtime dir (systemd sets one); fall back to $TMPDIR/run
+export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-${${TMPDIR:-/tmp}%/}/run}
+[ ! -d "$XDG_RUNTIME_DIR" ] && mkdir -m 0700 -p "$XDG_RUNTIME_DIR" 2>/dev/null
 
 # Default zsh dotfile directory
 export ZDOTDIR=$XDG_CONFIG_HOME/zsh
@@ -51,6 +52,12 @@ export FFMPEG_DATADIR=$XDG_CONFIG_HOME/ffmpeg
 # Gnupg
 export GNUPGHOME=$XDG_DATA_HOME/gnupg
 
+# Go (GOPATH must exist before profile.d/10-path.zsh builds PATH)
+export GOPATH=$XDG_DATA_HOME/go
+export GOMODCACHE=$XDG_CACHE_HOME/go/mod
+export GOCACHE=$XDG_CACHE_HOME/go/build
+export GOENV=$XDG_CONFIG_HOME/go/env
+
 # Gem
 export GEM_HOME=$XDG_DATA_HOME/gem
 export GEM_SPEC_CACHE=$XDG_CACHE_HOME/gem
@@ -79,9 +86,11 @@ export LC_ALL=${LANG}
 export EDITOR="nvim"
 export VISUAL=$EDITOR 
 
-# Add these environment variables
-export ARCHFLAGS="-arch $(/usr/bin/arch)"
+# Build architecture flags (macOS only; $CPUTYPE is a zsh builtin, no fork)
+[[ $OSTYPE == darwin* ]] && export ARCHFLAGS="-arch $CPUTYPE"
 
-if [[ ! -o login ]]; then
+# Non-login *interactive* shells skip .zprofile by default; source it so they
+# get the same PATH setup. Plain `zsh -c` scripts stay fast and untouched.
+if [[ -o interactive && ! -o login ]]; then
   source $ZDOTDIR/.zprofile
 fi

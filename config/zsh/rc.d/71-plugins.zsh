@@ -76,12 +76,13 @@ _plug_load "romkatv/zsh-defer"
 ## zsh-completions - clone only; 30-completions.zsh adds it to fpath before compinit
 _plug_clone "zsh-users/zsh-completions"
 
-## zsh-syntax-highlighting
-export ZSH_HIGHLIGHT_MAXLENGTH=200
-export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
-_plug_load "zsh-users/zsh-syntax-highlighting"
-
 ## zsh-autosuggestions
 export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 export ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
 _plug_load "zsh-users/zsh-autosuggestions"
+
+## zsh-syntax-highlighting - must load after autosuggestions (it wraps
+## existing ZLE widgets and misses ones defined later)
+export ZSH_HIGHLIGHT_MAXLENGTH=200
+export ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
+_plug_load "zsh-users/zsh-syntax-highlighting"
