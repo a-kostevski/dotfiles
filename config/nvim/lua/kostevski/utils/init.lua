@@ -3,7 +3,7 @@
 -- ============================================================================
 -- This module provides a lazy-loading mechanism for all utility submodules,
 -- ensuring minimal startup overhead while providing comprehensive functionality
--- for debugging, LSP, formatting, UI, plugins, and more.
+-- for LSP, formatting, UI, plugins, and more.
 --
 -- Usage:
 --   local Utils = require("kostevski.utils")
@@ -13,7 +13,6 @@
 -- ============================================================================
 
 ---@class Utils Main utilities interface with lazy-loaded submodules
----@field debug Debug Debug utilities for logging and inspection
 ---@field notify NotifyUtils Notification system for user feedback
 ---@field lsp LspUtils LSP integration utilities (capabilities, formatting, diagnostics)
 ---@field format Format Code formatting utilities
@@ -21,17 +20,13 @@
 ---@field plugin PluginUtils Plugin management and lazy.nvim helpers
 ---@field toggle ToggleUtils Feature toggle system with keybindings
 ---@field root Root Project root detection utilities
----@field cache UtilsCache Caching utilities for performance optimization
 ---@field keys Keys Keymap management utilities
----@field strings StringUtils String manipulation functions
----@field errors UtilsErrors Error handling and validation utilities
 ---@field lang LangUtils Language-specific configuration registration
 ---@field _loaded table<string, boolean> Internal: Tracks loaded modules
 ---@field _modules table<string, string> Internal: Module name to path mapping
 local Utils = {
   _loaded = {},
   _modules = {
-    debug = "kostevski.utils.debug",
     notify = "kostevski.utils.notify",
     lsp = "kostevski.utils.lsp",
     format = "kostevski.utils.format",
@@ -39,10 +34,7 @@ local Utils = {
     plugin = "kostevski.utils.plugin",
     toggle = "kostevski.utils.toggle",
     root = "kostevski.utils.root",
-    cache = "kostevski.utils.cache",
     keys = "kostevski.utils.keys",
-    strings = "kostevski.utils.strings",
-    errors = "kostevski.utils.errors",
     lang = "kostevski.utils.lang",
   },
 }

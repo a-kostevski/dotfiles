@@ -64,6 +64,64 @@ local function dedup_key(msg, level)
   return string.format("%d:%s", level, msg)
 end
 
+local MAX_TITLE_LENGTH = 50
+local MAX_MESSAGE_SIZE = 1024
+
+---Sanitize text: tabs to spaces, strip control chars except newlines
+local function sanitize(text)
+  if type(text) ~= "string" then
+    text = tostring(text)
+  end
+  text = text:gsub("\t", "  ")
+  text = text:gsub("[%c]", function(c)
+    return c == "\n" and c or ""
+  end)
+  return text
+end
+
+---Format a message for display: handles tables, sanitizes, truncates
+---@param msg any
+---@return string?
+local function format_message(msg)
+  if not msg then
+    return nil
+  end
+  local text
+  if type(msg) == "table" then
+    text = vim.islist(msg) and table.concat(msg, "\n") or vim.inspect(msg)
+  else
+    text = tostring(msg)
+  end
+  text = sanitize(text)
+  if #text == 0 then
+    return nil
+  end
+  if #text > MAX_MESSAGE_SIZE then
+    text = text:sub(1, MAX_MESSAGE_SIZE) .. "..."
+  end
+  return text
+end
+
+---Format a title with a level indicator, truncated
+---@param title string
+---@param level integer
+---@return string
+local function format_title(title, level)
+  local final_title = sanitize(title)
+  local level_names = {
+    [vim.log.levels.ERROR] = "ERROR",
+    [vim.log.levels.WARN] = "WARN",
+    [vim.log.levels.INFO] = "INFO",
+    [vim.log.levels.DEBUG] = "DEBUG",
+    [vim.log.levels.TRACE] = "TRACE",
+  }
+  final_title = string.format("[%s] %s", level_names[level] or "INFO", final_title)
+  if #final_title > MAX_TITLE_LENGTH then
+    final_title = final_title:sub(1, MAX_TITLE_LENGTH - 3) .. "..."
+  end
+  return final_title
+end
+
 ---Send a notification with formatting and options
 ---Duplicate messages within the timeout window are collapsed with a counter badge.
 ---@param msg string|table|any Message content (will be formatted)
@@ -85,8 +143,7 @@ function Notify.notify(msg, level, opts)
   end
 
   -- Format message
-  local Utils = require("kostevski.utils")
-  local formatted_msg = Utils.strings.message(msg)
+  local formatted_msg = format_message(msg)
   if not formatted_msg then
     return nil
   end
@@ -104,7 +161,7 @@ function Notify.notify(msg, level, opts)
 
   -- Format title if provided
   if opts.title then
-    opts.title = Utils.strings.title(opts.title, level)
+    opts.title = format_title(opts.title, level)
   end
 
   -- Check for duplicate: skip dedup if this is a replacement notification (e.g. progress)
