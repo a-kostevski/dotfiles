@@ -8,16 +8,24 @@ dot_title "Installing macOS"
 HOME=${HOME:-$(get_default_home)}
 
 # Create macOS-specific directories (bootstrap handles standard directories)
-dot_mkdir "$HOME"/pictures/mac-screenshots
+# Capital "Pictures" to match the screencapture location in defaults.zsh
+dot_mkdir "$HOME"/Pictures/mac-screenshots
 
 dot_header "Checking for command line tools"
 if ! xcode-select -p &>/dev/null; then
   dot_info "Installing command line tools..."
   execute_cmd "xcode-select --install"
   if [[ -z "$DRY_RUN" ]]; then
-    # Wait for installation to complete
+    # Wait for installation to complete, but don't hang forever if the
+    # user cancels the GUI installer dialog (30 min ceiling)
+    waited=0
     until xcode-select -p &>/dev/null; do
-      sleep 1
+      sleep 5
+      waited=$((waited + 5))
+      if [[ $waited -ge 1800 ]]; then
+        dot_error "Timed out waiting for command line tools installation"
+        exit 1
+      fi
     done
   fi
   dot_success "Installed command line tools"
@@ -60,12 +68,13 @@ if validate_file "$dot_root/config/macos/defaults.zsh" "macOS defaults configura
   dot_success "Applied macOS defaults"
 fi
 
-# Ask for security hardening (skip prompts in dry run)
-if [[ -z "$DRY_RUN" ]]; then
-  read -p "Do you want to apply security hardening? (y/N) " response
+# Ask for security hardening (skip prompts in dry run / non-interactive
+# runs; a plain `read` hitting EOF would abort the script under set -e)
+if [[ -z "$DRY_RUN" ]] && [[ -t 0 ]]; then
+  read -p "Do you want to apply security hardening? (y/N) " response || response="N"
 else
   response="N"
-  dot_info "Skipping security hardening prompt in dry run"
+  dot_info "Skipping security hardening prompt (dry run or non-interactive)"
 fi
 if [[ "$response" =~ ^[Yy]$ ]]; then
   dot_info "Applying security hardening..."
@@ -87,7 +96,10 @@ done
 dot_success "macOS setup completed successfully"
 if [[ -z "$DRY_RUN" ]]; then
   dot_info "Note: Some changes require a restart to take effect"
-  read -p "Do you want to restart now? (y/N) " response
+  response="N"
+  if [[ -t 0 ]]; then
+    read -p "Do you want to restart now? (y/N) " response || response="N"
+  fi
   if [[ "$response" =~ ^[Yy]$ ]]; then
     sudo shutdown -r now
   fi

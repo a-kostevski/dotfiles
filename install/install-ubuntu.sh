@@ -62,10 +62,14 @@ if command_exists batcat && ! command_exists bat; then
   execute_cmd "sudo ln -sf $(which batcat) /usr/local/bin/bat"
 fi
 
-# Optionally install thefuck
+# Optionally install thefuck via pipx (pip install --user fails on
+# Ubuntu 23.04+ with PEP 668 externally-managed environments)
 dot_info "Installing thefuck..."
 if ! command_exists thefuck; then
-  execute_cmd "pip3 install --user thefuck"
+  if ! command_exists pipx; then
+    execute_cmd "sudo apt-get install -y pipx"
+  fi
+  execute_cmd "pipx install thefuck"
 fi
 
 dot_success "Ubuntu setup completed successfully"
