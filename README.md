@@ -36,15 +36,17 @@ Essential tools only - perfect for servers or minimal setups:
 Common development setup:
 - Everything from Minimal
 - Neovim with full plugin ecosystem
-- Development utilities (bat, ripgrep, fd)
-- Python environment configuration
+- bat, ripgrep, and Python environment configuration
 
 ### Full
 Complete development environment:
 - Everything from Standard
-- Language-specific tools (Go, Rust, etc.)
+- clang-format and LLDB configuration
 - macOS-specific: Homebrew packages, Karabiner, Kitty terminal
-- Additional development utilities
+
+### All / Custom
+- `--profile all` symlinks every directory under `config/`
+- `custom` (interactive selection) is offered when running without flags
 
 ## Usage
 
@@ -58,8 +60,23 @@ Complete development environment:
 # Skip OS package installation
 ./bootstrap.sh --profile full --skip-install
 
+# Update symlinks only (no package installation)
+./bootstrap.sh --sync
+
+# Sync a single config
+./bootstrap.sh --sync --config nvim
+
 # Force overwrite without backups (use with caution)
 ./bootstrap.sh --force
+```
+
+Day-to-day symlink management uses the `dotfiles` utility (installed to `~/.local/bin`):
+
+```bash
+dotfiles sync      # re-sync previously synced configs
+dotfiles status    # symlink health check
+dotfiles clean     # remove broken symlinks
+dotfiles profile   # show or switch the stored profile
 ```
 
 ## Repository Structure
@@ -76,9 +93,11 @@ Complete development environment:
 │   └── ...                # Other tool configs
 ├── install/               # OS-specific installation scripts
 │   ├── install-macos.sh   # macOS setup
-│   └── install-ubuntu.sh  # Ubuntu setup
-├── bootstrap.sh           # Main installation script
-└── CLAUDE.md             # AI assistant instructions
+│   ├── install-ubuntu.sh  # Ubuntu setup
+│   └── profiles.sh        # Profile definitions (PROFILE_CONFIGS)
+├── tests/                 # Regression tests (make test)
+├── Makefile               # install/update/test/validate targets
+└── bootstrap.sh           # Main installation script
 ```
 
 ## Configuration Details
@@ -102,9 +121,8 @@ Complete development environment:
 - Aliases for common operations
 
 ### Tmux
-- Custom status bar
-- Vim-like keybindings
-- Session management
+- Deliberately minimal: mouse support, fast escape, and correct
+  terminfo/truecolor (`tmux-256color` + `Tc` overrides)
 
 ## Platform-Specific Features
 
@@ -137,8 +155,8 @@ chsh -s $(which zsh)
 # Go
 go install golang.org/x/tools/gopls@latest
 
-# Python
-pip install --user pynvim
+# Python (pipx/venv on Ubuntu 23.04+; plain pip fails under PEP 668)
+python3 -m pip install --user pynvim
 
 # Rust
 rustup component add rust-analyzer
@@ -193,7 +211,7 @@ grep -q "$(which zsh)" /etc/shells || echo "$(which zsh)" | sudo tee -a /etc/she
 3. Document any special requirements
 
 ### Creating Custom Profiles
-Edit `bootstrap.sh` and modify the `get_config_list()` function to define custom profiles.
+Edit the `PROFILE_CONFIGS` map in `install/profiles.sh` (profile logic lives there, not in `bootstrap.sh`).
 
 ## Contributing
 
