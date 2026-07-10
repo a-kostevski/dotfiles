@@ -1,3 +1,9 @@
+local Lang = require("kostevski.utils.lang")
+
+if not Lang.is_enabled("tex") then
+   return {}
+end
+
 -- Root patterns for LaTeX projects
 require("kostevski.utils.root").add_patterns("tex", {
    -- LaTeX project files

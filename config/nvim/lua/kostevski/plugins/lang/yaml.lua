@@ -1,3 +1,9 @@
+local Lang = require("kostevski.utils.lang")
+
+if not Lang.is_enabled("yaml") then
+   return {}
+end
+
 -- Root patterns for YAML projects
 require("kostevski.utils.root").add_patterns("yaml", {
    -- CI/CD

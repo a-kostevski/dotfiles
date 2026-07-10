@@ -1,3 +1,9 @@
+local Lang = require("kostevski.utils.lang")
+
+if not Lang.is_enabled("rust") then
+  return {}
+end
+
 -- Root patterns for Rust projects
 require("kostevski.utils.root").add_patterns("rust", {
   -- Rust-specific

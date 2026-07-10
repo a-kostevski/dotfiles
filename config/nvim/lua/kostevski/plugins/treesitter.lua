@@ -7,6 +7,9 @@ return {
     dependencies = {
       {
         "OXY2DEV/markview.nvim",
+        enabled = function()
+          return require("kostevski.utils.lang").is_enabled("markdown")
+        end,
       },
     },
     opts = {

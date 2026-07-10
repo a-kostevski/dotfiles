@@ -58,10 +58,5 @@ return {
       }
       return opts
     end,
-
-    config = function(_, opts)
-      Utils.debug.dump({ formatters_by_ft = opts.formatters_by_ft, formatters = vim.tbl_keys(opts.formatters) })
-      require("conform").setup(opts)
-    end,
   },
 }
