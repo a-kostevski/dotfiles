@@ -170,8 +170,9 @@ cmd_status() {
       printf "%b%s:%b\n" "$COLOR_HEADER" "$config" "$COLOR_RESET"
     fi
 
-    # Check symlinks for this config
-    get_config_symlinks "$config" "$config_path" "$HOME/.config" | while IFS='|' read -r src dest; do
+    # Check symlinks for this config (process substitution keeps the
+    # counters in the main shell; a pipe would lose them in a subshell)
+    while IFS='|' read -r src dest; do
       if [[ "$show_details" == "true" ]]; then
         check_symlink "$src" "$dest" true
       else
@@ -185,7 +186,7 @@ cmd_status() {
         1) ((total_broken++)) || true ;;
         2) ((total_missing++)) || true ;;
       esac
-    done
+    done < <(get_config_symlinks "$config" "$config_path" "$HOME/.config")
 
     [[ "$show_details" == "true" ]] && echo
   done <<<"$config_list"
