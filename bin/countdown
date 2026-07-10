@@ -27,7 +27,7 @@ countdown() {
         local minutes=$(((remaining % 3600) / 60))
         local secs=$((remaining % 60))
         
-        PROMPT="%B[%02d:%02d:%02d]%b $DEFAULT_PROMPT" "$hours" "$minutes" "$secs"
+        printf -v PROMPT '%%B[%02d:%02d:%02d]%%b %s' "$hours" "$minutes" "$secs" "$DEFAULT_PROMPT"
         zle reset-prompt
         sleep 1
     done
