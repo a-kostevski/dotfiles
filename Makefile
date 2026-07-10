@@ -116,12 +116,11 @@ backup:
 ## Run tests
 test:
 	@echo -e "$(YELLOW)Running tests...$(NC)"
-	@if [ -f tests/test-bootstrap.sh ]; then \
-		bash tests/test-bootstrap.sh; \
-	else \
-		echo -e "$(RED)Test script not found$(NC)"; \
-		exit 1; \
-	fi
+	@status=0; \
+	for t in tests/test-*.sh; do \
+		bash "$$t" || status=1; \
+	done; \
+	exit $$status
 
 ## Check dependencies
 deps:

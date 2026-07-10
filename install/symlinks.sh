@@ -178,6 +178,32 @@ clean_broken_symlinks() {
     return 0
 }
 
+# Is this path a symlink whose target lies under owner_root?
+is_owned_symlink() {
+    local link="$1"
+    local owner="$2"
+
+    [[ -L "$link" ]] || return 1
+    local target
+    target=$(readlink "$link" 2>/dev/null) || return 1
+    [[ "$target" == "$owner"/* ]]
+}
+
+# Print all symlinks under a directory (unbounded depth) whose target lies
+# under owner_root. Links are created per-file at arbitrary depth, so no
+# -maxdepth here (unlike the detection-only scan in get_synced_configs).
+find_owned_symlinks() {
+    local dir="$1"
+    local owner="$2"
+
+    [[ -d "$dir" ]] || return 0
+    local link
+    while IFS= read -r link; do
+        is_owned_symlink "$link" "$owner" && printf '%s\n' "$link"
+    done < <(find "$dir" -type l 2>/dev/null)
+    return 0
+}
+
 # Update manifest file with symlink information
 update_manifest() {
     local src="$1"
