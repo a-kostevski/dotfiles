@@ -11,8 +11,8 @@ fi
 # Profile definitions
 declare -gA PROFILE_CONFIGS=(
   ["minimal"]="git zsh tmux"
-  ["standard"]="git zsh tmux nvim bat python"
-  ["full"]="git zsh tmux nvim bat python clang-format lldb"
+  ["standard"]="git zsh tmux nvim bat python ripgrep"
+  ["full"]="git zsh tmux nvim bat python ripgrep clang-format lldb"
 )
 
 # Global array for custom configurations

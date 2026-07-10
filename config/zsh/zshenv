@@ -16,6 +16,9 @@ export ZDOTDIR=$XDG_CONFIG_HOME/zsh
 # Disable less history
 export LESSHISTFILE=-
 
+# Ripgrep
+export RIPGREP_CONFIG_PATH=$XDG_CONFIG_HOME/ripgrep/config
+
 # Composer
 export COMPOSER_HOME=$XDG_CONFIG_HOME/composer
 export COMPOSER_CACHE_DIR=$XDG_CACHE_HOME/composer
