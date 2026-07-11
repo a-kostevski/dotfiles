@@ -14,7 +14,7 @@ fi
 set -euo pipefail
 
 # Trap errors for better debugging
-trap 'echo "Error occurred at line $LINENO while executing: $BASH_COMMAND"' ERR
+trap 'echo "Error occurred at line $LINENO while executing: $BASH_COMMAND" >&2' ERR
 
 # Script metadata
 readonly SCRIPT_VERSION="3.0.0"
@@ -110,7 +110,6 @@ EXAMPLES:
     $SCRIPT_NAME --sync --config nvim
 
 EOF
-  exit 0
 }
 
 
@@ -166,10 +165,12 @@ parse_args() {
         ;;
       -h | --help)
         usage
+        exit 0
         ;;
       *)
         dot_error "Unknown option: $1"
-        usage
+        usage >&2
+        exit 2
         ;;
     esac
   done
@@ -270,7 +271,7 @@ link_binaries() {
   while IFS= read -r script; do
     # Skip ignored files
     if is_ignored "$script"; then
-      [[ "$VERBOSE" == "true" ]] && dot_info "Skipping ignored script: ${script#$SCRIPT_DIR/}"
+      [[ "$VERBOSE" == "true" ]] && dot_info "Skipping ignored script: ${script#"$SCRIPT_DIR"/}"
       continue
     fi
     create_symlink "$script" "$BIN_DEST/$(basename "$script")"
@@ -367,8 +368,8 @@ main() {
   BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
 
   # Export key variables for install scripts and shared libraries
-  export dot_root="$SCRIPT_DIR"
-  export CONFIG_DIR="$SCRIPT_DIR/config"
+  # (dot_root/CONFIG_DIR are already exported once near the top, before the
+  # libraries are sourced; SCRIPT_DIR is readonly, so no need to repeat them)
   export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG SYNC_SYNCED
   export CONFIG_DEST BIN_DEST
 

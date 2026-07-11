@@ -88,6 +88,21 @@ assert_contains "dry run processes zsh" "Processing zsh configuration" "$dry_out
 assert_contains "dry run processes tmux" "Processing tmux configuration" "$dry_out"
 assert_eq "dry run emits no [DEBUG] noise" "" "$(grep -F '[DEBUG]' <<<"$dry_out" || true)"
 
+echo "== cli entry behavior =="
+# --help is a success and prints usage
+help_out="$(./bootstrap.sh --help)"
+help_rc=$?
+assert_eq "--help exits 0" "0" "$help_rc"
+assert_contains "--help prints usage" "Usage:" "$help_out"
+
+# an unknown flag must FAIL, not silently exit 0 (which would defeat set -e /
+# || error handling in a calling script, Makefile, or CI job)
+./bootstrap.sh --definitely-not-a-flag >/dev/null 2>&1
+unknown_rc=$?
+assert_eq "unknown flag exits non-zero (2)" "2" "$unknown_rc"
+unknown_both="$(./bootstrap.sh --definitely-not-a-flag 2>&1 || true)"
+assert_contains "unknown flag is reported" "Unknown option" "$unknown_both"
+
 echo "== all profile exclusions =="
 # `all` must only emit real user configs; installer/scaffolding dirs under
 # config/ must never be linked into ~/.config

@@ -125,7 +125,7 @@ get_brew_prefix() {
 is_ignored() {
   local file="$1"
   local base_dir="${2:-$dot_root}"
-  local rel_path="${file#$base_dir/}"
+  local rel_path="${file#"$base_dir"/}"
 
   # Use git check-ignore if we're in a git repo
   if [[ -d "$base_dir/.git" ]] && command -v git &>/dev/null; then

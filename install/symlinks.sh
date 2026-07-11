@@ -424,7 +424,7 @@ get_config_symlinks() {
         fi
         
         # Get relative path and construct destination
-        local rel_path="${file#$config_dir/}"
+        local rel_path="${file#"$config_dir"/}"
         local dest="$dest_base/$config_name/$rel_path"
         
         echo "$file|$dest"
