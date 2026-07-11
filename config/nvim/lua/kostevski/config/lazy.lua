@@ -27,11 +27,8 @@ function M.setup()
    require("lazy").setup({
       spec = {
          { import = "kostevski.plugins" },
-         { import = "kostevski.plugins.coding" },
-         { import = "kostevski.plugins.ui" },
-         { import = "kostevski.plugins.editor" },
-         { import = "kostevski.plugins.lsp" },
-         { import = "kostevski.plugins.ai" },
+         -- coding/ui/editor/lsp/tools subtrees load via their own
+         -- <category>.lua self-imports; only lang/ has no category file.
          { import = "kostevski.plugins.lang" },
       },
       defaults = {
