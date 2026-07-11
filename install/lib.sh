@@ -193,22 +193,3 @@ detect_os() {
   # Export for use in other scripts
   export OS_TYPE OS_VERSION
 }
-
-# Resolve symlink to actual path (cross-platform)
-resolve_path() {
-  local path="$1"
-
-  if [[ "$(uname)" == "Darwin" ]]; then
-    # macOS: Use a different approach
-    while [[ -L "$path" ]]; do
-      local dir
-      dir="$(cd "$(dirname "$path")" && pwd)"
-      path="$(readlink "$path")"
-      [[ "$path" != /* ]] && path="$dir/$path"
-    done
-    echo "$(cd "$(dirname "$path")" && pwd)/$(basename "$path")"
-  else
-    # Linux: Use readlink -f
-    readlink -f "$path"
-  fi
-}
