@@ -249,7 +249,10 @@ uninstall_symlink() {
     local dest="$1"
 
     [[ -L "$dest" ]] || return 1
-    dry_run rm "$dest"
+    if ! dry_run rm "$dest"; then
+        dot_error "Failed to remove: $dest"
+        return 1
+    fi
     [[ -z "${DRY_RUN:-}" ]] && print_status "ok" "Removed: $dest"
 
     if [[ "${RESTORE:-true}" == "true" ]]; then
@@ -360,6 +363,8 @@ get_synced_configs() {
         fi
     fi
 
+    # guard: "${synced[@]}" on an empty array trips set -u on bash < 4.4
+    [[ ${#synced[@]} -gt 0 ]] || return 0
     printf '%s\n' "${synced[@]}" | sort -u
 }
 

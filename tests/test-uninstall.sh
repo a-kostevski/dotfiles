@@ -4,7 +4,9 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Physical root (pwd -P): bootstrap.sh records physical link targets, and the
+# fixed `dotfiles` resolves its own root the same way, so the sandbox must too.
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$REPO_ROOT" || exit 1
 
 PASS=0
@@ -199,6 +201,26 @@ assert_contains "dry run announces restore" "[DRY-RUN] mv $tmp_un/link3.backup.2
 assert_eq "dry run leaves the link" \
   "yes" "$([[ -L "$tmp_un/link3" ]] && echo yes || echo no)"
 
+# rm failure must fail loudly, not report a phantom removal (skip as root:
+# root ignores the read-only parent's mode bits, so rm would still succeed)
+if [[ $EUID -ne 0 ]]; then
+  tmp_rorm="$(mktemp -d)"
+  echo "src" >"$tmp_rorm/src"
+  ln -s "$tmp_rorm/src" "$tmp_rorm/rmlink"
+  chmod 555 "$tmp_rorm"   # read-only parent -> rm of the link inside fails
+  UNINSTALL_RESTORED=0
+  rorm_out="$(RESTORE=false DRY_RUN="" uninstall_symlink "$tmp_rorm/rmlink" 2>&1)"
+  rorm_rc=$?
+  assert_eq "uninstall_symlink returns rc 1 when rm fails" "1" "$rorm_rc"
+  assert_contains "reports the rm failure" "Failed to remove" "$rorm_out"
+  assert_eq "does not print a phantom Removed on failure" \
+    "no" "$([[ "$rorm_out" == *"Removed:"* ]] && echo yes || echo no)"
+  assert_eq "the link survives a failed rm" \
+    "yes" "$([[ -L "$tmp_rorm/rmlink" ]] && echo yes || echo no)"
+  chmod 755 "$tmp_rorm"
+  rm -rf "$tmp_rorm"
+fi
+
 echo "== prune_empty_dirs =="
 mkdir -p "$tmp_un/tree/a/b" "$tmp_un/tree/c"
 echo "file" >"$tmp_un/tree/c/file"
@@ -214,6 +236,144 @@ assert_eq "fully-empty root is removed too" \
 assert_eq "missing root is rc 0" "0" \
   "$(DRY_RUN="" prune_empty_dirs "$tmp_un/nope"; echo $?)"
 rm -rf "$tmp_un"
+
+echo "== dotfiles uninstall (end to end) =="
+make_sandbox() {
+  local home="$1"
+  mkdir -p "$home/.config/nvim/lua" "$home/.config/tmux" "$home/.local/bin"
+  # owned links into the real repo
+  ln -s "$REPO_ROOT/config/nvim/init.lua" "$home/.config/nvim/init.lua"
+  ln -s "$REPO_ROOT/config/tmux/tmux.conf" "$home/.config/tmux/tmux.conf"
+  ln -s "$REPO_ROOT/config/zsh/zshenv" "$home/.zshenv"
+  ln -s "$REPO_ROOT/bin/mkx" "$home/.local/bin/mkx"
+  # a backup bootstrap would have made when it displaced a real nvim config
+  echo "pre-dotfiles nvim" >"$home/.config/nvim/init.lua.backup.20250101_000000"
+  # foreign link and real file that must survive any uninstall
+  ln -s "/somewhere/else" "$home/.config/foreign"
+  echo "hands off" >"$home/.config/realfile"
+  # manifest with a stale duplicate, as real ones have
+  {
+    echo "2025-01-01 00:00:00|$REPO_ROOT/config/nvim/init.lua|$home/.config/nvim/init.lua"
+    echo "2025-06-01 00:00:00|$REPO_ROOT/config/nvim/init.lua|$home/.config/nvim/init.lua"
+    echo "2025-06-01 00:00:00|$REPO_ROOT/config/tmux/tmux.conf|$home/.config/tmux/tmux.conf"
+  } >"$home/.config/.dotfiles-manifest"
+  # stored profile marker, as a real install writes
+  echo "standard" >"$home/.config/.dotfiles-profile"
+}
+
+# --- full uninstall ---
+tmp_e2e="$(mktemp -d)"
+make_sandbox "$tmp_e2e"
+full_out="$(HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall --yes 2>&1)"
+full_rc=$?
+assert_eq "full uninstall exits 0" "0" "$full_rc"
+assert_eq "nvim link replaced by restored backup" \
+  "pre-dotfiles nvim" "$(cat "$tmp_e2e/.config/nvim/init.lua" 2>/dev/null || echo MISSING)"
+assert_eq "tmux link gone and dir pruned" \
+  "no" "$([[ -e "$tmp_e2e/.config/tmux" ]] && echo yes || echo no)"
+assert_eq "zshenv home link gone" \
+  "no" "$([[ -L "$tmp_e2e/.zshenv" ]] && echo yes || echo no)"
+assert_eq "bin link gone" \
+  "no" "$([[ -L "$tmp_e2e/.local/bin/mkx" ]] && echo yes || echo no)"
+assert_eq ".local/bin itself survives" \
+  "yes" "$([[ -d "$tmp_e2e/.local/bin" ]] && echo yes || echo no)"
+assert_eq "foreign link survives" \
+  "yes" "$([[ -L "$tmp_e2e/.config/foreign" ]] && echo yes || echo no)"
+assert_eq "real file survives" \
+  "hands off" "$(cat "$tmp_e2e/.config/realfile")"
+assert_eq "manifest deleted" \
+  "no" "$([[ -f "$tmp_e2e/.config/.dotfiles-manifest" ]] && echo yes || echo no)"
+assert_eq "profile marker deleted on full uninstall" \
+  "no" "$([[ -f "$tmp_e2e/.config/.dotfiles-profile" ]] && echo yes || echo no)"
+assert_contains "summary reports removals" "Removed" "$full_out"
+rm -rf "$tmp_e2e"
+
+# --- full uninstall through a symlinked repo path (pwd vs pwd -P regression) ---
+# When any component of the repo path is a symlink, `dotfiles` must resolve its
+# own root physically (pwd -P) or ownership never matches the physical link
+# targets bootstrap.sh wrote, and the uninstall silently no-ops.
+tmp_sym="$(mktemp -d)"
+alias_root="$tmp_sym/repo-alias"
+ln -s "$REPO_ROOT" "$alias_root"          # a symlinked path to the same repo
+sym_home="$tmp_sym/home"
+mkdir -p "$sym_home/.config/nvim"
+# link points at the PHYSICAL repo, exactly as bootstrap.sh (pwd -P) creates it
+ln -s "$REPO_ROOT/config/nvim/init.lua" "$sym_home/.config/nvim/init.lua"
+sym_out="$(HOME="$sym_home" "$alias_root/bin/dotfiles" uninstall --yes 2>&1)"
+sym_rc=$?
+assert_eq "uninstall via symlinked repo path exits 0" "0" "$sym_rc"
+assert_eq "uninstall via symlinked repo path removes the link" \
+  "no" "$([[ -L "$sym_home/.config/nvim/init.lua" ]] && echo yes || echo no)"
+assert_contains "does not falsely report nothing to do" "Removed" "$sym_out"
+rm -rf "$tmp_sym"
+
+# --- confirmation gate ---
+tmp_e2e="$(mktemp -d)"
+make_sandbox "$tmp_e2e"
+HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall <<<"n" >/dev/null 2>&1
+assert_eq "answering n aborts: links intact" \
+  "yes" "$([[ -L "$tmp_e2e/.config/nvim/init.lua" ]] && echo yes || echo no)"
+rm -rf "$tmp_e2e"
+
+# --- per-config uninstall ---
+tmp_e2e="$(mktemp -d)"
+make_sandbox "$tmp_e2e"
+HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall nvim >/dev/null 2>&1
+assert_eq "per-config: nvim backup restored" \
+  "pre-dotfiles nvim" "$(cat "$tmp_e2e/.config/nvim/init.lua" 2>/dev/null || echo MISSING)"
+assert_eq "per-config: tmux untouched" \
+  "yes" "$([[ -L "$tmp_e2e/.config/tmux/tmux.conf" ]] && echo yes || echo no)"
+assert_eq "per-config: zshenv untouched" \
+  "yes" "$([[ -L "$tmp_e2e/.zshenv" ]] && echo yes || echo no)"
+assert_eq "per-config: manifest pruned to surviving config" \
+  "1" "$(wc -l <"$tmp_e2e/.config/.dotfiles-manifest" | tr -d ' ')"
+assert_contains "per-config: surviving manifest entry is tmux" \
+  "tmux.conf" "$(cat "$tmp_e2e/.config/.dotfiles-manifest")"
+assert_eq "per-config: profile marker preserved" \
+  "yes" "$([[ -f "$tmp_e2e/.config/.dotfiles-profile" ]] && echo yes || echo no)"
+rm -rf "$tmp_e2e"
+
+# --- pseudo-config bin ---
+tmp_e2e="$(mktemp -d)"
+make_sandbox "$tmp_e2e"
+HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall bin >/dev/null 2>&1
+assert_eq "bin scope: mkx link gone" \
+  "no" "$([[ -L "$tmp_e2e/.local/bin/mkx" ]] && echo yes || echo no)"
+assert_eq "bin scope: configs untouched" \
+  "yes" "$([[ -L "$tmp_e2e/.config/nvim/init.lua" ]] && echo yes || echo no)"
+rm -rf "$tmp_e2e"
+
+# --- dry run and no-restore ---
+tmp_e2e="$(mktemp -d)"
+make_sandbox "$tmp_e2e"
+dry_e2e_out="$(HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall --dry-run 2>&1)"
+assert_contains "dry run announces actions" "[DRY-RUN]" "$dry_e2e_out"
+assert_eq "dry run changes nothing" \
+  "yes" "$([[ -L "$tmp_e2e/.config/nvim/init.lua" && -f "$tmp_e2e/.config/.dotfiles-manifest" ]] && echo yes || echo no)"
+
+HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall nvim --no-restore >/dev/null 2>&1
+assert_eq "no-restore: link gone, no file restored" \
+  "no" "$([[ -e "$tmp_e2e/.config/nvim/init.lua" ]] && echo yes || echo no)"
+assert_eq "no-restore: backup still on disk" \
+  "yes" "$([[ -f "$tmp_e2e/.config/nvim/init.lua.backup.20250101_000000" ]] && echo yes || echo no)"
+rm -rf "$tmp_e2e"
+
+# --- unknown config ---
+tmp_e2e="$(mktemp -d)"
+unknown_out="$(HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall bogus 2>&1)"
+unknown_rc=$?
+assert_eq "unknown config is an error" "1" "$unknown_rc"
+assert_contains "error names the offender" "bogus" "$unknown_out"
+rm -rf "$tmp_e2e"
+
+# --- nothing to do ---
+tmp_e2e="$(mktemp -d)"
+mkdir -p "$tmp_e2e/.config"
+nothing_out="$(HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" uninstall --yes 2>&1)"
+nothing_rc=$?
+assert_eq "nothing to uninstall exits 0" "0" "$nothing_rc"
+assert_contains "reports nothing to do" "Nothing to uninstall" "$nothing_out"
+rm -rf "$tmp_e2e"
 
 echo
 echo "Results: $PASS passed, $FAIL failed"
