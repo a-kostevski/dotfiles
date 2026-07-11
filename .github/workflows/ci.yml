@@ -34,10 +34,22 @@ jobs:
         run: |
           find config/zsh -name '*.zsh' -print0 | xargs -0 -n1 zsh -n
           zsh -n config/zsh/zshenv config/zsh/.zshrc config/zsh/.zprofile
+          # extensionless autoloaded functions and completions are zsh too
+          find config/zsh/functions config/zsh/completions -type f -print0 | xargs -0 -n1 zsh -n
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+      # stock macOS bash is 3.2; the tests need bash 4+ (declare -gA)
+      - name: Install bash (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
       - name: Run bootstrap tests
         run: make test

@@ -4,7 +4,9 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# pwd -P: bootstrap.sh links point at the physical repo path, so the sandbox
+# must compare against the physical root (matches tests/test-uninstall.sh).
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$REPO_ROOT" || exit 1
 
 PASS=0
@@ -173,6 +175,56 @@ sync_rc=$?
 assert_eq "sync dry run exits 0" "0" "$sync_rc"
 assert_contains "sync dry run completes" "Sync completed successfully" "$sync_out"
 rm -rf "$tmp_sync"
+
+echo "== install + uninstall round trip (real, not dry-run) =="
+# Covers the create/manifest/backup path (previously only dry-run tested) and
+# chains into uninstall for a full round trip. A pre-existing real file must be
+# backed up on install and restored on uninstall.
+tmp_rt="$(mktemp -d)"
+mkdir -p "$tmp_rt/.config/tmux"
+echo "my old tmux" >"$tmp_rt/.config/tmux/tmux.conf"   # pre-existing real file
+HOME="$tmp_rt" ./bootstrap.sh --sync --profile minimal >/dev/null 2>&1
+install_rc=$?
+assert_eq "real install exits 0" "0" "$install_rc"
+
+# links are created and point into the repo
+assert_eq "tmux.conf is a symlink into the repo" \
+  "$REPO_ROOT/config/tmux/tmux.conf" "$(readlink "$tmp_rt/.config/tmux/tmux.conf" 2>/dev/null)"
+assert_eq "zshenv is linked into the repo" \
+  "$REPO_ROOT/config/zsh/zshenv" "$(readlink "$tmp_rt/.zshenv" 2>/dev/null)"
+assert_eq "a bin script is linked into the repo" \
+  "$REPO_ROOT/bin/mkx" "$(readlink "$tmp_rt/.local/bin/mkx" 2>/dev/null)"
+assert_contains "manifest records the tmux link" \
+  "$tmp_rt/.config/tmux/tmux.conf" "$(cat "$tmp_rt/.config/.dotfiles-manifest" 2>/dev/null)"
+
+# the displaced real file was backed up, not destroyed
+tmux_backup="$(find "$tmp_rt/.config/tmux" -name 'tmux.conf.backup.*' | head -1)"
+assert_eq "displaced real tmux.conf was backed up" \
+  "my old tmux" "$(cat "$tmux_backup" 2>/dev/null || echo MISSING)"
+
+# re-installing must be idempotent: no new backups, links still valid
+backups_before="$(find "$tmp_rt" -name '*.backup.*' | wc -l | tr -d ' ')"
+HOME="$tmp_rt" ./bootstrap.sh --sync --profile minimal >/dev/null 2>&1
+backups_after="$(find "$tmp_rt" -name '*.backup.*' | wc -l | tr -d ' ')"
+assert_eq "re-install creates no new backups (idempotent)" "$backups_before" "$backups_after"
+assert_eq "tmux.conf still a valid symlink after re-install" \
+  "yes" "$([[ -L "$tmp_rt/.config/tmux/tmux.conf" && -e "$tmp_rt/.config/tmux/tmux.conf" ]] && echo yes || echo no)"
+
+# round trip: uninstall removes every owned link and restores the backup
+HOME="$tmp_rt" "$REPO_ROOT/bin/dotfiles" uninstall --yes >/dev/null 2>&1
+uninstall_rc=$?
+assert_eq "round-trip uninstall exits 0" "0" "$uninstall_rc"
+assert_eq "tmux link removed on uninstall" \
+  "no" "$([[ -L "$tmp_rt/.config/tmux/tmux.conf" ]] && echo yes || echo no)"
+assert_eq "zshenv link removed on uninstall" \
+  "no" "$([[ -L "$tmp_rt/.zshenv" ]] && echo yes || echo no)"
+assert_eq "bin link removed on uninstall" \
+  "no" "$([[ -L "$tmp_rt/.local/bin/mkx" ]] && echo yes || echo no)"
+assert_eq "uninstall restored the pre-install tmux.conf" \
+  "my old tmux" "$(cat "$tmp_rt/.config/tmux/tmux.conf" 2>/dev/null || echo MISSING)"
+assert_eq "manifest deleted on full uninstall" \
+  "no" "$([[ -f "$tmp_rt/.config/.dotfiles-manifest" ]] && echo yes || echo no)"
+rm -rf "$tmp_rt"
 
 echo
 echo "Results: $PASS passed, $FAIL failed"
