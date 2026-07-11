@@ -5,6 +5,9 @@ return {
     event = { "BufReadPost", "BufNewFile" },
     build = ":TSUpdate",
     dependencies = {
+      -- provides the `textobjects` query group mini.ai reads for @function/
+      -- @class/@block; main branch to match nvim-treesitter's main branch
+      { "nvim-treesitter/nvim-treesitter-textobjects", branch = "main" },
       {
         "OXY2DEV/markview.nvim",
         enabled = function()

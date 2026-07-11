@@ -25,7 +25,7 @@ function M.on_attach(client, bufnr)
   local group = vim.api.nvim_create_augroup("lsp_word_" .. bufnr, { clear = true })
 
   vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
-    groups = group,
+    group = group,
     buffer = bufnr,
     callback = function()
       if vim.fn.pumvisible() == 1 then
@@ -40,7 +40,7 @@ function M.on_attach(client, bufnr)
   })
 
   vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
-    groups = group,
+    group = group,
     buffer = bufnr,
     callback = function()
       vim.lsp.buf.clear_references()
@@ -48,7 +48,7 @@ function M.on_attach(client, bufnr)
   })
 
   vim.api.nvim_create_autocmd("BufDelete", {
-    groups = group,
+    group = group,
     buffer = bufnr,
     once = true,
     callback = function()

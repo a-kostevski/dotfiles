@@ -116,6 +116,13 @@ return {
           vim.api.nvim_set_option_value("foldexpr", "v:lua.vim.lsp.foldexpr()", { scope = "local" })
         end)
       end
+
+      -- document highlight (drives ]] / [[ reference navigation via words.jump)
+      if opts.document_highlight.enabled then
+        Utils.lsp.on_supports_method("textDocument/documentHighlight", function(client, buffer)
+          Utils.lsp.words.on_attach(client, buffer)
+        end)
+      end
       -- Setup diagnostics using the centralized module
       Utils.lsp.diagnostics.setup(opts.diagnostics)
 
