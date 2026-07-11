@@ -21,4 +21,4 @@ fi
 
 touch "$file_name"
 chmod 755 "$file_name"
-"$EDITOR" "$file_name"
+"${EDITOR:-vi}" "$file_name"

@@ -123,7 +123,7 @@ return {
             { "<leader>f", group = "Find/file" },
             { "<leader>g", group = "Git" },
             { "<leader>gh", group = "Hunks" },
-            { "<leader>n", group = "Notes" },
+            { "<leader>n", group = "Notifications" },
             { "<leader>q", group = "Quit/session" },
             { "<leader>s", group = "Search" },
             { "<leader>t", group = "Toggle", icon = { icon = "󰙵 ", color = "cyan" } },

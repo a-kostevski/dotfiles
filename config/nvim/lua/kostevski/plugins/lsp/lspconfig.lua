@@ -116,6 +116,13 @@ return {
           vim.api.nvim_set_option_value("foldexpr", "v:lua.vim.lsp.foldexpr()", { scope = "local" })
         end)
       end
+
+      -- document highlight (drives ]] / [[ reference navigation via words.jump)
+      if opts.document_highlight.enabled then
+        Utils.lsp.on_supports_method("textDocument/documentHighlight", function(client, buffer)
+          Utils.lsp.words.on_attach(client, buffer)
+        end)
+      end
       -- Setup diagnostics using the centralized module
       Utils.lsp.diagnostics.setup(opts.diagnostics)
 
@@ -182,9 +189,18 @@ return {
     },
     config = function(_, opts)
       require("mason").setup(opts)
-      require("mason-lspconfig").setup({
-        ensure_installed = vim.list_extend(opts.ensure_installed, {}),
-      })
+      -- ensure_installed holds CLI tools (formatters/linters), not LSP
+      -- servers, so install via the registry; mason-lspconfig.setup() is
+      -- called once from the nvim-lspconfig config with automatic_enable
+      local mr = require("mason-registry")
+      mr.refresh(function()
+        for _, tool in ipairs(opts.ensure_installed) do
+          local ok, p = pcall(mr.get_package, tool)
+          if ok and not p:is_installed() then
+            p:install()
+          end
+        end
+      end)
     end,
   },
 }

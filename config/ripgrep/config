@@ -1,0 +1,13 @@
+# Ripgrep configuration
+# Loaded via RIPGREP_CONFIG_PATH (exported in zsh/zshenv)
+
+# Case-insensitive unless the pattern contains uppercase
+--smart-case
+
+# Search hidden files/dirs, but never .git
+--hidden
+--glob=!.git/*
+
+# Keep absurdly long lines from flooding the terminal
+--max-columns=500
+--max-columns-preview

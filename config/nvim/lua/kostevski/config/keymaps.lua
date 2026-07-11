@@ -11,7 +11,9 @@ map("n", "<down>", '<cmd>echo "Use j to move!!"<CR>')
 map("n", "<leader>fn", "<cmd>enew<cr>", { desc = "New File" })
 -- Save file
 map({ "i", "x", "n", "s" }, "<C-s>", "<cmd>w<cr><esc>", { desc = "Save File" })
-map("n", "<leader>q", "<cmd>confirm q<cr>", { desc = "Quit window" })
+-- <leader>qw, not bare <leader>q: a complete mapping on the group prefix
+-- would add a timeoutlen delay to every <leader>q* (session keys, qq)
+map("n", "<leader>qw", "<cmd>confirm q<cr>", { desc = "Quit window" })
 map("n", "<leader>qq", "<cmd>qa<cr>", { desc = "Quit All" })
 map("n", "<leader>Q", "<cmd>confirm qall<cr>", { desc = "Quit nvim" })
 

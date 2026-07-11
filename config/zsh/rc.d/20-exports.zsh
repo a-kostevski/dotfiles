@@ -9,12 +9,8 @@ export ZETDIR="$LIFE/0-inbox"
 export EXO_DATA_HOME="$EXO"
 export EXO_EDITOR="nvim"
 
-# Go configuration
-# Note: GOROOT and PATH modifications are in profile.d/10-path.zsh
-export GOPATH="$XDG_DATA_HOME/go"
-export GOMODCACHE="$XDG_CACHE_HOME/go/mod"
-export GOCACHE="$XDG_CACHE_HOME/go/build"
-export GOENV="$XDG_CONFIG_HOME/go/env"
+# Go configuration lives in zshenv (GOPATH is needed by profile.d/10-path.zsh);
+# GOROOT and PATH modifications are in profile.d/10-path.zsh
 
 export LESS_TERMCAP_mb=$'\e[6m'       # begin blinking
 export LESS_TERMCAP_md=$'\e[34m'      # begin bold

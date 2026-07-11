@@ -112,7 +112,8 @@ defaults write com.apple.finder DisableAllAnimations -bool true
 defaults write com.apple.finder AppleShowAllFiles YES
 
 # Always open everything in Finder's list view.
-defaults write com.apple.Finder FXPreferredViewStyle Nlsv
+# (domain is case-sensitive: com.apple.finder, not com.apple.Finder)
+defaults write com.apple.finder FXPreferredViewStyle -string "Nlsv"
 
 # Show all extensions
 defaults write NSGlobalDomain AppleShowAllExtensions -bool true

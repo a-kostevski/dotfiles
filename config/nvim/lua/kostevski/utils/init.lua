@@ -367,9 +367,9 @@ function Utils.setup()
   if Utils.lsp then
     Utils.lsp.setup()
   end
-  if Utils.toggle then
-    Utils.toggle.setup()
-  end
+  -- Utils.toggle.setup() is NOT called here: it creates <leader> keymaps, and
+  -- Utils.setup() runs before options.lua sets mapleader. config/init.lua
+  -- calls it after the config modules load.
   if Utils.keys then
     Utils.keys.setup()
   end

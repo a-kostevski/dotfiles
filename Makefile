@@ -8,6 +8,7 @@ SHELL := /bin/bash
 BOOTSTRAP := ./bootstrap.sh
 PROFILE ?= minimal
 VERBOSE ?= false
+ARGS ?=
 
 # Colors
 YELLOW := \033[1;33m
@@ -20,7 +21,7 @@ NC := \033[0m # No Color
 
 # Phony targets
 .PHONY: help install install-minimal install-standard install-full update \
-        test validate clean backup docs deps version bootstrap-help
+        uninstall test validate clean backup docs deps version bootstrap-help
 
 ## Help
 help:
@@ -35,6 +36,7 @@ help:
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make update          Update existing installation"
+	@echo "  make uninstall       Remove dotfiles symlinks (restores backups)"
 	@echo "  make validate        Check for broken symlinks"
 	@echo "  make clean           Remove broken symlinks"
 	@echo "  make backup          Backup current configs"
@@ -47,7 +49,8 @@ help:
 	@echo "Options:"
 	@echo "  PROFILE=<profile>    Set installation profile"
 	@echo "  VERBOSE=true         Enable verbose output"
-	@echo "  DRY_RUN=true        Run without making changes"
+	@echo "  DRY_RUN=true         Run without making changes"
+	@echo "  ARGS='...'           Extra args passed through to bootstrap/dotfiles"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make install PROFILE=standard VERBOSE=true"
@@ -56,7 +59,7 @@ help:
 ## Install with current profile
 install:
 	@echo -e "$(YELLOW)Installing dotfiles (profile: $(PROFILE))...$(NC)"
-	@$(BOOTSTRAP) --profile $(PROFILE) $(if $(filter true,$(VERBOSE)),--verbose) $(if $(filter true,$(DRY_RUN)),--dry-run)
+	@$(BOOTSTRAP) --profile $(PROFILE) $(if $(filter true,$(VERBOSE)),--verbose) $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
 	@echo -e "$(GREEN)Installation complete!$(NC)"
 
 ## Install minimal profile
@@ -74,9 +77,13 @@ install-full:
 ## Update existing installation
 update:
 	@echo -e "$(YELLOW)Updating dotfiles...$(NC)"
-	@git pull origin main
-	@$(BOOTSTRAP) --profile $(PROFILE) $(if $(filter true,$(VERBOSE)),--verbose)
+	@git pull --ff-only
+	@$(BOOTSTRAP) --profile $(PROFILE) $(if $(filter true,$(VERBOSE)),--verbose) $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
 	@echo -e "$(GREEN)Update complete!$(NC)"
+
+## Uninstall dotfiles symlinks (restores backups; pass ARGS='nvim' to scope)
+uninstall:
+	@bin/dotfiles uninstall $(ARGS)
 
 ## Validate symlinks
 validate:
@@ -96,7 +103,7 @@ clean:
 	while IFS= read -r link; do \
 		echo "Removing: $$link"; \
 		rm "$$link"; \
-		((count++)); \
+		count=$$((count + 1)); \
 	done < <(find ~/.config ~/.local/bin -type l ! -exec test -e {} \; -print 2>/dev/null); \
 	echo -e "$(GREEN)Removed $$count broken symlinks$(NC)"
 
@@ -116,12 +123,11 @@ backup:
 ## Run tests
 test:
 	@echo -e "$(YELLOW)Running tests...$(NC)"
-	@if [ -f tests/test-bootstrap.sh ]; then \
-		bash tests/test-bootstrap.sh; \
-	else \
-		echo -e "$(RED)Test script not found$(NC)"; \
-		exit 1; \
-	fi
+	@status=0; \
+	for t in tests/test-*.sh; do \
+		bash "$$t" || status=1; \
+	done; \
+	exit $$status
 
 ## Check dependencies
 deps:
@@ -132,7 +138,7 @@ deps:
 			echo -e "$(GREEN)✓$(NC) $$cmd"; \
 		else \
 			echo -e "$(RED)✗$(NC) $$cmd"; \
-			((missing++)); \
+			missing=$$((missing + 1)); \
 		fi \
 	done; \
 	if [ $$missing -gt 0 ]; then \
@@ -172,7 +178,7 @@ bootstrap-help:
 # Hidden targets for development
 
 .check-executable:
-	@for file in bootstrap.sh install/*.sh scripts/**/*; do \
+	@for file in bootstrap.sh install/*.sh bin/*; do \
 		if [ -f "$$file" ] && [ ! -x "$$file" ]; then \
 			echo "Making executable: $$file"; \
 			chmod +x "$$file"; \
@@ -181,7 +187,7 @@ bootstrap-help:
 
 .lint-shell:
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck bootstrap.sh install/*.sh; \
+		shellcheck -S warning bootstrap.sh install/*.sh bin/dotfiles tests/*.sh .githooks/setup.sh .githooks/post-merge .githooks/post-checkout; \
 	else \
 		echo "shellcheck not installed"; \
 	fi

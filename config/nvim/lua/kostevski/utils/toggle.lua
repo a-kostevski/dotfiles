@@ -25,11 +25,7 @@
 
 ---@class Toggle Feature toggle management system
 ---@field [string] {get: function, set: function, toggle: function} Individual toggle instances
-local toggle = setmetatable({}, {
-  __index = function(t, k)
-    return t[k]
-  end,
-})
+local toggle = {}
 
 ---Send toggle notification
 ---@param feature string Feature name
@@ -309,8 +305,12 @@ function toggle.setup()
     set = function(state)
       vim.b.signature_help_enabled = state
 
+      -- own augroup so disabling clears only our handler, not every buffer
+      -- CursorHoldI autocmd (e.g. document-highlight's insert-mode handler)
+      local group = vim.api.nvim_create_augroup("signature_help_" .. vim.api.nvim_get_current_buf(), { clear = true })
       if state then
         vim.api.nvim_create_autocmd("CursorHoldI", {
+          group = group,
           buffer = 0,
           callback = function()
             if vim.b.signature_help_enabled and #Utils.lsp.get_clients(0) > 0 then
@@ -318,11 +318,6 @@ function toggle.setup()
             end
           end,
           desc = "Show signature help",
-        })
-      else
-        vim.api.nvim_clear_autocmds({
-          buffer = 0,
-          event = "CursorHoldI",
         })
       end
     end,
@@ -371,27 +366,23 @@ function toggle.setup()
     desc = "Conceal",
   })
 
-  -- Treesitter highlighting
+  -- Treesitter highlighting (core vim.treesitter API; the plugin's main
+  -- branch has no nvim-treesitter.configs module or TSEnable/TSDisable)
   toggle.create({
     name = "treesitter",
     get = function()
-      local ok, configs = pcall(require, "nvim-treesitter.configs")
-      if not ok then
-        return false
-      end
       local buf = vim.api.nvim_get_current_buf()
-      return configs.is_enabled("highlight", vim.bo[buf].filetype, buf)
+      return vim.treesitter.highlighter.active[buf] ~= nil
     end,
     set = function(state)
-      local ok = pcall(function()
-        if state then
-          vim.cmd("TSEnable highlight")
-        else
-          vim.cmd("TSDisable highlight")
+      local buf = vim.api.nvim_get_current_buf()
+      if state then
+        local ok = pcall(vim.treesitter.start, buf)
+        if not ok then
+          Utils.notify.warn("No treesitter parser for this buffer")
         end
-      end)
-      if not ok then
-        Utils.notify.warn("Treesitter not available")
+      else
+        vim.treesitter.stop(buf)
       end
     end,
     keymap = "<leader>tT",

@@ -31,13 +31,16 @@ return lang.register({
     ".git",
   },
   lsp_server = "clangd",
+  -- clang-format and cppcheck come from Homebrew (Brewfile-all), not Mason:
+  -- Mason has no cppcheck package and its clang-format (pypi) install is
+  -- flaky, so `tools` stays empty and the binaries are found on PATH
   formatters = {
     list = { "clang-format" },
-    tools = { "clang-format" },
+    tools = {},
   },
   linters = {
     list = { "cppcheck" },
-    tools = { "cppcheck" },
+    tools = {},
   },
   dap = {
     adapters = {

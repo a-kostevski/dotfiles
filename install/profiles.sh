@@ -11,8 +11,8 @@ fi
 # Profile definitions
 declare -gA PROFILE_CONFIGS=(
   ["minimal"]="git zsh tmux"
-  ["standard"]="git zsh tmux nvim bat python"
-  ["full"]="git zsh tmux nvim bat python clang-format lldb"
+  ["standard"]="git zsh tmux nvim bat python ripgrep"
+  ["full"]="git zsh tmux nvim bat python ripgrep clang-format lldb"
 )
 
 # Global array for custom configurations
@@ -40,23 +40,20 @@ get_all_existing_configs() {
 
   local -a configs=()
 
-  # Debug output
-  >&2 echo "[DEBUG] get_all_existing_configs: config_dir=$config_dir"
-  >&2 echo "[DEBUG] Directory exists: $([[ -d "$config_dir" ]] && echo "yes" || echo "no")"
-
   # Find all directories in the config directory
   if [[ -d "$config_dir" ]]; then
     while IFS= read -r dir; do
       local config_name
       config_name=$(basename "$dir")
-      # Skip hidden directories and special cases
-      if [[ ! "$config_name" =~ ^\. ]]; then
-        configs+=("$config_name")
-      fi
+      # Skip hidden directories
+      [[ "$config_name" =~ ^\. ]] && continue
+      # Skip installer/scaffolding dirs that are not ~/.config configs
+      case "$config_name" in
+        macos | ubuntu | defaults | security) continue ;;
+      esac
+      configs+=("$config_name")
     done < <(find "$config_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
   fi
-
-  >&2 echo "[DEBUG] Found ${#configs[@]} configs: ${configs[*]}"
 
   printf '%s\n' "${configs[@]}"
 }
@@ -69,7 +66,6 @@ get_config_list() {
 
   # All profile - return all existing configs
   if [[ "$profile" == "all" ]]; then
-    >&2 echo "[DEBUG] get_config_list: profile=all detected"
     local -a all_configs=()
     local config_line
 
@@ -80,16 +76,12 @@ get_config_list() {
       fi
     done < <(get_all_existing_configs)
 
-    >&2 echo "[DEBUG] get_config_list: found ${#all_configs[@]} configs"
-
     if [[ ${#all_configs[@]} -gt 0 ]]; then
-      >&2 echo "[DEBUG] get_config_list: configs: ${all_configs[*]}"
       printf '%s\n' "${all_configs[@]}"
     else
       # Fallback to minimal if no configs found
-      >&2 echo "[DEBUG] get_config_list: No configs found, falling back to minimal"
       dot_warning "No configs found in directory, falling back to minimal"
-      configs=("${PROFILE_CONFIGS["minimal"]}")
+      read -ra configs <<<"${PROFILE_CONFIGS["minimal"]}"
       printf '%s\n' "${configs[@]}"
     fi
     return 0
@@ -99,12 +91,12 @@ get_config_list() {
       configs=("${CUSTOM_CONFIGS[@]}")
     else
       # Fallback to minimal if no custom configs
-      configs=("${PROFILE_CONFIGS["minimal"]}")
+      read -ra configs <<<"${PROFILE_CONFIGS["minimal"]}"
     fi
   else
     # Get base configs for profile
-    if [[ -n "${PROFILE_CONFIGS[$profile]}" ]]; then
-      configs=("${PROFILE_CONFIGS[$profile]}")
+    if [[ -n "${PROFILE_CONFIGS[$profile]:-}" ]]; then
+      read -ra configs <<<"${PROFILE_CONFIGS[$profile]}"
     else
       dot_error "Unknown profile: $profile"
       return 1
@@ -113,8 +105,10 @@ get_config_list() {
     # Add OS-specific configs for full profile
     if [[ "$profile" == "full" ]] && [[ -n "$os_type" ]]; then
       local os_key="${os_type}_full"
-      if [[ -n "${PROFILE_OS_SPECIFIC[$os_key]}" ]]; then
-        configs+=("${PROFILE_OS_SPECIFIC[$os_key]}")
+      if [[ -n "${PROFILE_OS_SPECIFIC[$os_key]:-}" ]]; then
+        local -a os_configs=()
+        read -ra os_configs <<<"${PROFILE_OS_SPECIFIC[$os_key]}"
+        configs+=("${os_configs[@]}")
       fi
     fi
   fi
@@ -264,8 +258,7 @@ select_custom_components() {
   # Sort the configs for consistent presentation
   local -a available_configs=()
   if [[ ${#all_existing[@]} -gt 0 ]]; then
-    IFS=$'\n' available_configs=($(sort <<<"${all_existing[*]}"))
-    unset IFS
+    mapfile -t available_configs < <(printf '%s\n' "${all_existing[@]}" | sort)
   fi
 
   for config in "${available_configs[@]}"; do

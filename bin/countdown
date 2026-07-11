@@ -1,51 +1,29 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
+# Countdown timer. Usage: countdown <positive-seconds>
 
-countdown() {
-    local seconds=$1
-    local start=$SECONDS
-    
-    # Disable zle for normal execution
-    if [[ ! -o zle ]]; then
-        while [ $((SECONDS - start)) -lt $seconds ]; do
-            local remaining=$((seconds - (SECONDS - start)))
-            local hours=$((remaining / 3600))
-            local minutes=$(((remaining % 3600) / 60))
-            local secs=$((remaining % 60))
-            
-            printf "\r%02d:%02d:%02d" $hours $minutes $secs
-            sleep 1
-        done
-        printf "\rTime's up!\n"
-        afplay /System/Library/Sounds/Glass.aiff
-        return
-    fi
-
-    # ZLE-enabled execution for prompt modification
-    while [ $((SECONDS - start)) -lt $seconds ]; do
-        local remaining=$((seconds - (SECONDS - start)))
-        local hours=$((remaining / 3600))
-        local minutes=$(((remaining % 3600) / 60))
-        local secs=$((remaining % 60))
-        
-        PROMPT="%B[%02d:%02d:%02d]%b $DEFAULT_PROMPT" "$hours" "$minutes" "$secs"
-        zle reset-prompt
-        sleep 1
-    done
-    
-    PROMPT="$DEFAULT_PROMPT"
-    zle reset-prompt
-    printf "\rTime's up!\n"
-    afplay /System/Library/Sounds/Glass.aiff
-}
-
-# Store default prompt
-DEFAULT_PROMPT=${PROMPT:-'%~ %# '}
-
-# Check if argument is provided
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <seconds>"
+if [[ $# -ne 1 || "$1" != <1-> ]]; then
+    echo "Usage: $0 <positive-seconds>" >&2
     exit 1
 fi
 
-countdown $1
+# "Time's up" alert, portable across macOS/Linux with a terminal-bell fallback.
+alert() {
+    if command -v afplay >/dev/null 2>&1; then
+        afplay /System/Library/Sounds/Glass.aiff 2>/dev/null
+    elif command -v paplay >/dev/null 2>&1; then
+        paplay /usr/share/sounds/freedesktop/stereo/complete.oga 2>/dev/null
+    else
+        printf '\a'
+    fi
+}
 
+seconds=$1
+start=$SECONDS
+while (( SECONDS - start < seconds )); do
+    remaining=$(( seconds - (SECONDS - start) ))
+    printf '\r%02d:%02d:%02d' \
+        $(( remaining / 3600 )) $(( (remaining % 3600) / 60 )) $(( remaining % 60 ))
+    sleep 1
+done
+printf "\rTime's up!\n"
+alert

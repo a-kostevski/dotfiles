@@ -12,6 +12,22 @@ fi
 MANIFEST_FILE="${MANIFEST_FILE:-$HOME/.config/.dotfiles-manifest}"
 CACHE_DIR="${CACHE_DIR:-$HOME/.cache/dotfiles}"
 
+# Pick a backup destination that does not clobber an existing backup
+# (second-granularity timestamps collide when several files are backed up
+# in the same second)
+unique_backup_path() {
+    local path="$1"
+    local base
+    base="${path}.backup.$(date +%Y%m%d_%H%M%S)"
+    local candidate="$base"
+    local i=1
+    while [[ -e "$candidate" || -L "$candidate" ]]; do
+        candidate="$base.$i"
+        i=$((i + 1))
+    done
+    echo "$candidate"
+}
+
 # Create symlink with backup
 create_symlink() {
     local src="$1"
@@ -22,7 +38,8 @@ create_symlink() {
 
     # Handle existing symlink
     if [[ -L "$dest" ]]; then
-        local current_target=$(readlink "$dest")
+        local current_target
+        current_target=$(readlink "$dest")
         if [[ "$current_target" == "$src" ]]; then
             # Only show in verbose mode - symlink already correct
             [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Already linked: $dest"
@@ -40,18 +57,21 @@ create_symlink() {
             dry_run rm -rf "$dest"
         else
             # Always show - backing up existing file
-            local backup="${dest}.backup.$(date +%Y%m%d_%H%M%S)"
+            local backup
+            backup=$(unique_backup_path "$dest")
             dot_info "Backing up: $dest -> $backup"
             dry_run mv "$dest" "$backup"
         fi
     fi
 
     # Create parent directory if needed
-    local dest_dir=$(dirname "$dest")
+    local dest_dir
+    dest_dir=$(dirname "$dest")
     if [[ ! -d "$dest_dir" ]]; then
         # If path exists but is not a directory, back it up
         if [[ -e "$dest_dir" ]]; then
-            local backup="${dest_dir}.backup.$(date +%Y%m%d_%H%M%S)"
+            local backup
+            backup=$(unique_backup_path "$dest_dir")
             dot_warning "Path exists but is not a directory: $dest_dir"
             dot_info "Backing up: $dest_dir -> $backup"
             dry_run mv "$dest_dir" "$backup"
@@ -109,49 +129,27 @@ clean_broken_symlinks() {
         "$HOME/.config"
         "$HOME/.local/bin"
     )
-    
+
     dot_title "Cleaning Broken Symlinks"
-    
-    local temp_file=$(mktemp)
-    echo "0" > "$temp_file"
-    
+
+    local count=0
+    local target_dir link
+
     # Check each target directory
+    # (process substitution keeps the counter in the main shell)
     for target_dir in "${target_dirs[@]}"; do
-        # Skip if directory doesn't exist
         [[ ! -d "$target_dir" ]] && continue
 
-        # Use lnclean if available
-        if command -v lnclean &>/dev/null; then
-            [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Using lnclean to clean broken symlinks in $target_dir"
+        while IFS= read -r link; do
+            [[ -z "$link" ]] && continue
             if [[ -n "$dry_run" ]]; then
-                find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null | while read -r link; do
-                    print_status "broken" "Would remove: $link"
-                    echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-                done
+                print_status "broken" "Would remove: $link"
             else
-                # Count broken links before cleaning
-                local broken_links=$(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null)
-                if [[ -n "$broken_links" ]]; then
-                    while IFS= read -r link; do
-                        [[ -n "$link" ]] && print_status "ok" "Removed: $link"
-                        echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-                    done <<< "$broken_links"
-                fi
-                lnclean "$target_dir" 2>/dev/null || true
+                rm -f "$link"
+                print_status "ok" "Removed: $link"
             fi
-        else
-            # Fallback to find command
-            # Use process substitution to avoid subshell issues with set -e
-            while IFS= read -r link; do
-                if [[ -n "$dry_run" ]]; then
-                    print_status "broken" "Would remove: $link"
-                else
-                    rm -f "$link"
-                    print_status "ok" "Removed: $link"
-                fi
-                echo $(($(cat "$temp_file") + 1)) > "$temp_file"
-            done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
-        fi
+            count=$((count + 1))
+        done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
     done
 
     # Also clean home directory symlinks
@@ -163,43 +161,158 @@ clean_broken_symlinks() {
                 rm -f "$link"
                 print_status "ok" "Removed: $link"
             fi
-            echo $(($(cat "$temp_file") + 1)) > "$temp_file"
+            count=$((count + 1))
         fi
     done
-    
-    local count=$(cat "$temp_file")
-    rm -f "$temp_file"
-    
+
     if [[ $count -gt 0 ]]; then
-        dot_success "Found $count broken symlinks"
+        if [[ -n "$dry_run" ]]; then
+            dot_success "Would remove $count broken symlink(s)"
+        else
+            dot_success "Removed $count broken symlink(s)"
+        fi
     else
         dot_success "No broken symlinks found"
     fi
-    
+
     return 0
 }
 
-# Update manifest file with symlink information
+# Is this path a symlink whose target lies under owner_root?
+is_owned_symlink() {
+    local link="$1"
+    local owner="$2"
+
+    [[ -L "$link" ]] || return 1
+    local target
+    target=$(readlink "$link" 2>/dev/null) || return 1
+    [[ "$target" == "$owner"/* ]]
+}
+
+# Print all symlinks under a directory (unbounded depth) whose target lies
+# under owner_root. Links are created per-file at arbitrary depth, so no
+# -maxdepth here (unlike the detection-only scan in get_synced_configs).
+find_owned_symlinks() {
+    local dir="$1"
+    local owner="$2"
+
+    [[ -d "$dir" ]] || return 0
+    local link
+    while IFS= read -r link; do
+        is_owned_symlink "$link" "$owner" && printf '%s\n' "$link"
+    done < <(find "$dir" -type l 2>/dev/null)
+    return 0
+}
+
+# Print the mtime-newest backup for a destination, if any.
+# (The .N collision suffix breaks lexical ordering, so compare with -nt.)
+newest_backup_path() {
+    local dest="$1"
+    local newest="" b
+    for b in "$dest".backup.*; do
+        [[ -e "$b" || -L "$b" ]] || continue
+        if [[ -z "$newest" || "$b" -nt "$newest" ]]; then
+            newest="$b"
+        fi
+    done
+    [[ -n "$newest" ]] || return 1
+    printf '%s\n' "$newest"
+}
+
+# Move the newest backup back into place. Never overwrites.
+restore_newest_backup() {
+    local dest="$1"
+    local backup
+    backup=$(newest_backup_path "$dest") || return 1
+    if [[ -e "$dest" || -L "$dest" ]]; then
+        dot_warning "Not restoring $backup: $dest already exists"
+        return 1
+    fi
+    if ! mv "$backup" "$dest"; then
+        dot_error "Failed to restore: $backup -> $dest"
+        return 1
+    fi
+    print_status "ok" "Restored: $dest (from ${backup##*/})"
+
+    # Older backups are left in place and reported
+    local other
+    for other in "$dest".backup.*; do
+        [[ -e "$other" || -L "$other" ]] || continue
+        print_status "info" "Older backup kept: $other"
+    done
+}
+
+# Remove one owned symlink; restore its newest backup unless RESTORE=false.
+# rc 0 when a link was (or would be) removed, rc 1 when dest is not a link.
+# Increments UNINSTALL_RESTORED (caller-initialized) on restore.
+uninstall_symlink() {
+    local dest="$1"
+
+    [[ -L "$dest" ]] || return 1
+    if ! dry_run rm "$dest"; then
+        dot_error "Failed to remove: $dest"
+        return 1
+    fi
+    [[ -z "${DRY_RUN:-}" ]] && print_status "ok" "Removed: $dest"
+
+    if [[ "${RESTORE:-true}" == "true" ]]; then
+        local backup
+        if backup=$(newest_backup_path "$dest"); then
+            if [[ -n "${DRY_RUN:-}" ]]; then
+                echo "[DRY-RUN] mv $backup $dest"
+                UNINSTALL_RESTORED=$((${UNINSTALL_RESTORED:-0} + 1))
+            elif restore_newest_backup "$dest"; then
+                UNINSTALL_RESTORED=$((${UNINSTALL_RESTORED:-0} + 1))
+            fi
+        fi
+    fi
+    return 0
+}
+
+# Depth-first removal of empty directories under and including root
+prune_empty_dirs() {
+    local root="$1"
+
+    [[ -d "$root" ]] || return 0
+    if [[ -n "${DRY_RUN:-}" ]]; then
+        find "$root" -depth -type d -empty -print 2>/dev/null |
+            sed 's/^/[DRY-RUN] rmdir /'
+    else
+        find "$root" -depth -type d -empty -delete 2>/dev/null
+    fi
+    return 0
+}
+
+# Update manifest file with symlink information (one line per dest: any
+# previous entry for the same dest is rewritten away before appending)
 update_manifest() {
     local src="$1"
     local dest="$2"
-    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-    
-    # Create manifest directory if needed
-    local manifest_dir=$(dirname "$MANIFEST_FILE")
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+
+    local manifest_dir
+    manifest_dir=$(dirname "$MANIFEST_FILE")
     [[ ! -d "$manifest_dir" ]] && mkdir -p "$manifest_dir"
-    
-    # Add entry to manifest
-    echo "${timestamp}|${src}|${dest}" >> "$MANIFEST_FILE"
+
+    if [[ -f "$MANIFEST_FILE" ]]; then
+        local tmp="$MANIFEST_FILE.tmp.$$"
+        awk -F'|' -v d="$dest" '$3 != d' "$MANIFEST_FILE" >"$tmp"
+        mv "$tmp" "$MANIFEST_FILE"
+    fi
+    echo "${timestamp}|${src}|${dest}" >>"$MANIFEST_FILE"
 }
 
-# Read manifest and return symlink mappings
-read_manifest() {
-    local manifest="${1:-$MANIFEST_FILE}"
-    
-    if [[ -f "$manifest" ]]; then
-        cat "$manifest"
-    fi
+# Rewrite the manifest without the given destinations
+remove_manifest_entries() {
+    [[ -f "$MANIFEST_FILE" ]] || return 0
+    [[ $# -gt 0 ]] || return 0
+
+    local tmp="$MANIFEST_FILE.tmp.$$"
+    printf '%s\n' "$@" |
+        awk -F'|' 'NR == FNR { drop[$0] = 1; next } !($3 in drop)' \
+            - "$MANIFEST_FILE" >"$tmp"
+    mv "$tmp" "$MANIFEST_FILE"
 }
 
 # Get list of configs that are currently synced (have symlinks pointing to dotfiles)
@@ -250,6 +363,8 @@ get_synced_configs() {
         fi
     fi
 
+    # guard: "${synced[@]}" on an empty array trips set -u on bash < 4.4
+    [[ ${#synced[@]} -gt 0 ]] || return 0
     printf '%s\n' "${synced[@]}" | sort -u
 }
 
@@ -300,7 +415,8 @@ get_config_symlinks() {
             continue
         fi
         
-        local basename=$(basename "$file")
+        local basename
+        basename=$(basename "$file")
         
         # Skip special cases already handled
         if [[ "$config_name" == "zsh" && "$basename" == "zshenv" ]]; then
@@ -308,7 +424,7 @@ get_config_symlinks() {
         fi
         
         # Get relative path and construct destination
-        local rel_path="${file#$config_dir/}"
+        local rel_path="${file#"$config_dir"/}"
         local dest="$dest_base/$config_name/$rel_path"
         
         echo "$file|$dest"
@@ -346,9 +462,10 @@ check_symlink_health() {
     done
     
     # Return counts
-    local ok_count=$(cat "$temp_dir/ok_count")
-    local broken_count=$(cat "$temp_dir/broken_count")
-    local missing_count=$(cat "$temp_dir/missing_count")
+    local ok_count broken_count missing_count
+    ok_count=$(cat "$temp_dir/ok_count")
+    broken_count=$(cat "$temp_dir/broken_count")
+    missing_count=$(cat "$temp_dir/missing_count")
     
     rm -rf "$temp_dir"
     

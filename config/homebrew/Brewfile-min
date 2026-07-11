@@ -1,7 +1,3 @@
-tap "homebrew/core"
-tap "homebrew/cask"
-tap "homebrew/bundle"
-
 # Essential command line tools
 brew "git"
 brew "curl"
@@ -16,6 +12,9 @@ brew "fd"
 brew "fzf"
 brew "jq"
 brew "tree"
+brew "bat"
+brew "eza"
+brew "htop"
 
 # Development tools
 brew "neovim"
@@ -24,6 +23,3 @@ brew "tmux"
 # Languages and package managers
 brew "node"
 brew "python"
-
-# Essential GUI applications
-cask "kitty"

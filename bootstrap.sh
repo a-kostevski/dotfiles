@@ -4,32 +4,34 @@
 # Supports: macOS, Ubuntu/Debian
 # Version: 3.0.0
 
-set -e
+# install/profiles.sh needs associative arrays; stock macOS bash is 3.2
+if ((BASH_VERSINFO[0] < 4)); then
+  echo "Error: bootstrap.sh requires bash 4 or newer (found $BASH_VERSION)." >&2
+  echo "On macOS: brew install bash, then re-run." >&2
+  exit 1
+fi
+
+set -euo pipefail
 
 # Trap errors for better debugging
-trap 'echo "Error occurred at line $LINENO while executing: $BASH_COMMAND"' ERR
+trap 'echo "Error occurred at line $LINENO while executing: $BASH_COMMAND" >&2' ERR
 
 # Script metadata
 readonly SCRIPT_VERSION="3.0.0"
+# shellcheck disable=SC2034  # grepped by `make version`
 readonly SCRIPT_DATE="2025-06-09"
-readonly SCRIPT_NAME=$(basename "$0")
-readonly SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd -P)"
+SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_NAME
+SCRIPT_DIR="$(cd "$(dirname "${0}")" && pwd -P)"
+readonly SCRIPT_DIR
 
 # Configuration constants
 readonly DEFAULT_CONFIG_DEST="${HOME}/.config"
 readonly DEFAULT_BIN_DEST="${HOME}/.local/bin"
 
-# Color constants
-readonly COLOR_HEADER="\033[1;36m"
-readonly COLOR_INFO="\033[34m"
-readonly COLOR_ERROR="\033[31m"
-readonly COLOR_SUCCESS="\033[32m"
-readonly COLOR_WARNING="\033[33m"
-readonly COLOR_RESET="\033[0m"
-
 # Global variables
-declare -g OS_TYPE
-declare -g OS_VERSION
+declare -g OS_TYPE=""
+declare -g OS_VERSION=""
 declare -g CONFIG_DEST
 declare -g BIN_DEST
 declare -g PROFILE="minimal"
@@ -108,7 +110,6 @@ EXAMPLES:
     $SCRIPT_NAME --sync --config nvim
 
 EOF
-  exit 0
 }
 
 
@@ -164,10 +165,12 @@ parse_args() {
         ;;
       -h | --help)
         usage
+        exit 0
         ;;
       *)
         dot_error "Unknown option: $1"
-        usage
+        usage >&2
+        exit 2
         ;;
     esac
   done
@@ -204,40 +207,7 @@ validate_environment() {
   fi
 }
 
-# Create directory with proper permissions
-create_directory() {
-  local dir="$1"
-  if [[ ! -d "$dir" ]]; then
-    dot_info "Creating directory: $dir"
-    dry_run mkdir -p "$dir"
-  fi
-}
-
-# Check if a file should be ignored based on .gitignore patterns
-is_ignored() {
-  local file="$1"
-  local rel_path="${file#$SCRIPT_DIR/}"
-
-  # Use git check-ignore if we're in a git repo
-  if [[ -d "$SCRIPT_DIR/.git" ]] && command -v git &>/dev/null; then
-    git -C "$SCRIPT_DIR" check-ignore -q "$rel_path" 2>/dev/null
-    return $?
-  fi
-
-  # Fallback: manually check common patterns
-  local basename
-  basename=$(basename "$file")
-
-  # Check common ignore patterns
-  case "$basename" in
-    .DS_Store | *.local | *.claude | Brewfile*.lock.json)
-      return 0
-      ;;
-  esac
-
-  return 1
-}
-
+# Note: create_directory and is_ignored are defined in install/lib.sh
 # Note: create_symlink is defined in install/symlinks.sh
 # Note: get_config_list is defined in install/profiles.sh
 
@@ -301,7 +271,7 @@ link_binaries() {
   while IFS= read -r script; do
     # Skip ignored files
     if is_ignored "$script"; then
-      [[ "$VERBOSE" == "true" ]] && dot_info "Skipping ignored script: ${script#$SCRIPT_DIR/}"
+      [[ "$VERBOSE" == "true" ]] && dot_info "Skipping ignored script: ${script#"$SCRIPT_DIR"/}"
       continue
     fi
     create_symlink "$script" "$BIN_DEST/$(basename "$script")"
@@ -398,8 +368,8 @@ main() {
   BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
 
   # Export key variables for install scripts and shared libraries
-  export dot_root="$SCRIPT_DIR"
-  export CONFIG_DIR="$SCRIPT_DIR/config"
+  # (dot_root/CONFIG_DIR are already exported once near the top, before the
+  # libraries are sourced; SCRIPT_DIR is readonly, so no need to repeat them)
   export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG SYNC_SYNCED
   export CONFIG_DEST BIN_DEST
 

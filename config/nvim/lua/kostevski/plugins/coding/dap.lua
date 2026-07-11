@@ -1,3 +1,17 @@
+---Prompt for program arguments before launching a debug session
+---@param config table dap run configuration
+---@return table
+local function get_args(config)
+   local args = type(config.args) == "function" and (config.args() or {}) or config.args or {}
+   local args_str = type(args) == "table" and table.concat(args, " ") or args
+   return vim.tbl_extend("force", config, {
+      args = function()
+         local new_args = vim.fn.expand(vim.fn.input("Run with args: ", args_str))
+         return vim.split(new_args, " +")
+      end,
+   })
+end
+
 return {
    "mfussenegger/nvim-dap",
    dependencies = {

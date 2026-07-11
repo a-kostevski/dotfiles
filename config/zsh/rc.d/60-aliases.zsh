@@ -151,7 +151,7 @@ if command_exists gs; then
     alias mergepdf="gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=_merged.pdf"
 fi
 
-alias reload='[[ $SHLVL -eq 1 ]] && exec $SHELL || echo "Warning: Not reloading in subshell (level $SHLVL)"'
+alias reload='[[ $SHLVL -eq 1 ]] && exec zsh || echo "Warning: Not reloading in subshell (level $SHLVL)"'
 
 # --- Profiling ---
 alias zshtimeprofile="time ZSH_PROFILING=true zsh -i -c exit;"

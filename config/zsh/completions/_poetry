@@ -194,4 +194,4 @@ _poetry_f1d3df952ca606f5_complete()
 }
 
 _poetry_f1d3df952ca606f5_complete "$@"
-compdef _poetry_f1d3df952ca606f5_complete /Users/antonkostevski/.local/pipx/venvs/poetry/bin/poetry
+compdef _poetry_f1d3df952ca606f5_complete poetry

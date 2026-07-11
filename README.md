@@ -10,6 +10,21 @@ Personal development environment configuration for macOS and Ubuntu.
 - **Development tools**: Neovim, tmux, git, zsh, and more
 - **Language support**: Go, Python, Rust, and more with full LSP integration
 
+## Prerequisites
+
+### macOS
+The install scripts require **bash 4+**, but macOS ships bash 3.2 and
+`bootstrap.sh` hard-exits without a newer bash. Install [Homebrew](https://brew.sh)
+first, then bash, **before** running bootstrap:
+
+```bash
+# Install Homebrew (skip if already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install a modern bash (macOS stays on 3.2 forever)
+brew install bash
+```
+
 ## Quick Start
 
 ```bash
@@ -36,15 +51,20 @@ Essential tools only - perfect for servers or minimal setups:
 Common development setup:
 - Everything from Minimal
 - Neovim with full plugin ecosystem
-- Development utilities (bat, ripgrep, fd)
-- Python environment configuration
+- bat, ripgrep, and Python environment configuration
 
 ### Full
 Complete development environment:
 - Everything from Standard
-- Language-specific tools (Go, Rust, etc.)
+- clang-format and LLDB configuration
 - macOS-specific: Homebrew packages, Karabiner, Kitty terminal
-- Additional development utilities
+
+### All
+- `--profile all` symlinks every directory under `config/`
+
+> **Note:** A `custom` profile name exists in the code, but the interactive
+> component selector is not wired up. `--profile custom` currently just links
+> the minimal set, so use `all` or a named profile instead.
 
 ## Usage
 
@@ -58,14 +78,43 @@ Complete development environment:
 # Skip OS package installation
 ./bootstrap.sh --profile full --skip-install
 
+# Update symlinks only (no package installation)
+./bootstrap.sh --sync
+
+# Sync a single config
+./bootstrap.sh --sync --config nvim
+
 # Force overwrite without backups (use with caution)
 ./bootstrap.sh --force
+```
+
+Day-to-day symlink management uses the `dotfiles` utility (installed to `~/.local/bin`):
+
+```bash
+dotfiles sync      # re-sync previously synced configs
+dotfiles status    # symlink health check
+dotfiles clean     # remove broken symlinks
+dotfiles profile   # show or switch the stored profile
+dotfiles watch     # auto-sync on file changes (requires fswatch)
+dotfiles uninstall # remove repo-owned symlinks and restore backups
+```
+
+`dotfiles uninstall` removes the symlinks this repo created and restores any
+backups it made in their place:
+
+```bash
+dotfiles uninstall              # remove everything (prompts for confirmation)
+dotfiles uninstall nvim git     # remove only the named configs' links
+dotfiles uninstall --dry-run    # preview without changing anything
+dotfiles uninstall --no-restore # remove links but skip backup restore
+dotfiles uninstall --yes        # skip the confirmation prompt
 ```
 
 ## Repository Structure
 
 ```
 .
+├── .githooks/              # Git hooks (post-checkout, post-merge)
 ├── bin/                    # Utility scripts
 ├── config/                 # Application configurations
 │   ├── bat/               # Better cat
@@ -74,11 +123,14 @@ Complete development environment:
 │   ├── tmux/              # Tmux configuration
 │   ├── zsh/               # Zsh configuration
 │   └── ...                # Other tool configs
+├── docs/                   # Design notes, plans, and review backlog
 ├── install/               # OS-specific installation scripts
 │   ├── install-macos.sh   # macOS setup
-│   └── install-ubuntu.sh  # Ubuntu setup
-├── bootstrap.sh           # Main installation script
-└── CLAUDE.md             # AI assistant instructions
+│   ├── install-ubuntu.sh  # Ubuntu setup
+│   └── profiles.sh        # Profile definitions (PROFILE_CONFIGS)
+├── tests/                 # Regression tests (make test)
+├── Makefile               # install/update/test/validate targets
+└── bootstrap.sh           # Main installation script
 ```
 
 ## Configuration Details
@@ -102,9 +154,8 @@ Complete development environment:
 - Aliases for common operations
 
 ### Tmux
-- Custom status bar
-- Vim-like keybindings
-- Session management
+- Deliberately minimal: mouse support, fast escape, and correct
+  terminfo/truecolor (`tmux-256color` + `Tc` overrides)
 
 ## Platform-Specific Features
 
@@ -137,8 +188,10 @@ chsh -s $(which zsh)
 # Go
 go install golang.org/x/tools/gopls@latest
 
-# Python
-pip install --user pynvim
+# Python provider for Neovim (pynvim). A plain `pip install` fails under
+# PEP 668 on recent distros, so install it into a dedicated virtualenv:
+python3 -m venv ~/.local/share/nvim-venv
+~/.local/share/nvim-venv/bin/pip install pynvim
 
 # Rust
 rustup component add rust-analyzer
@@ -193,7 +246,7 @@ grep -q "$(which zsh)" /etc/shells || echo "$(which zsh)" | sudo tee -a /etc/she
 3. Document any special requirements
 
 ### Creating Custom Profiles
-Edit `bootstrap.sh` and modify the `get_config_list()` function to define custom profiles.
+Edit the `PROFILE_CONFIGS` map in `install/profiles.sh` (profile logic lives there, not in `bootstrap.sh`).
 
 ## Contributing
 

@@ -114,36 +114,52 @@
 	# Detect copies as well as renames.
 	renames = copies
 
+	# Histogram produces clearer, more stable diffs than the default.
+	algorithm = histogram
+
 [diff "bin"]
 	# Use `hexdump` to diff binary files.
 	textconv = hexdump -v -C
 
 [help]
-	# Automatically correct and execute mistyped commands.
-	autocorrect = 1
+	# Prompt before running a guessed correction for a mistyped command.
+	autocorrect = prompt
 
 [merge]
 	# Include summaries of merged commits in newly created merge commit messages
 	log = true
 
+	# Show the common ancestor alongside both sides in conflict markers.
+	conflictStyle = zdiff3
+
 [push]
-	# https://git-scm.com/docs/git-config#git-config-pushdefault
-	default = simple
 	# Make `git push` push relevant annotated tags when pushing branches out.
 	followTags = true
+
+	# Create the matching upstream branch on the first push automatically.
+	autoSetupRemote = true
+
+[fetch]
+	# Prune deleted remote-tracking branches on every fetch.
+	prune = true
+
+[rebase]
+	# Automatically stash/unstash a dirty tree around a rebase.
+	autostash = true
+
+[rerere]
+	# Record and reuse previous conflict resolutions.
+	enabled = true
+
+[column]
+	# Use columnar output (branch/status lists) when the terminal allows it.
+	ui = auto
 
 [init]
 	defaultBranch = main
 
-[gpg]
-    format = ssh
-
-[gpg "ssh"]
-    program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
-
-[commit]
-    gpgSign = true
-
+# Identity and commit signing are machine-specific and live in
+# gitconfig.local (untracked). Copy gitconfig.local.example to get started.
 [include]
     path = gitconfig.local
 

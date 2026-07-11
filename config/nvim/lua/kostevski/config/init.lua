@@ -18,6 +18,8 @@ function M.setup()
    require("kostevski.config.autocmds")
    require("kostevski.config.keymaps")
    require("kostevski.config.lazy").setup()
+   -- Must run after options.lua (mapleader) so toggle keymaps bind to the
+   -- real leader, and after lazy so plugin-aware toggles see loaded plugins
    Utils.toggle.setup()
 end
 

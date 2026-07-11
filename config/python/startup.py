@@ -12,7 +12,12 @@ def setup_history():
 
     history: Path = state_home / 'history'
 
-    readline.read_history_file(str(history))
+    # First run on a fresh machine: the directory and file don't exist yet
+    state_home.mkdir(parents=True, exist_ok=True)
+    try:
+        readline.read_history_file(str(history))
+    except (FileNotFoundError, OSError):
+        pass
     atexit.register(readline.write_history_file, str(history))
 
 if not hasattr(__builtins__, '__IPYTHON__'):
