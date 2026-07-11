@@ -1,15 +1,15 @@
 #!/bin/bash
+set -eu
 
-# Function to check if a symlink is broken
+# Check whether a path is a broken symlink (points at a missing target)
 is_broken_symlink() {
   [ -L "$1" ] && [ ! -e "$1" ]
 }
 
-# Directory to scan
+# Directory to scan (default: current)
 DIR=${1:-.}
 
-# Find all symlinks in the directory
-# Find all symlinks in the directory
+# Remove every broken symlink under DIR
 while read -r symlink; do
   if is_broken_symlink "$symlink"; then
     echo "Broken symlink found: $symlink"
