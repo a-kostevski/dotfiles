@@ -305,8 +305,12 @@ function toggle.setup()
     set = function(state)
       vim.b.signature_help_enabled = state
 
+      -- own augroup so disabling clears only our handler, not every buffer
+      -- CursorHoldI autocmd (e.g. document-highlight's insert-mode handler)
+      local group = vim.api.nvim_create_augroup("signature_help_" .. vim.api.nvim_get_current_buf(), { clear = true })
       if state then
         vim.api.nvim_create_autocmd("CursorHoldI", {
+          group = group,
           buffer = 0,
           callback = function()
             if vim.b.signature_help_enabled and #Utils.lsp.get_clients(0) > 0 then
@@ -314,11 +318,6 @@ function toggle.setup()
             end
           end,
           desc = "Show signature help",
-        })
-      else
-        vim.api.nvim_clear_autocmds({
-          buffer = 0,
-          event = "CursorHoldI",
         })
       end
     end,

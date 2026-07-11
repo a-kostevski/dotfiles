@@ -262,13 +262,13 @@ function Keys.debug()
             if type(keymap.has) == "table" then
                has_cap = false
                for _, method in ipairs(keymap.has) do
-                  if client:supports_method("textDocument/" .. method) then
+                  if client:supports_method(resolve_method(method)) then
                      has_cap = true
                      break
                   end
                end
             else
-               has_cap = client:supports_method("textDocument/" .. keymap.has)
+               has_cap = client:supports_method(resolve_method(keymap.has))
             end
          end
          if has_cap then
