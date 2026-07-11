@@ -10,6 +10,21 @@ Personal development environment configuration for macOS and Ubuntu.
 - **Development tools**: Neovim, tmux, git, zsh, and more
 - **Language support**: Go, Python, Rust, and more with full LSP integration
 
+## Prerequisites
+
+### macOS
+The install scripts require **bash 4+**, but macOS ships bash 3.2 and
+`bootstrap.sh` hard-exits without a newer bash. Install [Homebrew](https://brew.sh)
+first, then bash, **before** running bootstrap:
+
+```bash
+# Install Homebrew (skip if already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install a modern bash (macOS stays on 3.2 forever)
+brew install bash
+```
+
 ## Quick Start
 
 ```bash
@@ -44,9 +59,12 @@ Complete development environment:
 - clang-format and LLDB configuration
 - macOS-specific: Homebrew packages, Karabiner, Kitty terminal
 
-### All / Custom
+### All
 - `--profile all` symlinks every directory under `config/`
-- `custom` (interactive selection) is offered when running without flags
+
+> **Note:** A `custom` profile name exists in the code, but the interactive
+> component selector is not wired up. `--profile custom` currently just links
+> the minimal set, so use `all` or a named profile instead.
 
 ## Usage
 
@@ -77,12 +95,26 @@ dotfiles sync      # re-sync previously synced configs
 dotfiles status    # symlink health check
 dotfiles clean     # remove broken symlinks
 dotfiles profile   # show or switch the stored profile
+dotfiles watch     # auto-sync on file changes (requires fswatch)
+dotfiles uninstall # remove repo-owned symlinks and restore backups
+```
+
+`dotfiles uninstall` removes the symlinks this repo created and restores any
+backups it made in their place:
+
+```bash
+dotfiles uninstall              # remove everything (prompts for confirmation)
+dotfiles uninstall nvim git     # remove only the named configs' links
+dotfiles uninstall --dry-run    # preview without changing anything
+dotfiles uninstall --no-restore # remove links but skip backup restore
+dotfiles uninstall --yes        # skip the confirmation prompt
 ```
 
 ## Repository Structure
 
 ```
 .
+├── .githooks/              # Git hooks (post-checkout, post-merge)
 ├── bin/                    # Utility scripts
 ├── config/                 # Application configurations
 │   ├── bat/               # Better cat
@@ -91,6 +123,7 @@ dotfiles profile   # show or switch the stored profile
 │   ├── tmux/              # Tmux configuration
 │   ├── zsh/               # Zsh configuration
 │   └── ...                # Other tool configs
+├── docs/                   # Design notes, plans, and review backlog
 ├── install/               # OS-specific installation scripts
 │   ├── install-macos.sh   # macOS setup
 │   ├── install-ubuntu.sh  # Ubuntu setup
@@ -155,8 +188,10 @@ chsh -s $(which zsh)
 # Go
 go install golang.org/x/tools/gopls@latest
 
-# Python (pipx/venv on Ubuntu 23.04+; plain pip fails under PEP 668)
-python3 -m pip install --user pynvim
+# Python provider for Neovim (pynvim). A plain `pip install` fails under
+# PEP 668 on recent distros, so install it into a dedicated virtualenv:
+python3 -m venv ~/.local/share/nvim-venv
+~/.local/share/nvim-venv/bin/pip install pynvim
 
 # Rust
 rustup component add rust-analyzer
