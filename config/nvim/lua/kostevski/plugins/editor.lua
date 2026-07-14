@@ -1,3 +1,3 @@
 return {
-   { import = "kostevski.plugins.editor" },
+  { import = "kostevski.plugins.editor" },
 }

@@ -123,8 +123,8 @@ end
 ---@field filetypes string[] Vim filetypes this language applies to
 ---@field root_markers? (string|string[])[] Root markers for LSP and project detection (Neovim 0.11+)
 ---@field lsp_server? string|{name:string, config:table} LSP server name or detailed config
----@field formatters? {list:string[], tools:string[], config?:table} Formatter configuration for conform.nvim
----@field linters? {list:string[], tools:string[], config?:table} Linter configuration for nvim-lint
+---@field formatters? {list:string[], tools:string[], by_ft?:table<string, string[]>, config?:table} Formatter configuration for conform.nvim
+---@field linters? {list:string[], tools:string[], by_ft?:table<string, string[]>, config?:table} Linter configuration for nvim-lint
 ---@field dap? {adapters:table, configurations:table} Debug Adapter Protocol configuration
 ---@field test_adapters? string[] Neotest adapter plugin names (e.g., "nvim-neotest/neotest-python")
 ---@field treesitter_parsers? string[] Treesitter parser names to install
@@ -224,7 +224,7 @@ function M.register(def)
 
         -- Set formatters for filetypes
         for _, ft in ipairs(def.filetypes) do
-          opts.formatters_by_ft[ft] = def.formatters.list
+          opts.formatters_by_ft[ft] = (def.formatters.by_ft and def.formatters.by_ft[ft]) or def.formatters.list
         end
 
         -- Add formatter-specific configurations
@@ -247,7 +247,7 @@ function M.register(def)
 
         -- Set linters for filetypes
         for _, ft in ipairs(def.filetypes) do
-          opts.linters_by_ft[ft] = def.linters.list or {}
+          opts.linters_by_ft[ft] = (def.linters.by_ft and def.linters.by_ft[ft]) or def.linters.list or {}
         end
 
         -- Add linter-specific configurations
@@ -290,9 +290,8 @@ function M.register(def)
         opts = opts or {}
         opts.adapters = opts.adapters or {}
         for _, adapter in ipairs(def.test_adapters) do
-          -- Extract adapter name from plugin spec
-          local adapter_name = adapter:match("([^/]+)$"):gsub("^neotest%-", "")
-          table.insert(opts.adapters, require(adapter_name))
+          local module = adapter:match("([^/]+)$")
+          table.insert(opts.adapters, require(module))
         end
       end,
     })

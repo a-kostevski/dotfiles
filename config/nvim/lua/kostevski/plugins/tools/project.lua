@@ -1,40 +1,40 @@
 return {
-   {
-      "ahmedkhalf/project.nvim",
-      event = "VeryLazy",
-      opts = {
-         manual_mode = true,
-         patterns = {
-            ".git",
-            ".hg",
-            ".svn",
-            ".bzr",
-            "lua",
-            "Makefile",
-            "package.json",
-            "Cargo.toml",
-            "yarn.lock",
-         },
-         ignore_lsp = { "efm", "lua_ls", "ts_ls" },
+  {
+    "ahmedkhalf/project.nvim",
+    event = "VeryLazy",
+    opts = {
+      manual_mode = true,
+      patterns = {
+        ".git",
+        ".hg",
+        ".svn",
+        ".bzr",
+        "lua",
+        "Makefile",
+        "package.json",
+        "Cargo.toml",
+        "yarn.lock",
       },
-      config = function(_, opts)
-         require("project_nvim").setup(opts)
-         Utils.plugin.on_load("telescope", function()
-            require("telescope").load_extension("projects")
-         end)
-      end,
-   },
-   {
-      "nvim-telescope/telescope.nvim",
-      optional = true,
-      keys = {
-         {
-            "<leader>fp",
-            function()
-               vim.cmd("Telescope projects")
-            end,
-            desc = "Projects",
-         },
+      ignore_lsp = { "efm", "lua_ls", "ts_ls" },
+    },
+    config = function(_, opts)
+      require("project_nvim").setup(opts)
+      Utils.plugin.on_load("telescope", function()
+        require("telescope").load_extension("projects")
+      end)
+    end,
+  },
+  {
+    "nvim-telescope/telescope.nvim",
+    optional = true,
+    keys = {
+      {
+        "<leader>fp",
+        function()
+          vim.cmd("Telescope projects")
+        end,
+        desc = "Projects",
       },
-   },
+    },
+  },
 }

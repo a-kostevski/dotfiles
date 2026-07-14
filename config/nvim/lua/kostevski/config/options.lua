@@ -2,7 +2,7 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
 -- Disable unused providers
-vim.g.python3_host_prog = (vim.env.HOME or "") .. "/.local/share/uv/venv/py3nvim/bin/python"
+vim.g.python3_host_prog = vim.fs.joinpath(vim.fn.stdpath("data"), "nvim-venv", "bin", "python")
 vim.g.loaded_ruby_provider = 0
 vim.g.loaded_perl_provider = 0
 
@@ -15,7 +15,7 @@ opt.mouse = "a"
 -- Sync clipboard between OS and Neovim.
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 vim.schedule(function()
-   opt.clipboard = "unnamedplus"
+  opt.clipboard = "unnamedplus"
 end)
 
 -- Tabs to 2 spaces
@@ -43,8 +43,8 @@ opt.splitbelow = true
 opt.splitkeep = "screen"
 
 opt.fillchars = {
-   vert = "│",
-   fold = " ",
+  vert = "│",
+  fold = " ",
 }
 
 opt.inccommand = "split"

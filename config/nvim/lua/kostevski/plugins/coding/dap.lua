@@ -2,26 +2,26 @@
 ---@param config table dap run configuration
 ---@return table
 local function get_args(config)
-   local args = type(config.args) == "function" and (config.args() or {}) or config.args or {}
-   local args_str = type(args) == "table" and table.concat(args, " ") or args
-   return vim.tbl_extend("force", config, {
-      args = function()
-         local new_args = vim.fn.expand(vim.fn.input("Run with args: ", args_str))
-         return vim.split(new_args, " +")
-      end,
-   })
+  local args = type(config.args) == "function" and (config.args() or {}) or config.args or {}
+  local args_str = type(args) == "table" and table.concat(args, " ") or args
+  return vim.tbl_extend("force", config, {
+    args = function()
+      local new_args = vim.fn.expand(vim.fn.input("Run with args: ", args_str))
+      return vim.split(new_args, " +")
+    end,
+  })
 end
 
 return {
-   "mfussenegger/nvim-dap",
-   dependencies = {
-      "rcarriga/nvim-dap-ui",
-      {
-         "theHamsta/nvim-dap-virtual-text",
-         opts = {},
-      },
-   },
-   cmd = { "DapContinue", "DapToggleBreakpoint" },
+  "mfussenegger/nvim-dap",
+  dependencies = {
+    "rcarriga/nvim-dap-ui",
+    {
+      "theHamsta/nvim-dap-virtual-text",
+      opts = {},
+    },
+  },
+  cmd = { "DapContinue", "DapToggleBreakpoint" },
   -- stylua: ignore
   keys = {
     { "<leader>dB", function() require("dap").set_breakpoint(vim.fn.input('Breakpoint condition: ')) end, desc = "Breakpoint Condition" },
@@ -43,20 +43,20 @@ return {
     { "<leader>dw", function() require("dap.ui.widgets").hover() end, desc = "Widgets" },
   },
 
-   config = function()
-      -- load mason-nvim-dap here, after all adapters have been setup
-      if Utils.plugin.has("mason-nvim-dap.nvim") then
-         require("mason-nvim-dap").setup(Utils.plugin.opts("mason-nvim-dap.nvim"))
-      end
+  config = function()
+    -- load mason-nvim-dap here, after all adapters have been setup
+    if Utils.plugin.has("mason-nvim-dap.nvim") then
+      require("mason-nvim-dap").setup(Utils.plugin.opts("mason-nvim-dap.nvim"))
+    end
 
-      vim.api.nvim_set_hl(0, "DapStoppedLine", { default = true, link = "Visual" })
+    vim.api.nvim_set_hl(0, "DapStoppedLine", { default = true, link = "Visual" })
 
-      for name, sign in pairs(Utils.ui.icons.dap) do
-         sign = type(sign) == "table" and sign or { sign }
-         vim.fn.sign_define(
-            "Dap" .. name,
-            { text = sign[1], texthl = sign[2] or "DiagnosticInfo", linehl = sign[3], numhl = sign[3] }
-         )
-      end
-   end,
+    for name, sign in pairs(Utils.ui.icons.dap) do
+      sign = type(sign) == "table" and sign or { sign }
+      vim.fn.sign_define(
+        "Dap" .. name,
+        { text = sign[1], texthl = sign[2] or "DiagnosticInfo", linehl = sign[3], numhl = sign[3] }
+      )
+    end
+  end,
 }

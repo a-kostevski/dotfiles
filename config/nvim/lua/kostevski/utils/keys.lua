@@ -15,145 +15,145 @@ local Keys = {}
 
 Keys.keys = {
 
-   { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp Info" },
-   { "gd", vim.lsp.buf.definition, desc = "Goto Definition", has = "definition" },
-   { "grr", vim.lsp.buf.references, desc = "References", nowait = true },
-   { "gy", vim.lsp.buf.type_definition, desc = "Goto Type Definition" },
-   { "gD", vim.lsp.buf.declaration, desc = "Goto Declaration" },
-   {
-      "gK",
-      function()
-         vim.lsp.buf.signature_help({ border = "rounded", max_width = 80 })
-      end,
-      desc = "Signature Help",
-      has = "signatureHelp",
-   },
-   { "<leader>ca", vim.lsp.buf.code_action, desc = "Code Action", mode = { "n", "v" }, has = "codeAction" },
-   { "<leader>cc", vim.lsp.codelens.run, desc = "Run Codelens", mode = { "n", "v" }, has = "codeLens" },
-   {
-      "<leader>cC",
-      function()
-         vim.lsp.codelens.enable(not vim.lsp.codelens.is_enabled({ bufnr = 0 }), { bufnr = 0 })
-      end,
-      desc = "Toggle Codelens",
-      mode = { "n" },
-      has = "codeLens",
-   },
-   { "<leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" },
-   {
-      "<leader>cR",
-      function()
-         local Utils = require("kostevski.utils")
-         if Utils.lsp then
-            local from = vim.api.nvim_buf_get_name(0)
-            vim.ui.input({ prompt = "New filename: ", default = from }, function(to)
-               if to and to ~= "" and to ~= from then
-                  Utils.lsp.on_rename(from, to)
-                  vim.cmd.edit(to)
-               end
-            end)
-         end
-      end,
-      desc = "Rename File",
-      mode = { "n" },
-      has = { "workspace/didRenameFiles", "workspace/willRenameFiles" },
-   },
-   {
-      "<leader>ch",
-      "<cmd>LspClangdSwitchSourceHeader<cr>",
-      desc = "Switch Source/Header (C/C++)",
-      cond = function(client)
-         return client ~= nil and client.name == "clangd"
-      end,
-   },
-   {
-      "]]",
-      function()
-         local Utils = require("kostevski.utils")
-         if Utils.lsp and Utils.lsp.words then
-            Utils.lsp.words.jump(vim.v.count1)
-         end
-      end,
-      has = "documentHighlight",
-      desc = "Next Reference",
-      cond = function()
-         local Utils = require("kostevski.utils")
-         return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
-      end,
-   },
-   {
-      "[[",
-      function()
-         local Utils = require("kostevski.utils")
-         if Utils.lsp and Utils.lsp.words then
-            Utils.lsp.words.jump(-vim.v.count1)
-         end
-      end,
-      has = "documentHighlight",
-      desc = "Prev Reference",
-      cond = function()
-         local Utils = require("kostevski.utils")
-         return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
-      end,
-   },
-   {
-      "<a-n>",
-      function()
-         local Utils = require("kostevski.utils")
-         if Utils.lsp and Utils.lsp.words then
-            Utils.lsp.words.jump(vim.v.count1, true)
-         end
-      end,
-      has = "documentHighlight",
-      desc = "Next Reference",
-      cond = function()
-         local Utils = require("kostevski.utils")
-         return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
-      end,
-   },
-   {
-      "<a-p>",
-      function()
-         local Utils = require("kostevski.utils")
-         if Utils.lsp and Utils.lsp.words then
-            Utils.lsp.words.jump(-vim.v.count1, true)
-         end
-      end,
-      has = "documentHighlight",
-      desc = "Prev Reference",
-      cond = function()
-         local Utils = require("kostevski.utils")
-         return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
-      end,
-   },
+  { "<leader>cl", "<cmd>LspInfo<cr>", desc = "Lsp Info" },
+  { "gd", vim.lsp.buf.definition, desc = "Goto Definition", has = "definition" },
+  { "grr", vim.lsp.buf.references, desc = "References", nowait = true },
+  { "gy", vim.lsp.buf.type_definition, desc = "Goto Type Definition" },
+  { "gD", vim.lsp.buf.declaration, desc = "Goto Declaration" },
+  {
+    "gK",
+    function()
+      vim.lsp.buf.signature_help({ border = "rounded", max_width = 80 })
+    end,
+    desc = "Signature Help",
+    has = "signatureHelp",
+  },
+  { "<leader>ca", vim.lsp.buf.code_action, desc = "Code Action", mode = { "n", "v" }, has = "codeAction" },
+  { "<leader>cc", vim.lsp.codelens.run, desc = "Run Codelens", mode = { "n", "v" }, has = "codeLens" },
+  {
+    "<leader>cC",
+    function()
+      vim.lsp.codelens.enable(not vim.lsp.codelens.is_enabled({ bufnr = 0 }), { bufnr = 0 })
+    end,
+    desc = "Toggle Codelens",
+    mode = { "n" },
+    has = "codeLens",
+  },
+  { "<leader>cr", vim.lsp.buf.rename, desc = "Rename", has = "rename" },
+  {
+    "<leader>cR",
+    function()
+      local Utils = require("kostevski.utils")
+      if Utils.lsp then
+        local from = vim.api.nvim_buf_get_name(0)
+        vim.ui.input({ prompt = "New filename: ", default = from }, function(to)
+          if to and to ~= "" and to ~= from then
+            Utils.lsp.on_rename(from, to)
+            vim.cmd.edit(to)
+          end
+        end)
+      end
+    end,
+    desc = "Rename File",
+    mode = { "n" },
+    has = { "workspace/didRenameFiles", "workspace/willRenameFiles" },
+  },
+  {
+    "<leader>ch",
+    "<cmd>LspClangdSwitchSourceHeader<cr>",
+    desc = "Switch Source/Header (C/C++)",
+    cond = function(client)
+      return client ~= nil and client.name == "clangd"
+    end,
+  },
+  {
+    "]]",
+    function()
+      local Utils = require("kostevski.utils")
+      if Utils.lsp and Utils.lsp.words then
+        Utils.lsp.words.jump(vim.v.count1)
+      end
+    end,
+    has = "documentHighlight",
+    desc = "Next Reference",
+    cond = function()
+      local Utils = require("kostevski.utils")
+      return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
+    end,
+  },
+  {
+    "[[",
+    function()
+      local Utils = require("kostevski.utils")
+      if Utils.lsp and Utils.lsp.words then
+        Utils.lsp.words.jump(-vim.v.count1)
+      end
+    end,
+    has = "documentHighlight",
+    desc = "Prev Reference",
+    cond = function()
+      local Utils = require("kostevski.utils")
+      return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
+    end,
+  },
+  {
+    "<a-n>",
+    function()
+      local Utils = require("kostevski.utils")
+      if Utils.lsp and Utils.lsp.words then
+        Utils.lsp.words.jump(vim.v.count1, true)
+      end
+    end,
+    has = "documentHighlight",
+    desc = "Next Reference",
+    cond = function()
+      local Utils = require("kostevski.utils")
+      return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
+    end,
+  },
+  {
+    "<a-p>",
+    function()
+      local Utils = require("kostevski.utils")
+      if Utils.lsp and Utils.lsp.words then
+        Utils.lsp.words.jump(-vim.v.count1, true)
+      end
+    end,
+    has = "documentHighlight",
+    desc = "Prev Reference",
+    cond = function()
+      local Utils = require("kostevski.utils")
+      return Utils.lsp and Utils.lsp.words and Utils.lsp.words.enabled
+    end,
+  },
 }
 
 ---Normalize modes to array
 ---@param mode? string|string[]
 ---@return string[]
 local function normalize_modes(mode)
-   return type(mode) == "table" and mode or { mode or "n" }
+  return type(mode) == "table" and mode or { mode or "n" }
 end
 
 ---@param lhs string
 ---@param rhs function|string
 ---@param opts? table
 function Keys.map(lhs, rhs, opts)
-   vim.validate("lhs", lhs, "string")
-   vim.validate("rhs", rhs, { "function", "string" })
-   vim.validate("opts", opts, "table", true)
+  vim.validate("lhs", lhs, "string")
+  vim.validate("rhs", rhs, { "function", "string" })
+  vim.validate("opts", opts, "table", true)
 
-   opts = opts or {}
-   local keymap_def = {
-      lhs,
-      rhs,
-      desc = opts.desc,
-      mode = opts.mode or "n",
-      nowait = opts.nowait,
-      has = opts.has,
-      cond = opts.cond,
-   }
-   table.insert(Keys.keys, keymap_def)
+  opts = opts or {}
+  local keymap_def = {
+    lhs,
+    rhs,
+    desc = opts.desc,
+    mode = opts.mode or "n",
+    nowait = opts.nowait,
+    has = opts.has,
+    cond = opts.cond,
+  }
+  table.insert(Keys.keys, keymap_def)
 end
 
 ---Apply keymap safely with error handling
@@ -161,128 +161,128 @@ end
 ---@param opts table
 ---@return boolean
 local function apply_keymap(keymap, opts)
-   local modes = normalize_modes(keymap.mode)
-   for _, mode in ipairs(modes) do
-      local success, err = pcall(vim.keymap.set, mode, keymap[1], keymap[2], opts)
-      if not success then
-         vim.notify(string.format("Failed to map %s in mode %s: %s", keymap[1], mode, err), vim.log.levels.ERROR)
-         return false
-      end
-   end
-   return true
+  local modes = normalize_modes(keymap.mode)
+  for _, mode in ipairs(modes) do
+    local success, err = pcall(vim.keymap.set, mode, keymap[1], keymap[2], opts)
+    if not success then
+      vim.notify(string.format("Failed to map %s in mode %s: %s", keymap[1], mode, err), vim.log.levels.ERROR)
+      return false
+    end
+  end
+  return true
 end
 
 ---Qualify a short capability name; leave full method paths (workspace/…) alone
 ---@param method string
 ---@return string
 local function resolve_method(method)
-   return method:find("/") and method or ("textDocument/" .. method)
+  return method:find("/") and method or ("textDocument/" .. method)
 end
 
 ---Attach keymaps to buffer
 ---@param client table LSP client
 ---@param buffer number Buffer number
 function Keys.on_attach(client, buffer)
-   -- Use Utils.lsp.has for capability checking
-   for _, keymap in ipairs(Keys.keys) do
-      -- Check capabilities first
-      if keymap.has then
-         -- Skip if no client supports this method
-         local has_capability = false
-         if type(keymap.has) == "table" then
-            for _, method in ipairs(keymap.has) do
-               if client:supports_method(resolve_method(method)) then
-                  has_capability = true
-                  break
-               end
-            end
-         else
-            has_capability = client:supports_method(resolve_method(keymap.has))
-         end
-
-         if not has_capability then
-            goto continue
-         end
+  -- Use Utils.lsp.has for capability checking
+  for _, keymap in ipairs(Keys.keys) do
+    -- Check capabilities first
+    if keymap.has then
+      -- Skip if no client supports this method
+      local has_capability = false
+      if type(keymap.has) == "table" then
+        for _, method in ipairs(keymap.has) do
+          if client:supports_method(resolve_method(method)) then
+            has_capability = true
+            break
+          end
+        end
+      else
+        has_capability = client:supports_method(resolve_method(keymap.has))
       end
 
-      -- Check conditions (cond receives the attaching client; older conds
-      -- that take no arguments simply ignore it)
-      if keymap.cond and not keymap.cond(client) then
-         goto continue
+      if not has_capability then
+        goto continue
       end
+    end
 
-      local opts = {
-         noremap = true,
-         silent = true,
-         buffer = buffer,
-         desc = keymap.desc,
-         nowait = keymap.nowait,
-      }
+    -- Check conditions (cond receives the attaching client; older conds
+    -- that take no arguments simply ignore it)
+    if keymap.cond and not keymap.cond(client) then
+      goto continue
+    end
 
-      apply_keymap(keymap, opts)
-      ::continue::
-   end
+    local opts = {
+      noremap = true,
+      silent = true,
+      buffer = buffer,
+      desc = keymap.desc,
+      nowait = keymap.nowait,
+    }
+
+    apply_keymap(keymap, opts)
+    ::continue::
+  end
 end
 
 ---@param buffer number
 function Keys.detach(buffer)
-   if not vim.api.nvim_buf_is_valid(buffer) then
-      return
-   end
+  if not vim.api.nvim_buf_is_valid(buffer) then
+    return
+  end
 
-   for _, keymap in ipairs(Keys.keys) do
-      local modes = normalize_modes(keymap.mode)
-      for _, mode in ipairs(modes) do
-         pcall(vim.keymap.del, mode, keymap[1], { buffer = buffer })
-      end
-   end
+  for _, keymap in ipairs(Keys.keys) do
+    local modes = normalize_modes(keymap.mode)
+    for _, mode in ipairs(modes) do
+      pcall(vim.keymap.del, mode, keymap[1], { buffer = buffer })
+    end
+  end
 end
 
 function Keys.setup()
-   local Utils = require("kostevski.utils")
-   if Utils.lsp and Utils.lsp.on_attach then
-      Utils.lsp.on_attach(Keys.on_attach)
-   end
+  local Utils = require("kostevski.utils")
+  if Utils.lsp and Utils.lsp.on_attach then
+    Utils.lsp.on_attach(Keys.on_attach)
+  end
 
-   vim.api.nvim_create_autocmd("LspDetach", {
-      callback = function(args)
-         Keys.detach(args.buf)
-      end,
-   })
+  vim.api.nvim_create_autocmd("LspDetach", {
+    callback = function(args)
+      Keys.detach(args.buf)
+    end,
+  })
 end
 
 function Keys.debug()
-   local Utils = require("kostevski.utils")
-   local clients = Utils.lsp and Utils.lsp.clients and Utils.lsp.clients.get_clients() or {}
-   for _, client in pairs(clients) do
-      print(string.format("LSP Client: %s (id: %d)", client.name, client.id))
-      for _, keymap in ipairs(Keys.keys) do
-         local has_cap = true
-         if keymap.has then
-            if type(keymap.has) == "table" then
-               has_cap = false
-               for _, method in ipairs(keymap.has) do
-                  if client:supports_method(resolve_method(method)) then
-                     has_cap = true
-                     break
-                  end
-               end
-            else
-               has_cap = client:supports_method(resolve_method(keymap.has))
+  local Utils = require("kostevski.utils")
+  local clients = Utils.lsp and Utils.lsp.clients and Utils.lsp.clients.get_clients() or {}
+  for _, client in pairs(clients) do
+    print(string.format("LSP Client: %s (id: %d)", client.name, client.id))
+    for _, keymap in ipairs(Keys.keys) do
+      local has_cap = true
+      if keymap.has then
+        if type(keymap.has) == "table" then
+          has_cap = false
+          for _, method in ipairs(keymap.has) do
+            if client:supports_method(resolve_method(method)) then
+              has_cap = true
+              break
             end
-         end
-         if has_cap then
-            print(
-               string.format(
-                  "  %s -> %s (%s)",
-                  keymap[1],
-                  type(keymap[2]) == "function" and "function" or keymap[2],
-                  keymap.desc or "no description"
-               )
-            )
-         end
+          end
+        else
+          has_cap = client:supports_method(resolve_method(keymap.has))
+        end
       end
-   end
+      if has_cap then
+        print(
+          string.format(
+            "  %s -> %s (%s)",
+            keymap[1],
+            type(keymap[2]) == "function" and "function" or keymap[2],
+            keymap.desc or "no description"
+          )
+        )
+      end
+    end
+  end
 end
 
 -- Create debug command

@@ -1,5 +1,5 @@
 return {
-   "shortcuts/no-neck-pain.nvim",
-   cmd = "NoNeckPain",
-   opts = {},
+  "shortcuts/no-neck-pain.nvim",
+  cmd = "NoNeckPain",
+  opts = {},
 }

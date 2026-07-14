@@ -44,10 +44,10 @@ map("n", "<leader>xl", "<cmd>lopen<cr>", { desc = "Location List" })
 map("n", "<leader>xq", "<cmd>copen<cr>", { desc = "Quickfix List" })
 
 local diagnostic_goto = function(next, severity)
-   severity = severity and vim.diagnostic.severity[severity] or nil
-   return function()
-      vim.diagnostic.jump({ count = next and 1 or -1, severity = severity })
-   end
+  severity = severity and vim.diagnostic.severity[severity] or nil
+  return function()
+    vim.diagnostic.jump({ count = next and 1 or -1, severity = severity })
+  end
 end
 
 map("n", "]e", diagnostic_goto(true, "ERROR"), { desc = "Next Error" })
