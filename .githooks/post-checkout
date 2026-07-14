@@ -9,15 +9,16 @@ if [[ "${3:-}" == "1" ]]; then
   # Get the repository root
   REPO_ROOT="$(git rev-parse --show-toplevel)"
 
-  # Check if config files have changed between branches
-  if git diff --name-only "${1:-}" "${2:-}" | grep -q "^config/"; then
+  # Sync when configuration or lifecycle logic changes.  `bin/dotfiles sync`
+  # resolves the stored profile instead of falling back to minimal.
+  if git diff --name-only "${1:-}" "${2:-}" | grep -Eq '^(config/|install/|bin/|bootstrap\.sh$)'; then
     echo "✨ Dotfiles configuration changed, syncing..."
 
     # Run sync in the background (logged) so git operations stay fast
     mkdir -p "$HOME/.cache"
     (
       cd "$REPO_ROOT" || exit
-      ./bootstrap.sh --sync
+      ./bin/dotfiles sync
     ) >>"$HOME/.cache/dotfiles-sync.log" 2>&1 &
 
     # Give user a hint about the background sync

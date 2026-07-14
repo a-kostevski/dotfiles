@@ -60,7 +60,7 @@ Common development setup:
 ### Full
 Complete development environment:
 - Everything from Standard
-- clang-format and LLDB configuration
+- clang-format, curl, and LLDB configuration
 - macOS-specific: Homebrew packages, Karabiner, Kitty terminal
 
 ### All
@@ -99,13 +99,17 @@ Complete development environment:
 Day-to-day symlink management uses the `dotfiles` utility (installed to `~/.local/bin`):
 
 ```bash
-dotfiles sync      # re-sync previously synced configs
-dotfiles status    # symlink health check
-dotfiles clean     # remove broken symlinks
+dotfiles sync      # reconcile the stored profile
+dotfiles status    # profile-aware symlink health check (fails when unhealthy)
+dotfiles clean     # remove broken links recorded in the dotfiles manifest
 dotfiles profile   # show or switch the stored profile
 dotfiles watch     # auto-sync on file changes (requires fswatch)
 dotfiles uninstall # remove repo-owned symlinks and restore backups
 ```
+
+Use `dotfiles clean --all` only when you intentionally want to remove every
+broken symlink under `~/.config` and `~/.local/bin`; ordinary sync never
+touches links it does not own.
 
 `dotfiles uninstall` removes the symlinks this repo created and restores any
 backups it made in their place:
@@ -155,6 +159,9 @@ review provenance and is not an authoritative list of current work.
 - Performance-optimized with lazy loading
 
 ### Neovim
+- Neovim **0.11.0 or newer** is required. Ubuntu package setup installs the
+  pinned official 0.11.4 archive under `~/.local` when the distro package is
+  too old.
 - Lazy.nvim for plugin management
 - Full LSP support for multiple languages
 - Modular plugin organization
@@ -223,9 +230,12 @@ nvim
 To update configurations:
 ```bash
 cd ~/.dotfiles
-git pull
-./bootstrap.sh --profile <your-profile>
+make update
+# or: git pull --ff-only && dotfiles sync
 ```
+
+`dotfiles sync` uses the stored profile. To change it, run
+`dotfiles profile standard` (or `minimal`, `full`, or `all`) and then sync.
 
 ## Troubleshooting
 
@@ -237,11 +247,13 @@ chmod +x install/*.sh
 ```
 
 ### Broken Symlinks
-The bootstrap script can detect and clean broken symlinks:
+The lifecycle commands clean only links owned by this repository:
 ```bash
-# During installation, you'll be prompted to clean broken links
-# Or manually check:
-find ~/.config -type l ! -exec test -e {} \; -print
+dotfiles status
+dotfiles clean
+
+# Explicit global cleanup, if wanted:
+dotfiles clean --all
 ```
 
 ### Zsh Not Found

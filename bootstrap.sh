@@ -251,9 +251,8 @@ link_configs() {
   local config_list
 
   if [[ -n "$SYNC_CONFIG" ]]; then
-    local config_path="$SCRIPT_DIR/config/$SYNC_CONFIG"
-    if [[ ! -d "$config_path" ]]; then
-      dot_error "Config not found: $SYNC_CONFIG (no directory at config/$SYNC_CONFIG)"
+    if ! config_component_exists "$SYNC_CONFIG"; then
+      dot_error "Config not found: $SYNC_CONFIG"
       exit 1
     fi
     config_list="$SYNC_CONFIG"
@@ -282,14 +281,22 @@ link_configs() {
     [[ -z "$config" ]] && continue
     local src="$SCRIPT_DIR/config/$config"
 
-    if [[ -d "$src" ]]; then
-      dot_info "Processing $config configuration..."
+    case "$config" in
+      clang-format) src="$SCRIPT_DIR/config/clang-format" ;;
+      curl) src="$SCRIPT_DIR/config/.curlrc" ;;
+    esac
 
-      # Get all symlinks for this config and create them
-      get_config_symlinks "$config" "$src" "$CONFIG_DEST" | while IFS='|' read -r source dest; do
-        create_symlink "$source" "$dest"
-      done
+    if ! config_component_exists "$config"; then
+      dot_error "Invalid profile component: $config"
+      exit 1
     fi
+
+    dot_info "Processing $config configuration..."
+
+    # Get all symlinks for this config and create them
+    get_config_symlinks "$config" "$src" "$CONFIG_DEST" | while IFS='|' read -r source dest; do
+      create_symlink "$source" "$dest"
+    done
   done <<<"$config_list"
 
   dot_success "Configuration files linked"
@@ -402,13 +409,15 @@ main() {
   # Set defaults and export variables early
   CONFIG_DEST="${CONFIG_DEST:-$DEFAULT_CONFIG_DEST}"
   BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
+  MANIFEST_FILE="${MANIFEST_FILE:-$CONFIG_DEST/.dotfiles-manifest}"
+  PROFILE_FILE="${PROFILE_FILE:-$CONFIG_DEST/.dotfiles-profile}"
 
   # Export key variables for install scripts and shared libraries
   # (dot_root/CONFIG_DIR are already exported once near the top, before the
   # libraries are sourced; SCRIPT_DIR is readonly, so no need to repeat them)
   export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG SYNC_SYNCED
   export INSTALL_PACKAGES APPLY_MACOS_DEFAULTS APPLY_HARDENING
-  export CONFIG_DEST BIN_DEST
+  export CONFIG_DEST BIN_DEST MANIFEST_FILE PROFILE_FILE
 
   # Show header
   if [[ "$SYNC_MODE" == "true" ]]; then
@@ -424,7 +433,7 @@ main() {
     dot_info "Running in sync mode - updating symlinks only"
     echo
 
-    # Clean broken symlinks first
+    # Clean only manifest-owned broken symlinks first.
     clean_broken_symlinks
 
     # Create minimal directory structure
@@ -441,6 +450,10 @@ main() {
       [[ "$VERBOSE" == "true" ]] && dot_info "No previously synced binaries detected, skipping"
     else
       link_binaries
+    fi
+
+    if [[ -z "$SYNC_CONFIG" && "$SYNC_SYNCED" != "true" && -z "$DRY_RUN" ]]; then
+      printf '%s\n' "$PROFILE" >"$PROFILE_FILE"
     fi
 
     dot_success "Sync completed successfully!"
@@ -462,6 +475,10 @@ main() {
 
     # Link binaries
     link_binaries
+
+    if [[ -z "$DRY_RUN" ]]; then
+      printf '%s\n' "$PROFILE" >"$PROFILE_FILE"
+    fi
 
     # Show summary
     show_summary

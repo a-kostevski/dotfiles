@@ -93,8 +93,12 @@ harden:
 ## Update existing installation
 update:
 	@echo -e "$(YELLOW)Updating dotfiles...$(NC)"
-	@git pull --ff-only
-	@$(BOOTSTRAP) --profile $(PROFILE) $(if $(filter true,$(VERBOSE)),--verbose) $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
+	@if [ "$(DRY_RUN)" = "true" ]; then \
+		echo "[DRY-RUN] git pull --ff-only"; \
+	else \
+		git pull --ff-only; \
+	fi
+	@bin/dotfiles sync $(if $(filter true,$(VERBOSE)),--verbose) $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
 	@echo -e "$(GREEN)Update complete!$(NC)"
 
 ## Uninstall dotfiles symlinks (restores backups; pass ARGS='nvim' to scope)
@@ -103,25 +107,11 @@ uninstall:
 
 ## Validate symlinks
 validate:
-	@echo -e "$(YELLOW)Checking for broken symlinks...$(NC)"
-	@broken_links=$$(find ~/.config ~/.local/bin -type l ! -exec test -e {} \; -print 2>/dev/null | wc -l); \
-	if [ $$broken_links -gt 0 ]; then \
-		echo -e "$(RED)Found $$broken_links broken symlinks:$(NC)"; \
-		find ~/.config ~/.local/bin -type l ! -exec test -e {} \; -print 2>/dev/null; \
-	else \
-		echo -e "$(GREEN)No broken symlinks found!$(NC)"; \
-	fi
+	@bin/dotfiles status --summary
 
 ## Clean broken symlinks
 clean:
-	@echo -e "$(YELLOW)Cleaning broken symlinks...$(NC)"
-	@count=0; \
-	while IFS= read -r link; do \
-		echo "Removing: $$link"; \
-		rm "$$link"; \
-		count=$$((count + 1)); \
-	done < <(find ~/.config ~/.local/bin -type l ! -exec test -e {} \; -print 2>/dev/null); \
-	echo -e "$(GREEN)Removed $$count broken symlinks$(NC)"
+	@bin/dotfiles clean $(ARGS)
 
 ## Backup current configurations
 backup:

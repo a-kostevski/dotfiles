@@ -43,6 +43,9 @@ create_symlink() {
         if [[ "$current_target" == "$src" ]]; then
             # Only show in verbose mode - symlink already correct
             [[ "${VERBOSE:-false}" == "true" ]] && dot_info "Already linked: $dest"
+            # A manifest can be missing or stale after upgrading from an
+            # earlier installer.  A successful reconciliation must repair it.
+            [[ -z "${DRY_RUN:-}" ]] && update_manifest "$src" "$dest"
             return 0
         else
             # Always show - symlink is being updated
@@ -125,23 +128,35 @@ check_symlink() {
 # Clean broken symlinks in directories
 clean_broken_symlinks() {
     local dry_run="${1:-${DRY_RUN:-}}"
-    local -a target_dirs=(
-        "$HOME/.config"
-        "$HOME/.local/bin"
-    )
+    local all_links="${2:-false}"
 
     dot_title "Cleaning Broken Symlinks"
 
     local count=0
-    local target_dir link
+    local link src dest
+    local owner_root="${dot_root:-}"
+    if [[ -z "$owner_root" ]]; then
+        owner_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+    fi
 
-    # Check each target directory
-    # (process substitution keeps the counter in the main shell)
-    for target_dir in "${target_dirs[@]}"; do
-        [[ ! -d "$target_dir" ]] && continue
-
-        while IFS= read -r link; do
-            [[ -z "$link" ]] && continue
+    if [[ "$all_links" == "true" ]]; then
+        local -a target_dirs=("$HOME/.config" "$HOME/.local/bin")
+        local target_dir
+        for target_dir in "${target_dirs[@]}"; do
+            [[ ! -d "$target_dir" ]] && continue
+            while IFS= read -r link; do
+                [[ -z "$link" ]] && continue
+                if [[ -n "$dry_run" ]]; then
+                    print_status "broken" "Would remove: $link"
+                else
+                    rm -f "$link"
+                    print_status "ok" "Removed: $link"
+                fi
+                count=$((count + 1))
+            done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
+        done
+        for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
+            [[ -L "$link" && ! -e "$link" ]] || continue
             if [[ -n "$dry_run" ]]; then
                 print_status "broken" "Would remove: $link"
             else
@@ -149,21 +164,22 @@ clean_broken_symlinks() {
                 print_status "ok" "Removed: $link"
             fi
             count=$((count + 1))
-        done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
-    done
-
-    # Also clean home directory symlinks
-    for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
-        if [[ -L "$link" ]] && [[ ! -e "$link" ]]; then
+        done
+    elif [[ -f "$MANIFEST_FILE" ]]; then
+        # The manifest is the ownership boundary.  Do not remove arbitrary
+        # broken links from a user's config tree during an ordinary sync.
+        while IFS='|' read -r _ src dest; do
+            [[ "$src" == "$owner_root"/* ]] || continue
+            [[ -L "$dest" && ! -e "$dest" ]] || continue
             if [[ -n "$dry_run" ]]; then
-                print_status "broken" "Would remove: $link"
+                print_status "broken" "Would remove: $dest"
             else
-                rm -f "$link"
-                print_status "ok" "Removed: $link"
+                rm -f "$dest"
+                print_status "ok" "Removed: $dest"
             fi
             count=$((count + 1))
-        fi
-    done
+        done <"$MANIFEST_FILE"
+    fi
 
     if [[ $count -gt 0 ]]; then
         if [[ -n "$dry_run" ]]; then
@@ -392,8 +408,18 @@ get_config_symlinks() {
     local config_dir="$2"
     local dest_base="${3:-$HOME/.config}"
     
-    # Special cases for certain configs
+    # Explicit mappings for files whose consumers use a home-directory path.
+    # These are components rather than config directories, so reject invalid
+    # profile entries instead of silently skipping them.
     case "$config_name" in
+        clang-format)
+            [[ -f "$config_dir" ]] && echo "$config_dir|$HOME/.clang-format"
+            return 0
+            ;;
+        curl)
+            [[ -f "$config_dir" ]] && echo "$config_dir|$HOME/.curlrc"
+            return 0
+            ;;
         zsh)
             # zshenv goes to HOME
             if [[ -f "$config_dir/zshenv" ]]; then

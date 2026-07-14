@@ -61,6 +61,7 @@ get_stored_profile() {
 # Save profile to file
 save_profile() {
   local profile="$1"
+  mkdir -p "$(dirname "$PROFILE_FILE")"
   echo "$profile" > "$PROFILE_FILE"
 }
 
@@ -113,14 +114,22 @@ cmd_sync() {
     exec "$DOTFILES_ROOT/bootstrap.sh" --sync --profile "$profile" "${args[@]}"
   fi
 
-  # Default: re-sync only previously synced configs
-  dot_info "Re-syncing previously synced configs..."
-  exec "$DOTFILES_ROOT/bootstrap.sh" --sync --synced "${args[@]}"
+  # The stored profile is the installation intent.  Reconcile it by default
+  # so `dotfiles profile standard && dotfiles sync` actually installs nvim,
+  # bat, and the other newly selected components.
+  profile=$(get_stored_profile)
+  if ! validate_profile "$profile"; then
+    dot_error "Stored profile is invalid: $profile"
+    return 2
+  fi
+  dot_info "Syncing dotfiles configurations with stored $profile profile..."
+  exec "$DOTFILES_ROOT/bootstrap.sh" --sync --profile "$profile" "${args[@]}"
 }
 
 # Command: clean - Remove broken symlinks
 cmd_clean() {
   local dry_run=""
+  local all_links=false
 
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -134,6 +143,10 @@ cmd_clean() {
         export VERBOSE=true
         shift
         ;;
+      --all)
+        all_links=true
+        shift
+        ;;
       *)
         shift
         ;;
@@ -141,7 +154,7 @@ cmd_clean() {
   done
 
   # Use the shared clean_broken_symlinks function
-  clean_broken_symlinks "$dry_run"
+  clean_broken_symlinks "$dry_run" "$all_links"
 }
 
 # Command: status - Show symlink health
@@ -161,11 +174,15 @@ cmd_status() {
     dot_title "Dotfiles Symlink Status"
   fi
 
-  # Get all config directories
+  local profile
+  profile=$(get_stored_profile)
+  if ! validate_profile "$profile"; then
+    dot_error "Stored profile is invalid: $profile"
+    return 2
+  fi
+
   local config_list
-  config_list=$(find "$CONFIG_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | while read -r dir; do
-    basename "$dir" | grep -v '^\.' || true
-  done | sort)
+  config_list=$(get_config_list "$profile" "$OS_TYPE")
 
   # Check all config directories
   if [[ "$show_details" == "true" ]]; then
@@ -178,7 +195,15 @@ cmd_status() {
   # Check config directory symlinks
   while IFS= read -r config; do
     local config_path="$CONFIG_DIR/$config"
-    [[ ! -d "$config_path" ]] && continue
+    case "$config" in
+      clang-format) config_path="$CONFIG_DIR/clang-format" ;;
+      curl) config_path="$CONFIG_DIR/.curlrc" ;;
+    esac
+
+    if ! config_component_exists "$config"; then
+      dot_error "Invalid profile component: $config"
+      return 2
+    fi
 
     # Show config section only if showing details
     if [[ "$show_details" == "true" ]]; then
@@ -245,7 +270,10 @@ cmd_status() {
   if [[ $total_broken -gt 0 ]] || [[ $total_missing -gt 0 ]]; then
     echo
     dot_info "Run 'dotfiles sync' to fix issues"
+    return 1
   fi
+
+  return 0
 }
 
 # Command: watch - Auto-sync on file changes
@@ -266,7 +294,7 @@ cmd_watch() {
   # Watch for changes and sync (fswatch -o emits event counts we don't need)
   fswatch -o "$CONFIG_DIR" | while read -r _; do
     printf "${COLOR_INFO}[%s]${COLOR_RESET} Change detected, syncing...\n" "$(date '+%H:%M:%S')"
-    "$DOTFILES_ROOT/bootstrap.sh" --sync --verbose
+    "$DOTFILES_ROOT/bin/dotfiles" sync --verbose
     echo
   done
 }
@@ -435,7 +463,7 @@ Usage: dotfiles <command> [options]
 Commands:
     sync,    s       Update symlinks (optional: specify profile)
     profile, p       Show or change current profile
-    clean,   c       Remove broken symlinks
+    clean,   c       Remove manifest-owned broken symlinks (--all for global cleanup)
     status,  st      Show symlink health and status
     watch,   w       Auto-sync on file changes (requires fswatch)
     uninstall, u     Remove dotfiles symlinks (all, or per config)
@@ -446,6 +474,7 @@ Options:
     -h, --help         Show this help message
     -n, --dry-run      Show what would be done (for clean/sync commands)
     -v, --verbose      Show detailed output (for sync/clean commands)
+    --all              Clean every broken link in managed directories (clean only)
     -s, --summary      Show summary only (for status command)
     -y, --yes          Skip confirmation (for uninstall)
     --no-restore       Don't restore backups (for uninstall)
@@ -457,7 +486,7 @@ Profiles:
     all                All available configs
 
 Examples:
-    dotfiles s                 # Re-sync previously synced configs
+    dotfiles s                 # Sync the stored profile
     dotfiles s standard        # Sync with standard profile
     dotfiles s --profile full  # Sync with full profile
     dotfiles s nvim            # Sync only nvim config
@@ -466,7 +495,8 @@ Examples:
     dotfiles p standard        # Switch to standard profile
     dotfiles st                # Quick status check
     dotfiles st -s             # Summary only
-    dotfiles c -n              # Dry-run clean
+    dotfiles c -n              # Preview manifest-owned cleanup
+    dotfiles c --all           # Explicitly clean all broken links in managed directories
     dotfiles s -v              # Verbose sync
     dotfiles w                 # Start watching
     dotfiles u                 # Uninstall everything (asks first)

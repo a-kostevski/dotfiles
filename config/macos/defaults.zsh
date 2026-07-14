@@ -267,8 +267,31 @@ defaults write org.x.X11 wm_ffm -bool true
 # TouchID for sudo                                                            #
 ###############################################################################
 
-/usr/bin/sudo /bin/cp /etc/pam.d/sudo_local.template /etc/pam.d/sudo_local
-/usr/bin/sudo /usr/bin/sed -i'' -e '/^#auth /s/^#//g' /etc/pam.d/sudo_local
+# sudo_local.template was introduced in macOS 14.  Do not replace an existing
+# local PAM policy: users commonly add pam_reattach or other required modules.
+# Instead, preserve the file and append exactly the Touch ID entry when absent.
+touchid_sudo_local="/etc/pam.d/sudo_local"
+touchid_template="/etc/pam.d/sudo_local.template"
+touchid_macos_major="$(/usr/bin/sw_vers -productVersion | /usr/bin/cut -d. -f1)"
+
+if (( touchid_macos_major < 14 )); then
+  echo "Skipping Touch ID sudo setup: macOS 14 or newer is required"
+elif [[ ! -f "$touchid_template" ]]; then
+  echo "Skipping Touch ID sudo setup: $touchid_template is unavailable"
+elif /usr/bin/sudo /usr/bin/grep -Eq '^[[:space:]]*auth[[:space:]]+sufficient[[:space:]]+pam_tid\.so([[:space:]]|$)' "$touchid_sudo_local" 2>/dev/null; then
+  echo "Touch ID sudo setup already present"
+else
+  if [[ -f "$touchid_sudo_local" ]]; then
+    touchid_backup="${touchid_sudo_local}.dotfiles-backup.$(/bin/date +%Y%m%d_%H%M%S)"
+    /usr/bin/sudo /bin/cp -p "$touchid_sudo_local" "$touchid_backup" || exit 1
+    echo "Backed up existing sudo_local policy to $touchid_backup"
+  else
+    /usr/bin/sudo /bin/cp "$touchid_template" "$touchid_sudo_local" || exit 1
+  fi
+
+  echo 'auth       sufficient     pam_tid.so' | /usr/bin/sudo /usr/bin/tee -a "$touchid_sudo_local" >/dev/null || exit 1
+  echo "Enabled Touch ID for sudo"
+fi
 
 ###############################################################################
 # Time Machine                                                                #

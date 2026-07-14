@@ -12,7 +12,7 @@ fi
 declare -gA PROFILE_CONFIGS=(
   ["minimal"]="git zsh tmux"
   ["standard"]="git zsh tmux nvim bat python ripgrep"
-  ["full"]="git zsh tmux nvim bat python ripgrep clang-format lldb"
+  ["full"]="git zsh tmux nvim bat python ripgrep clang-format curl lldb"
 )
 
 # Global array for custom configurations
@@ -55,7 +55,35 @@ get_all_existing_configs() {
     done < <(find "$config_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
   fi
 
+  # A few programs read configuration directly from $HOME rather than an XDG
+  # directory.  Keep them as named components so profiles can describe their
+  # source-to-destination mapping just like directory-backed configurations.
+  [[ -f "$config_dir/clang-format" ]] && configs+=("clang-format")
+  [[ -f "$config_dir/.curlrc" ]] && configs+=("curl")
+
   printf '%s\n' "${configs[@]}"
+}
+
+# Return success when a named profile component has a tracked source.  Most
+# components are directories under config/, while clang-format and curl are
+# explicitly mapped top-level files (see get_config_symlinks).
+config_component_exists() {
+  local config_name="$1"
+  local config_dir="${CONFIG_DIR:-}"
+  if [[ -z "$config_dir" && -n "${dot_root:-}" ]]; then
+    config_dir="$dot_root/config"
+  fi
+  if [[ -z "$config_dir" ]]; then
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    config_dir="$script_dir/../config"
+  fi
+
+  case "$config_name" in
+    clang-format) [[ -f "$config_dir/clang-format" ]] ;;
+    curl) [[ -f "$config_dir/.curlrc" ]] ;;
+    *) [[ -d "$config_dir/$config_name" ]] ;;
+  esac
 }
 
 # Get config list based on profile and OS
@@ -407,4 +435,3 @@ get_profile_description() {
       ;;
   esac
 }
-

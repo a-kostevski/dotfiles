@@ -6,6 +6,76 @@ set -euo pipefail
 # Source shared library
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
 
+readonly NEOVIM_MIN_VERSION="0.11.0"
+readonly NEOVIM_RELEASE_VERSION="0.11.4"
+
+# Compare the numeric major.minor.patch prefix without relying on sort -V or a
+# distro-specific package tool.  Neovim release versions do not use suffixes.
+neovim_version_at_least() {
+  local version="${1#v}"
+  local required="${2:-$NEOVIM_MIN_VERSION}"
+  local v_major v_minor v_patch r_major r_minor r_patch
+
+  IFS=. read -r v_major v_minor v_patch <<<"$version"
+  IFS=. read -r r_major r_minor r_patch <<<"$required"
+  v_major="${v_major:-0}"; v_minor="${v_minor:-0}"; v_patch="${v_patch:-0}"
+  r_major="${r_major:-0}"; r_minor="${r_minor:-0}"; r_patch="${r_patch:-0}"
+
+  [[ "$v_major" =~ ^[0-9]+$ && "$v_minor" =~ ^[0-9]+$ && "$v_patch" =~ ^[0-9]+$ ]] || return 1
+  (( 10#$v_major > 10#$r_major )) && return 0
+  (( 10#$v_major < 10#$r_major )) && return 1
+  (( 10#$v_minor > 10#$r_minor )) && return 0
+  (( 10#$v_minor < 10#$r_minor )) && return 1
+  (( 10#$v_patch >= 10#$r_patch ))
+}
+
+install_neovim() {
+  local installed_version=""
+  if command_exists nvim; then
+    installed_version="$(nvim --version 2>/dev/null | head -n1 | sed -n 's/^NVIM v//p')"
+    if neovim_version_at_least "$installed_version"; then
+      dot_info "Neovim $installed_version already satisfies >= $NEOVIM_MIN_VERSION"
+      return 0
+    fi
+  fi
+
+  local arch
+  arch="$(dpkg --print-architecture)"
+  local asset
+  case "$arch" in
+    amd64) asset="nvim-linux-x86_64" ;;
+    arm64) asset="nvim-linux-arm64" ;;
+    *)
+      dot_error "No official Neovim $NEOVIM_RELEASE_VERSION archive is configured for Ubuntu architecture: $arch"
+      return 1
+      ;;
+  esac
+
+  local opt_dir="$HOME/.local/opt"
+  local install_dir="$opt_dir/$asset-$NEOVIM_RELEASE_VERSION"
+  local archive="${TMPDIR:-/tmp}/$asset-$NEOVIM_RELEASE_VERSION.tar.gz"
+  local url="https://github.com/neovim/neovim/releases/download/v${NEOVIM_RELEASE_VERSION}/${asset}.tar.gz"
+
+  if [[ -n "$installed_version" ]]; then
+    dot_warning "Neovim $installed_version is too old; installing $NEOVIM_RELEASE_VERSION under $HOME/.local"
+  else
+    dot_info "Installing Neovim $NEOVIM_RELEASE_VERSION under $HOME/.local"
+  fi
+
+  execute_cmd "mkdir -p '$opt_dir' '$HOME/.local/bin'"
+  if [[ ! -x "$install_dir/bin/nvim" ]]; then
+    if [[ -e "$install_dir" ]]; then
+      dot_error "Refusing to replace incomplete Neovim installation: $install_dir"
+      return 1
+    fi
+    execute_cmd "curl -fL --retry 3 --retry-delay 2 '$url' -o '$archive'"
+    execute_cmd "tar -xzf '$archive' -C '$opt_dir'"
+    execute_cmd "mv '$opt_dir/$asset' '$install_dir'"
+    execute_cmd "rm -f '$archive'"
+  fi
+  execute_cmd "ln -sfn '$install_dir/bin/nvim' '$HOME/.local/bin/nvim'"
+}
+
 install_ubuntu_packages() {
   dot_title "Installing packages for Ubuntu"
 
@@ -26,7 +96,6 @@ install_ubuntu_packages() {
     wget
     zsh
     tmux
-    neovim
     ripgrep
     fd-find
     bat
@@ -41,6 +110,11 @@ install_ubuntu_packages() {
   )
 
   execute_cmd "sudo apt-get install -y ${packages[*]}"
+
+  # Ubuntu and Debian's packaged Neovim versions can be below this
+  # configuration's native-LSP API floor.  Keep the supported editor in the
+  # user's local bin directory, which the linked Zsh config places on PATH.
+  install_neovim
 
   # Install eza (modern ls replacement)
   dot_info "Installing eza..."
