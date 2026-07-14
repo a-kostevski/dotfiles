@@ -123,7 +123,7 @@ dotfiles uninstall --yes        # skip the confirmation prompt
 │   ├── tmux/              # Tmux configuration
 │   ├── zsh/               # Zsh configuration
 │   └── ...                # Other tool configs
-├── docs/                   # Design notes, plans, and review backlog
+├── docs/                   # Design notes, plans, and review reports
 ├── install/               # OS-specific installation scripts
 │   ├── install-macos.sh   # macOS setup
 │   ├── install-ubuntu.sh  # Ubuntu setup
@@ -132,6 +132,11 @@ dotfiles uninstall --yes        # skip the confirmation prompt
 ├── Makefile               # install/update/test/validate targets
 └── bootstrap.sh           # Main installation script
 ```
+
+The current full-repository audit is documented in
+[`docs/REVIEW-2026-07-14.md`](docs/REVIEW-2026-07-14.md). The older
+[`docs/REVIEW-BACKLOG.md`](docs/REVIEW-BACKLOG.md) is retained as historical
+review provenance and is not an authoritative list of current work.
 
 ## Configuration Details
 

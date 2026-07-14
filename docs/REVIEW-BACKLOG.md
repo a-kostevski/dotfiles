@@ -1,5 +1,11 @@
 # Review backlog
 
+> **Historical document:** this checklist records the 2026-07-10 and
+> 2026-07-11 reviews, but several unchecked entries have since been fixed. Use
+> the consolidated [2026-07-14 review](REVIEW-2026-07-14.md) for current
+> findings, validation evidence, and remediation order. Keep this file for
+> provenance rather than treating every unchecked item as active work.
+
 Remaining findings from the 2026-07-10 full-repo review. Everything here was
 deliberately deferred — the bugs found in that review were fixed in the
 commit series `192d99e..3ed7357`. Items are grouped by area and roughly
