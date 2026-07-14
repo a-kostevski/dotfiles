@@ -1,6 +1,54 @@
 #!/bin/zsh
 
-osascript -e 'tell application "System Preferences" to quit'
+set -euo pipefail
+
+plistbuddy() {
+  /usr/libexec/PlistBuddy "$@"
+}
+
+set_plist_value() {
+  local plist="$1"
+  local path="$2"
+  local type="$3"
+  local value="$4"
+
+  # PlistBuddy's Set preserves the existing value type; only Add accepts an
+  # explicit type for a missing key.
+  plistbuddy -c "Set ${path} ${value}" "$plist" \
+    || plistbuddy -c "Add ${path} ${type} ${value}" "$plist"
+}
+
+ensure_plist_dict() {
+  local plist="$1"
+  local path="$2"
+
+  plistbuddy -c "Print ${path}" "$plist" >/dev/null 2>&1 \
+    || plistbuddy -c "Add ${path} dict" "$plist"
+}
+
+configure_finder_icon_info() {
+  local plist="$HOME/Library/Preferences/com.apple.finder.plist"
+  local view
+
+  for view in DesktopViewSettings FK_StandardViewSettings StandardViewSettings; do
+    ensure_plist_dict "$plist" ":${view}"
+    ensure_plist_dict "$plist" ":${view}:IconViewSettings"
+    set_plist_value "$plist" ":${view}:IconViewSettings:showItemInfo" bool true
+  done
+
+  ensure_plist_dict "$plist" ":DesktopViewSettings"
+  ensure_plist_dict "$plist" ":DesktopViewSettings:IconViewSettings"
+  set_plist_value "$plist" ":DesktopViewSettings:IconViewSettings:labelOnBottom" bool false
+}
+
+# Let regression tests source the helpers without applying host settings.
+if [[ "$ZSH_EVAL_CONTEXT" == *":file" ]]; then
+  return 0
+fi
+
+# System Preferences is not necessarily running, and modern macOS uses System
+# Settings. Failing to close the old application is not a defaults failure.
+osascript -e 'tell application "System Preferences" to quit' 2>/dev/null || true
 echo "Configuring macOS"
 
 sudo -v
@@ -9,6 +57,10 @@ while true; do
   sleep 60
   kill -0 "$$" || exit
 done 2>/dev/null &
+sudo_keepalive_pid=$!
+trap 'kill "$sudo_keepalive_pid" 2>/dev/null || true' EXIT INT TERM
+
+mkdir -p "$HOME/Pictures/mac-screenshots"
 
 ###############################################################################
 # General UI/UX                                                               #
@@ -24,15 +76,8 @@ defaults write com.apple.menuextra.battery ShowTime -bool false
 # Save to disk (not to iCloud) by default
 defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
 
-# Disable the “Are you sure you want to open this application?” dialog
-defaults write com.apple.LaunchServices LSQuarantine -bool false
-
 # Disable the crash reporter
 defaults write com.apple.CrashReporter DialogType -string "none"
-
-# Disable Notification Center and remove the menu bar icon
-sudo launchctl unload -w \
-  /System/Library/LaunchAgents/com.apple.notificationcenterui.plist 2>/dev/null
 
 # Enable full keyboard access for all controls (e.g. enable Tab in modal dialogs)
 defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
@@ -73,9 +118,6 @@ defaults write NSGlobalDomain AppleLanguages -array "en"
 defaults write NSGlobalDomain AppleLocale -string "en_GB@currency=EUR"
 defaults write NSGlobalDomain AppleMeasurementUnits -string "Centimeters"
 defaults write NSGlobalDomain AppleMetricUnits -bool true
-
-# Stop iTunes from responding to the keyboard media keys
-launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist 2>/dev/null
 
 ###############################################################################
 # Energy saving                                                               #
@@ -127,13 +169,9 @@ defaults write com.apple.finder _FXSortFoldersFirst -bool true
 # Disable the warning when changing a file extension
 defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
 
-# Show item info near icons on the desktop and in other icon views
-/usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
-/usr/libexec/PlistBuddy -c "Set :FK_StandardViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
-/usr/libexec/PlistBuddy -c "Set :StandardViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
-
-# Show item info to the right of the icons on the desktop
-/usr/libexec/PlistBuddy -c "Set DesktopViewSettings:IconViewSettings:labelOnBottom false" ~/Library/Preferences/com.apple.finder.plist
+# Show item info near icons on the desktop and in other icon views. The plist
+# may not contain these nested dictionaries on a fresh macOS account.
+configure_finder_icon_info
 
 # Disable the warning before emptying the Trash
 defaults write com.apple.finder WarnOnEmptyTrash -bool false
@@ -363,7 +401,8 @@ for app in "Activity Monitor" \
   "Terminal" \
   "Transmission" \
   "iCal"; do
-  killall "${app}" &>/dev/null
+  # Most applications are not running during provisioning.
+  killall "${app}" &>/dev/null || true
 done
 
 echo "Done. Note that some of these changes require a logout/restart to take effect."

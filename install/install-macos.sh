@@ -70,7 +70,7 @@ apply_macos_defaults() {
 
   dot_info "Applying macOS system defaults..."
   validate_file "$dot_root/config/macos/defaults.zsh" "macOS defaults configuration" || return 1
-  execute_cmd "zsh '$dot_root/config/macos/defaults.zsh'"
+  execute_cmd "zsh '$dot_root/config/macos/defaults.zsh'" || return 1
   dot_success "Applied macOS defaults"
 
   dot_header "Cleaning up"
@@ -86,7 +86,7 @@ apply_macos_hardening() {
   request_sudo || return 1
   dot_info "Applying macOS security hardening..."
   validate_file "$dot_root/config/macos/harden.zsh" "Security hardening configuration" || return 1
-  execute_cmd "zsh '$dot_root/config/macos/harden.zsh'"
+  execute_cmd "zsh '$dot_root/config/macos/harden.zsh'" || return 1
   dot_success "Applied macOS security hardening"
 }
 
