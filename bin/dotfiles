@@ -3,7 +3,7 @@
 # Commands: sync, clean, status, watch, uninstall
 # Version: 1.1.0
 
-# install/profiles.sh needs associative arrays; stock macOS bash is 3.2
+# install/manifest.sh needs associative arrays; stock macOS bash is 3.2
 if ((BASH_VERSINFO[0] < 4)); then
   echo "Error: dotfiles requires bash 4 or newer (found $BASH_VERSION)." >&2
   echo "On macOS: brew install bash, then re-run." >&2
@@ -37,7 +37,6 @@ export VERBOSE=false
 source "$DOTFILES_ROOT/install/lib.sh"
 source "$DOTFILES_ROOT/install/symlinks.sh"
 source "$DOTFILES_ROOT/install/manifest.sh"
-source "$DOTFILES_ROOT/install/profiles.sh"
 
 # Configuration
 export MANIFEST_FILE="$HOME/.config/.dotfiles-manifest"

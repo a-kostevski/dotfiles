@@ -4,7 +4,7 @@
 # Supports: macOS, Ubuntu/Debian
 # Version: 3.0.0
 
-# install/profiles.sh needs associative arrays; stock macOS bash is 3.2
+# install/manifest.sh needs associative arrays; stock macOS bash is 3.2
 if ((BASH_VERSINFO[0] < 4)); then
   echo "Error: bootstrap.sh requires bash 4 or newer (found $BASH_VERSION)." >&2
   echo "On macOS: brew install bash, then re-run." >&2
@@ -53,7 +53,6 @@ export CONFIG_DIR="$SCRIPT_DIR/config"
 source "$SCRIPT_DIR/install/lib.sh"
 source "$SCRIPT_DIR/install/symlinks.sh"
 source "$SCRIPT_DIR/install/manifest.sh"
-source "$SCRIPT_DIR/install/profiles.sh"
 
 # Usage information
 usage() {

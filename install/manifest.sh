@@ -210,3 +210,25 @@ manifest_home_dests() {
     printf '%s\n' "$res"
   done < <(manifest_records)
 }
+
+# Validate a profile name. `custom` is no longer supported.
+validate_profile() {
+  case "$1" in
+    minimal | standard | full | all) return 0 ;;
+    *)
+      dot_error "Invalid profile: $1"
+      dot_error "Valid profiles: minimal, standard, full, all"
+      return 1
+      ;;
+  esac
+}
+
+get_profile_description() {
+  case "$1" in
+    minimal) echo "Essential configs only (git, zsh, tmux)" ;;
+    standard) echo "Common development tools (minimal + nvim, bat, python)" ;;
+    full) echo "Everything including GUI apps" ;;
+    all) echo "All available configs in the manifest" ;;
+    *) echo "Unknown profile" ;;
+  esac
+}
