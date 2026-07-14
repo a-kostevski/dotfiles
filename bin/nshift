@@ -10,7 +10,9 @@
 set -euo pipefail
 
 readonly SCRIPT_NAME="${0:t}"
-readonly TIMER_PID_FILE="${TMPDIR:-/tmp}/nshift-timer.pid"
+readonly TIMER_MARKER="nshift-timer"
+readonly NSHIFT_RUNTIME_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/nshift"
+readonly TIMER_PID_FILE="$NSHIFT_RUNTIME_DIR/timer.pid"
 readonly HELPER="${0:A:h}/nightshift-helper.swift"
 readonly DEFAULT_HOURS=8
 
@@ -35,6 +37,24 @@ QUIET=false
 error_exit() {
   echo "${RED}ERROR:${RESET} $1" >&2
   exit 1
+}
+
+# Create an owned, private runtime dir for timer state.
+ensure_runtime_dir() {
+  [[ -d "$NSHIFT_RUNTIME_DIR" ]] || mkdir -p "$NSHIFT_RUNTIME_DIR"
+  chmod 700 "$NSHIFT_RUNTIME_DIR" 2>/dev/null || true
+}
+
+# True if <pid> is alive AND is one of our timer processes. The timer is
+# launched with our marker in its argv, so a stale pid file whose PID was
+# recycled by an unrelated process fails this check and is left untouched.
+pid_is_our_timer() {
+  local pid="$1"
+  [[ -n "$pid" ]] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  local cmd
+  cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+  [[ "$cmd" == *"$TIMER_MARKER"* ]]
 }
 
 # Platform check
@@ -72,28 +92,29 @@ get_status() {
   run_helper status
 }
 
-# Cancel any existing timer
+# Cancel any existing timer (only if it is verifiably ours)
 cancel_timer() {
-  if [[ -f "$TIMER_PID_FILE" ]]; then
-    local pid
-    pid=$(cat "$TIMER_PID_FILE" 2>/dev/null)
-    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-      kill "$pid" 2>/dev/null || true
-      [[ "$QUIET" != true ]] && echo "  ${YELLOW}Cancelled previous timer${RESET}"
-    fi
-    rm -f "$TIMER_PID_FILE"
+  [[ -f "$TIMER_PID_FILE" ]] || return 0
+  local pid
+  pid=$(cat "$TIMER_PID_FILE" 2>/dev/null)
+  if pid_is_our_timer "$pid"; then
+    kill "$pid" 2>/dev/null || true
+    [[ "$QUIET" != true ]] && echo "  ${YELLOW}Cancelled previous timer${RESET}"
   fi
+  rm -f "$TIMER_PID_FILE"
 }
 
 # Enable Night Shift for a specified duration
 enable_for_duration() {
   local hours="${1:-$DEFAULT_HOURS}"
-  local seconds=$((hours * 3600))
 
-  # Validate hours
-  if ! [[ "$hours" =~ ^[0-9]+(\.[0-9]+)?$ ]] || (( $(echo "$hours <= 0" | bc -l) )); then
-    error_exit "Invalid duration: $hours (must be a positive number)"
+  # Validate the duration format FIRST, before any arithmetic or side effects.
+  # Positive whole hours only; no bc dependency.
+  if ! [[ "$hours" =~ ^[0-9]+$ ]] || [[ "$hours" =~ ^0+$ ]]; then
+    error_exit "Invalid duration: $hours (must be a positive whole number of hours)"
   fi
+
+  local seconds=$((hours * 3600))
 
   # Cancel any existing timer
   cancel_timer
@@ -101,13 +122,11 @@ enable_for_duration() {
   # Enable Night Shift
   run_helper on >/dev/null
 
-  # Start background timer
-  (
-    sleep "$seconds"
-    swift "$HELPER" off 2>/dev/null
-    rm -f "$TIMER_PID_FILE"
-  ) &
-
+  # Start background timer, tagged with our marker so it can be identified
+  # later even if its PID is recycled after it exits.
+  ensure_runtime_dir
+  zsh -c 'sleep "$1"; swift "$2" off 2>/dev/null; rm -f "$3"' \
+    "$TIMER_MARKER" "$seconds" "$HELPER" "$TIMER_PID_FILE" &
   echo $! > "$TIMER_PID_FILE"
   disown
 
@@ -183,7 +202,7 @@ show_status() {
   if [[ -f "$TIMER_PID_FILE" ]]; then
     local pid
     pid=$(cat "$TIMER_PID_FILE" 2>/dev/null)
-    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    if pid_is_our_timer "$pid"; then
       echo "Timer: ${YELLOW}Active${RESET} (will auto-disable)"
     fi
   fi
