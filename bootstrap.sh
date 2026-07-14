@@ -44,7 +44,6 @@ declare -g APPLY_HARDENING=false
 declare -g FORCE=false
 declare -g SYNC_MODE=false
 declare -g SYNC_CONFIG=""
-declare -g SYNC_SYNCED=false
 
 # Export key variables early for shared libraries
 export dot_root="$SCRIPT_DIR"
@@ -53,6 +52,7 @@ export CONFIG_DIR="$SCRIPT_DIR/config"
 # Source shared libraries
 source "$SCRIPT_DIR/install/lib.sh"
 source "$SCRIPT_DIR/install/symlinks.sh"
+source "$SCRIPT_DIR/install/manifest.sh"
 source "$SCRIPT_DIR/install/profiles.sh"
 
 # Usage information
@@ -68,9 +68,6 @@ OPTIONS:
     -p, --profile <name>        Installation profile: minimal, standard, full, all
                                 (default: minimal)
     --config <name>             Sync only a specific config (e.g., nvim, zsh)
-    --synced                    Re-sync only previously synced configs
-    -c, --config-dest <path>    Config directory path (default: ~/.config)
-    -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
     --install-packages          Install OS-specific packages (explicit opt-in)
     --apply-macos-defaults      Apply macOS system defaults (macOS only)
     --harden                    Apply macOS security hardening (macOS only)
@@ -137,16 +134,6 @@ parse_args() {
         validate_profile "$PROFILE" || exit 1
         shift 2
         ;;
-      -c | --config-dest)
-        CONFIG_DEST="${2:-}"
-        [[ -z "$CONFIG_DEST" ]] && dot_error "Config destination requires a value" && exit 1
-        shift 2
-        ;;
-      -b | --bin-dest)
-        BIN_DEST="${2:-}"
-        [[ -z "$BIN_DEST" ]] && dot_error "Bin destination requires a value" && exit 1
-        shift 2
-        ;;
       -s | --skip-install)
         SKIP_INSTALL=true
         shift
@@ -183,10 +170,6 @@ parse_args() {
         SYNC_CONFIG="${2:-}"
         [[ -z "$SYNC_CONFIG" ]] && dot_error "Config requires a name" && exit 1
         shift 2
-        ;;
-      --synced)
-        SYNC_SYNCED=true
-        shift
         ;;
       -h | --help)
         usage
@@ -243,82 +226,49 @@ validate_environment() {
 
 # Note: create_directory and is_ignored are defined in install/lib.sh
 # Note: create_symlink is defined in install/symlinks.sh
-# Note: get_config_list is defined in install/profiles.sh
+# Note: manifest_links/manifest_component_links/manifest_component_exists/
+# manifest_components are defined in install/manifest.sh
 
 
-# Link configuration files
+# Link configuration files from the declarative manifest.
 link_configs() {
-  local config_list
-
-  if [[ -n "$SYNC_CONFIG" ]]; then
-    if ! config_component_exists "$SYNC_CONFIG"; then
-      dot_error "Config not found: $SYNC_CONFIG"
-      exit 1
-    fi
-    config_list="$SYNC_CONFIG"
-  elif [[ "$SYNC_SYNCED" == "true" ]]; then
-    config_list=$(get_synced_configs "$CONFIG_DEST")
-    if [[ -z "$config_list" ]]; then
-      dot_warning "No previously synced configs detected, falling back to profile: $PROFILE"
-      config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
-    else
-      dot_info "Detected synced configs: $(echo "$config_list" | xargs | sed 's/ /, /g')"
-    fi
-  else
-    config_list=$(get_config_list "$PROFILE" "$OS_TYPE")
-  fi
-
   dot_title "Linking configuration files"
 
   if [[ "$VERBOSE" == "true" ]]; then
     dot_info "Profile: $PROFILE ($(get_profile_description "$PROFILE"))"
     dot_info "OS: $OS_TYPE"
-    dot_info "Configs to link: $(echo "$config_list" | xargs | sed 's/ /, /g')"
   fi
 
-  # Link each config directory
-  while IFS= read -r config; do
-    [[ -z "$config" ]] && continue
-    local src="$SCRIPT_DIR/config/$config"
-
-    case "$config" in
-      clang-format) src="$SCRIPT_DIR/config/clang-format" ;;
-      curl) src="$SCRIPT_DIR/config/.curlrc" ;;
-    esac
-
-    if ! config_component_exists "$config"; then
-      dot_error "Invalid profile component: $config"
+  local links
+  if [[ -n "$SYNC_CONFIG" ]]; then
+    if ! manifest_component_exists "$SYNC_CONFIG"; then
+      dot_error "Config not found: $SYNC_CONFIG"
       exit 1
     fi
+    dot_info "Processing $SYNC_CONFIG configuration..."
+    links="$(manifest_component_links "$SYNC_CONFIG" "$OS_TYPE")"
+  else
+    local comp
+    while IFS= read -r comp; do
+      [[ -z "$comp" ]] && continue
+      dot_info "Processing $comp configuration..."
+    done < <(manifest_components "$PROFILE" "$OS_TYPE")
+    links="$(manifest_links "$PROFILE" "$OS_TYPE")"
+  fi
 
-    dot_info "Processing $config configuration..."
-
-    # Get all symlinks for this config and create them
-    get_config_symlinks "$config" "$src" "$CONFIG_DEST" | while IFS='|' read -r source dest; do
-      create_symlink "$source" "$dest"
-    done
-  done <<<"$config_list"
+  local source dest
+  while IFS='|' read -r source dest; do
+    [[ -z "$source" ]] && continue
+    create_symlink "$source" "$dest"
+  done <<<"$links"
 
   dot_success "Configuration files linked"
 }
 
-# Link binary scripts
+# Binaries are linked via the manifest `bin` entry in link_configs; this
+# remains only to ensure the destination directory exists.
 link_binaries() {
-  dot_title "Linking binary scripts"
-
   create_directory "$BIN_DEST"
-
-  # Link all scripts
-  while IFS= read -r script; do
-    # Skip ignored files
-    if is_ignored "$script"; then
-      [[ "$VERBOSE" == "true" ]] && dot_info "Skipping ignored script: ${script#"$SCRIPT_DIR"/}"
-      continue
-    fi
-    create_symlink "$script" "$BIN_DEST/$(basename "$script")"
-  done < <(find "$SCRIPT_DIR/bin" -type f -not -name ".*" 2>/dev/null)
-
-  dot_success "Binary scripts linked"
 }
 
 # Run explicitly requested system provisioning actions.
@@ -415,7 +365,7 @@ main() {
   # Export key variables for install scripts and shared libraries
   # (dot_root/CONFIG_DIR are already exported once near the top, before the
   # libraries are sourced; SCRIPT_DIR is readonly, so no need to repeat them)
-  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG SYNC_SYNCED
+  export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG
   export INSTALL_PACKAGES APPLY_MACOS_DEFAULTS APPLY_HARDENING
   export CONFIG_DEST BIN_DEST MANIFEST_FILE PROFILE_FILE
 
@@ -443,16 +393,12 @@ main() {
     # Link configurations
     link_configs
 
-    # Link binaries (skip when syncing a specific config, or when --synced with no binaries linked)
-    if [[ -n "$SYNC_CONFIG" ]]; then
-      : # skip binaries for single-config sync
-    elif [[ "$SYNC_SYNCED" == "true" ]] && ! has_synced_binaries "$BIN_DEST"; then
-      [[ "$VERBOSE" == "true" ]] && dot_info "No previously synced binaries detected, skipping"
-    else
+    # Link binaries (skip only when syncing one specific config)
+    if [[ -z "$SYNC_CONFIG" ]]; then
       link_binaries
     fi
 
-    if [[ -z "$SYNC_CONFIG" && "$SYNC_SYNCED" != "true" && -z "$DRY_RUN" ]]; then
+    if [[ -z "$SYNC_CONFIG" && -z "$DRY_RUN" ]]; then
       printf '%s\n' "$PROFILE" >"$PROFILE_FILE"
     fi
 
