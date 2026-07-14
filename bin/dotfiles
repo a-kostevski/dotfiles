@@ -427,6 +427,8 @@ cmd_uninstall() {
 
 # Show usage
 usage() {
+  local exit_code="${1:-0}"
+
   cat <<EOF
 Usage: dotfiles <command> [options]
 
@@ -472,7 +474,7 @@ Examples:
     dotfiles u -n              # Preview a full uninstall
 
 EOF
-  exit 0
+  exit "$exit_code"
 }
 
 # Main execution
@@ -517,7 +519,7 @@ main() {
       ;;
     *)
       dot_error "Unknown command: $command"
-      usage
+      usage 2
       ;;
   esac
 }

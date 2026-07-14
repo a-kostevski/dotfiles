@@ -342,6 +342,14 @@ assert_eq "unknown config is an error" "1" "$unknown_rc"
 assert_contains "error names the offender" "bogus" "$unknown_out"
 rm -rf "$tmp_e2e"
 
+# --- unknown management command ---
+tmp_e2e="$(mktemp -d)"
+unknown_out="$(HOME="$tmp_e2e" "$REPO_ROOT/bin/dotfiles" bogus 2>&1)"
+unknown_rc=$?
+assert_eq "unknown command exits with usage error" "2" "$unknown_rc"
+assert_contains "unknown command is reported" "Unknown command: bogus" "$unknown_out"
+rm -rf "$tmp_e2e"
+
 # --- nothing to do ---
 tmp_e2e="$(mktemp -d)"
 mkdir -p "$tmp_e2e/.config"
