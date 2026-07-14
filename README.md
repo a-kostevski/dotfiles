@@ -13,7 +13,9 @@ Personal development environment configuration for macOS and Ubuntu.
   separately from linking, defaulting to the link profile's tier but
   overridable with `--packages`
 - **Development tools**: Neovim, tmux, git, zsh, and more
-- **Language support**: Go, Python, Rust, and more with full LSP integration
+- **Language support**: LSP integration for many languages. Neovim enables
+  Lua, Terraform, and C++ by default; enable more in
+  `config/nvim/lua/kostevski/config/languages.lua`
 
 ## Prerequisites
 
@@ -235,10 +237,11 @@ review provenance and is not an authoritative list of current work.
   pinned official 0.11.4 archive under `~/.local` when the distro package is
   too old.
 - Lazy.nvim for plugin management
-- Full LSP support for multiple languages
+- LSP support; languages enabled in `languages.lua` (Lua, Terraform, C++ by
+  default) with more available on demand
 - Modular plugin organization
 - Custom keybindings and workflows
-- AI integration (Copilot, Aider)
+- AI integration via `claude-code.nvim`
 
 ### Git
 - Global gitignore patterns
