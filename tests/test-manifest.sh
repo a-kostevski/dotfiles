@@ -102,6 +102,13 @@ assert_eq "lldb/ubuntu omits ~/.lldbinit home file" "" \
 assert_contains "lldb/ubuntu keeps .lldbinit under XDG" \
   "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.config/lldb/.lldbinit" "$lldb_ubuntu"
 
+echo "== hook change-detection covers the manifest =="
+hook_pattern='^(config/|install/|bin/|bootstrap\.sh$)'
+assert_eq "manifest.toml matches the hook trigger" "install/manifest.toml" \
+  "$(printf 'install/manifest.toml\n' | grep -E "$hook_pattern")"
+assert_eq "post-checkout uses the lifecycle pattern" "yes" \
+  "$([[ "$(cat "$REPO_ROOT/.githooks/post-checkout")" == *'install/'* ]] && echo yes || echo no)"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]
