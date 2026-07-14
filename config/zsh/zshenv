@@ -6,9 +6,21 @@ export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
 export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 
-# Respect an existing runtime dir (systemd sets one); fall back to $TMPDIR/run
-export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-${${TMPDIR:-/tmp}%/}/run}
-[ ! -d "$XDG_RUNTIME_DIR" ] && mkdir -m 0700 -p "$XDG_RUNTIME_DIR" 2>/dev/null
+# Respect an existing runtime directory (for example, one supplied by systemd).
+# Without one, use a private, UID-specific directory rather than a shared
+# fallback such as /tmp/run.
+if [[ -z "${XDG_RUNTIME_DIR:-}" ]]; then
+  runtime_parent="${${TMPDIR:-/tmp}%/}"
+  runtime_candidate="$runtime_parent/run-${EUID}"
+
+  if [[ ! -e "$runtime_candidate" && ! -L "$runtime_candidate" ]]; then
+    command mkdir -p -m 0700 "$runtime_candidate" 2>/dev/null
+  fi
+
+  if [[ -d "$runtime_candidate" && ! -L "$runtime_candidate" && -O "$runtime_candidate" ]]; then
+    command chmod 0700 "$runtime_candidate" 2>/dev/null && export XDG_RUNTIME_DIR="$runtime_candidate"
+  fi
+fi
 
 # Default zsh dotfile directory
 export ZDOTDIR=$XDG_CONFIG_HOME/zsh

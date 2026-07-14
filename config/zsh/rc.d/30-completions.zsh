@@ -24,11 +24,16 @@ if [[ -d "$ZDOTDIR/plugins/zsh-completions/src" ]]; then
     fpath=("$ZDOTDIR/plugins/zsh-completions/src" $fpath)
 fi
 
-ZSH_COMPDUMP=$XDG_CACHE_HOME/zsh/zcompdump
+local zsh_cache_dir="$XDG_CACHE_HOME/zsh"
+if [[ ! -d "$zsh_cache_dir" ]]; then
+    command mkdir -p -m 0700 "$zsh_cache_dir" || return 1
+fi
+
+ZSH_COMPDUMP=$zsh_cache_dir/zcompdump
 
 # Check if compdump needs regeneration (once per day)
 # Cache the comparison result to avoid stat calls on every shell startup
-local cache_check_file="$XDG_CACHE_HOME/zsh/.compdump_check"
+local cache_check_file="$zsh_cache_dir/.compdump_check"
 local current_day=$(get_day_of_year)
 local cached_day=""
 
@@ -43,6 +48,7 @@ else
     compinit -C -d $ZSH_COMPDUMP
 fi
 unset ZSH_COMPDUMP
+unset zsh_cache_dir
 _comp_options+=(globdots) 
 
 # --- Set up ---
@@ -109,4 +115,3 @@ zstyle ':completion:*:*:cd:*' file-sort name
 
 # --- Users ---
 zstyle ':completion:*:*:*:users' ignored-patterns adm daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody systemd-timesync systemd-network systemd-resolve systemd-bus-proxy syslog messagebus _apt uuidd tcpdump avahi-autoipd usbmux dnsmasq rtkit cups-pk-helper speech-dispatcher colord saned hplip pulse geoclue gnome-initial-setup gdm flatpak
-

@@ -1,7 +1,17 @@
 export DEVDIR="$HOME/dev"
 export REPOS="$DEVDIR/repos"
 export GHDIR="$REPOS/github.com/a-kostevski"
-export DOTDIR="$GHDIR/dotfiles"
+
+# The CLI is linked from this repository into ~/.local/bin. Resolve that
+# symlink so navigation and edit aliases work regardless of clone location.
+dotfiles_bin="$(command -v dotfiles 2>/dev/null)"
+if [[ -n "$dotfiles_bin" ]]; then
+    export DOTDIR="${dotfiles_bin:A:h:h}"
+else
+    export DOTDIR="${DOTDIR:-$HOME/.dotfiles}"
+fi
+unset dotfiles_bin
+
 export EXO="$HOME/exo"
 export LIFE="$HOME/life"
 export ZETDIR="$LIFE/0-inbox"
