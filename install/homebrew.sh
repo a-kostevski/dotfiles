@@ -7,6 +7,10 @@ set -euo pipefail
 # Source shared library
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
 
+if ! declare -f packages_select >/dev/null; then
+  source "$dot_root/install/packages.sh"
+fi
+
 : "${DRY_RUN:=}"
 
 # Get the appropriate Homebrew prefix
@@ -35,78 +39,48 @@ install_homebrew() {
   fi
 }
 
-# Configure Homebrew settings
-configure_homebrew() {
-  # Disable analytics
-  export HOMEBREW_NO_ANALYTICS=1
-  export HOMEBREW_NO_INSECURE_REDIRECT=1
-
-  # Save the settings permanently
-  if [[ ! -f "$HOME/.config/homebrew/config" ]]; then
-    execute_cmd "mkdir -p '$HOME/.config/homebrew'"
-    if [[ -z "$DRY_RUN" ]]; then
-      cat >"$HOME/.config/homebrew/config" <<EOF
-export HOMEBREW_NO_ANALYTICS=1
-export HOMEBREW_NO_INSECURE_REDIRECT=1
-EOF
-    else
-      echo "[DRY-RUN] cat >'$HOME/.config/homebrew/config'"
-    fi
-  fi
+# Link the Homebrew environment file (analytics/redirect settings, etc.)
+# before any brew invocation so the settings are in effect for the bundle.
+link_brew_env() {
+  local src="$dot_root/config/homebrew/brew.env"
+  local dest="$HOME/.config/homebrew/brew.env"
+  validate_file "$src" "Homebrew environment file" || return 1
+  create_symlink "$src" "$dest"
 }
 
-# Install packages from Brewfile
-install_packages() {
-  local brewfile="$1"
-  local profile="${PROFILE:-minimal}"
-  local brewfile_type="minimal"
-  
-  [[ "$brewfile" == *"Brewfile-all" ]] && brewfile_type="full"
-  
-  dot_info "Using $brewfile_type Brewfile for $profile profile"
-  dot_info "Installing Homebrew packages from $brewfile..."
-  
-  if ! validate_file "$brewfile" "Brewfile"; then
-    return 1
-  fi
+# Pure: emit a Brewfile for a tier. Testable without brew.
+generate_brewfile() {
+  local tier="$1" out="$2" name
+  : >"$out"
+  while IFS= read -r name; do [[ -n "$name" ]] && printf 'brew "%s"\n' "$name" >>"$out"; done < <(packages_select "$tier" brew)
+  while IFS= read -r name; do [[ -n "$name" ]] && printf 'cask "%s"\n' "$name" >>"$out"; done < <(packages_select "$tier" cask)
+}
 
+# Install packages for the current PACKAGE_TIER via a generated Brewfile.
+install_packages() {
+  local tier="${PACKAGE_TIER:-minimal}"
+  local brewfile; brewfile="$(mktemp)"
+  generate_brewfile "$tier" "$brewfile"
+  dot_info "Installing Homebrew packages ($tier tier)..."
   if execute_cmd "brew bundle --file='$brewfile'"; then
     dot_success "Installed Homebrew packages"
+    rm -f "$brewfile"
   else
     dot_error "Failed to install some Homebrew packages"
+    rm -f "$brewfile"
     return 1
   fi
-}
-
-# Get Brewfile based on profile
-get_brewfile_for_profile() {
-  local profile="${PROFILE:-minimal}"
-  
-  case "$profile" in
-    minimal|standard)
-      echo "$dot_root/config/homebrew/Brewfile-min"
-      ;;
-    full)
-      echo "$dot_root/config/homebrew/Brewfile-all"
-      ;;
-    *)
-      dot_warning "Unknown profile '$profile', defaulting to minimal" >&2
-      echo "$dot_root/config/homebrew/Brewfile-min"
-      ;;
-  esac
 }
 
 # Main execution
 main() {
   install_homebrew || return 1
-  configure_homebrew || return 1
-
-  local brewfile
-  brewfile=$(get_brewfile_for_profile)
-  install_packages "$brewfile" || return 1
-
+  link_brew_env || return 1 # before any brew bundle
+  install_packages || return 1
   return 0
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi
 
