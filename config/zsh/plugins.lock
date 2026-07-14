@@ -1,0 +1,6 @@
+# Zsh plugin lock file. Managed by `_plug_update`.
+# Format: owner/repo <commit-sha>
+romkatv/zsh-defer 53a26e287fbbe2dcebb3aa1801546c6de32416fa
+zsh-users/zsh-autosuggestions 0e810e5afa27acbd074398eefbe28d13005dbc15
+zsh-users/zsh-completions c29efd0bc3927ab25dc93ad4085d7143881b73f0
+zsh-users/zsh-syntax-highlighting 5eb677bb0fa9a3e60f0eff031dc13926e093df92

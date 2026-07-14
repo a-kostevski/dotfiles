@@ -1,15 +1,13 @@
+typeset -U path PATH
+
 append_path() {
    local dir="$1"
-   if [[ -d "$dir" && ! " ${path[*]} " =~ " $dir " ]]; then
-      path+=("$dir")
-   fi
+   [[ -d "$dir" ]] && path+=("$dir")
 }
 
 prepend_path() {
    local dir="$1"
-   if [[ -d "$dir" && ! " ${path[*]} " =~ " $dir " ]]; then
-      path=("$dir" "${path[@]}")
-   fi
+   [[ -d "$dir" ]] && path=("$dir" "${path[@]}")
 }
 
 prepend_path "$HOME/.local/bin"

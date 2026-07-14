@@ -18,7 +18,7 @@ alias yrepo="cd ~/dev/repos/ymsen.com"
 alias yrepos="cd ~/dev/repos/ymsen.com"
 alias ghrepo="cd ~/dev/repos/github.com/a-kostevski"
 alias gorepo="cd $GOPATH"
-alias clconfig="cd ~/Library/Application Support/Claude/"
+clconfig() { cd "$HOME/Library/Application Support/Claude/" }
 alias c="clear"
 alias clr="clear"
 
@@ -36,9 +36,9 @@ else
     alias routerip="ip route | grep default | awk '{print \$3}'"
 fi
 
-alias geoip="curl ipinfo.io/"
+alias geoip="curl https://ipinfo.io/"
 alias localip="localip4"
-alias publicip4="curl http://ipinfo.io/ip"
+alias publicip4="curl https://ipinfo.io/ip"
 alias publicip="publicip4"
 alias openports="lsof -i -P -n | grep LISTEN"
 
@@ -137,7 +137,6 @@ if is_macos; then
     alias finder='cd $(osascript -e "tell application '\''Finder'\'' to POSIX path of (target of window 1 as alias)")'
     alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
     alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
-    alias macos_config="source $XDG_CONFIG_HOME/macos/defaults && source $XDG_CONFIG_HOME/macos/harden"
 fi
 
 # Homebrew-specific (available on both macOS and Linux if installed)

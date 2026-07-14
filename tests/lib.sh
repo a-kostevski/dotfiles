@@ -28,3 +28,11 @@ assert_contains() {
     echo "  FAIL: $desc (missing: $needle)"
   fi
 }
+
+# make_fake_bin <dir> <name> <body> — create an executable stub on a fake PATH.
+make_fake_bin() {
+  local dir="$1" name="$2" body="$3"
+  mkdir -p "$dir"
+  { printf '#!/usr/bin/env bash\n'; printf '%s\n' "$body"; } > "$dir/$name"
+  chmod +x "$dir/$name"
+}

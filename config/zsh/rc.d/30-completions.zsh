@@ -24,32 +24,35 @@ if [[ -d "$ZDOTDIR/plugins/zsh-completions/src" ]]; then
     fpath=("$ZDOTDIR/plugins/zsh-completions/src" $fpath)
 fi
 
-local zsh_cache_dir="$XDG_CACHE_HOME/zsh"
+zsh_cache_dir="$XDG_CACHE_HOME/zsh"
 if [[ ! -d "$zsh_cache_dir" ]]; then
     command mkdir -p -m 0700 "$zsh_cache_dir" || return 1
 fi
 
 ZSH_COMPDUMP=$zsh_cache_dir/zcompdump
 
-# Check if compdump needs regeneration (once per day)
-# Cache the comparison result to avoid stat calls on every shell startup
-local cache_check_file="$zsh_cache_dir/.compdump_check"
-local current_day=$(get_day_of_year)
-local cached_day=""
+# Regenerate the dump when it is missing/empty or any fpath directory is newer
+# than it, so a completion added later the same day is registered immediately.
+# `-i` ignores insecure directories instead of prompting, keeping startup
+# non-interactive and never sourcing world/group-writable completion dirs.
+_compdump_stale() {
+    emulate -L zsh
+    local dump="$1" d
+    [[ -s "$dump" ]] || return 0
+    for d in $fpath; do
+        [[ -d "$d" && "$d" -nt "$dump" ]] && return 0
+    done
+    return 1
+}
 
-[[ -f "$cache_check_file" ]] && cached_day=$(cat "$cache_check_file" 2>/dev/null)
-
-if [[ "$current_day" != "$cached_day" ]]; then
-    # Day has changed or cache doesn't exist, regenerate compdump
-    compinit -d $ZSH_COMPDUMP
-    echo "$current_day" > "$cache_check_file"
+if _compdump_stale "$ZSH_COMPDUMP"; then
+    compinit -i -d "$ZSH_COMPDUMP"
 else
-    # Same day, skip regeneration
-    compinit -C -d $ZSH_COMPDUMP
+    compinit -C -d "$ZSH_COMPDUMP"
 fi
-unset ZSH_COMPDUMP
-unset zsh_cache_dir
-_comp_options+=(globdots) 
+unfunction _compdump_stale
+unset ZSH_COMPDUMP zsh_cache_dir
+_comp_options+=(globdots)
 
 # --- Set up ---
 # Define completers

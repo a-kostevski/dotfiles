@@ -12,12 +12,14 @@ _lazy_load_cmd() {
 
 ## fzf - load immediately as it's frequently used
 if command_exists fzf; then
-  # Try --zsh flag first (newer versions), fallback to shell-specific completion
-  if fzf --zsh &>/dev/null; then
-    source <(fzf --zsh)
+  # Capture once, then source only when generation succeeded.
+  _fzf_init="$(fzf --zsh 2>/dev/null)"
+  if [[ -n "$_fzf_init" ]]; then
+    source <(print -r -- "$_fzf_init")
   elif [[ -f ~/.fzf.zsh ]]; then
     source ~/.fzf.zsh
   fi
+  unset _fzf_init
 fi
 
 ## thefuck - lazy load as it's not needed immediately

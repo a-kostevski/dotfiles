@@ -22,23 +22,21 @@ is_arm() {
 # Command existence cache
 typeset -gA _cmd_cache
 
-# Check if command exists (with caching for performance)
+# Check if command exists (positive results cached for performance)
 command_exists() {
   local cmd="$1"
 
-  # Check cache first
+  # Positive results are cached; a present command rarely disappears mid-session.
   if (( ${+_cmd_cache[$cmd]} )); then
-    return $_cmd_cache[$cmd]
+    return 0
   fi
 
-  # Not in cache, check and cache result
   if command -v "$cmd" &>/dev/null; then
     _cmd_cache[$cmd]=0
     return 0
-  else
-    _cmd_cache[$cmd]=1
-    return 1
   fi
+  # Do not cache the miss: a command installed later this session must be seen.
+  return 1
 }
 
 # Get clipboard copy command
@@ -102,11 +100,6 @@ get_file_mtime() {
   else
     stat -c "%Y" "$file" 2>/dev/null || echo "0"
   fi
-}
-
-# Get current day of year (for cache checking)
-get_day_of_year() {
-  date +"%j"
 }
 
 # Export platform info for use in other scripts

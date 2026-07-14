@@ -1,8 +1,8 @@
+typeset -U fpath FPATH
+
 append_fpath() {
    local dir="$1"
-   if [[ -d "$dir" && ! " ${fpath[*]} " =~ " $dir " ]]; then
-      fpath+=("$dir")
-   fi
+   [[ -d "$dir" ]] && fpath+=("$dir")
 }
 
 # Homebrew-specific completion paths (only if Homebrew is installed)
