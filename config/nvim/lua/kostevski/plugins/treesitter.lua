@@ -42,7 +42,9 @@ return {
       local parsers = Utils.dedup(opts.ensure_installed or {})
 
       local ts = require("nvim-treesitter")
-      ts.install(parsers)
+      if vim.env.DOTFILES_NVIM_SMOKE ~= "1" then
+        ts.install(parsers)
+      end
 
       vim.api.nvim_create_autocmd("FileType", {
         callback = function(args)

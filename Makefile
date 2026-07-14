@@ -127,10 +127,14 @@ backup:
 	echo -e "$(GREEN)Backup complete: $$backup_dir$(NC)"
 
 ## Run tests
+# The Neovim smoke launcher is invoked explicitly by the dedicated CI job with
+# a checksum-pinned NVIM_BIN. It is not a self-contained regression test.
+TEST_SCRIPTS := $(filter-out tests/test-nvim-smoke.sh,$(wildcard tests/test-*.sh))
+
 test:
 	@echo -e "$(YELLOW)Running tests...$(NC)"
 	@status=0; \
-	for t in tests/test-*.sh; do \
+	for t in $(TEST_SCRIPTS); do \
 		bash "$$t" || status=1; \
 	done; \
 	exit $$status

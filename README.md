@@ -266,21 +266,41 @@ chsh -s $(which zsh)
 # Go
 go install golang.org/x/tools/gopls@latest
 
-# Python provider for Neovim (pynvim). A plain `pip install` fails under
-# PEP 668 on recent distros, so install it into a dedicated virtualenv:
-python3 -m venv ~/.local/share/nvim-venv
-~/.local/share/nvim-venv/bin/pip install pynvim
+# Python provider for Neovim (pynvim). This virtualenv setup is idempotent:
+NVIM_VENV="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/nvim-venv"
+uv venv --allow-existing "$NVIM_VENV"
+uv pip install --python "$NVIM_VENV/bin/python" --upgrade pynvim
 
 # Rust
 rustup component add rust-analyzer
 ```
 
-### Neovim Setup
-First launch will automatically install plugins:
+For a local provider verification, run the setup commands above once, start
+Neovim normally, and confirm `:checkhealth provider` is successful. Do not run
+it with the CI smoke XDG state, which intentionally has no provider virtualenv.
+
+### Reproducible plugin recovery
+After syncing this configuration on a new or repaired machine, open Neovim and
+run `:Lazy restore`. It installs the revisions in `config/nvim/lazy-lock.json`.
+
+### Intentional updates
+Update plugins only when you intend to review a dependency change: run
+`:Lazy update`, inspect `config/nvim/lazy-lock.json`, run the smoke test, and
+commit the lockfile with the related configuration change. Update the pinned
+lazy.nvim bootstrap revision in `lazy.lua` in the same change when upgrading
+the manager.
+
+Mason tools are deliberately not version-pinned. Run `:MasonUpdate` and update
+or install a needed tool only when you choose to do so; verify the affected
+language locally. CI does not install or update Mason tools.
+
+The smoke overlay includes disabled-language dependencies. To refresh every
+pinned lockfile entry, run:
+
 ```bash
-nvim
-# Wait for plugin installation to complete
-# Run :checkhealth to verify setup
+state_dir="$(mktemp -d)"
+NVIM_BIN="$(command -v nvim)" NVIM_SMOKE_STATE="$state_dir" \
+  tests/test-nvim-smoke.sh --sync
 ```
 
 ## Updating

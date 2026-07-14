@@ -168,7 +168,7 @@ return {
       end
 
       local install = vim.tbl_filter(configure, vim.tbl_keys(opts.servers))
-      if have_mason then
+      if have_mason and vim.env.DOTFILES_NVIM_SMOKE ~= "1" then
         require("mason-lspconfig").setup({
           ensure_installed = vim.list_extend(install, Utils.plugin.opts("mason-lspconfig.nvim").ensure_installed or {}),
           automatic_enable = { exclude = mason_exclude },
@@ -189,6 +189,9 @@ return {
     },
     config = function(_, opts)
       require("mason").setup(opts)
+      if vim.env.DOTFILES_NVIM_SMOKE == "1" then
+        return
+      end
       -- ensure_installed holds CLI tools (formatters/linters), not LSP
       -- servers, so install via the registry; mason-lspconfig.setup() is
       -- called once from the nvim-lspconfig config with automatic_enable
