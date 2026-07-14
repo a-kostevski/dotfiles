@@ -6,7 +6,8 @@ Personal development environment configuration for macOS and Ubuntu.
 
 - **Cross-platform support**: Works on macOS and Ubuntu/Debian
 - **Modular configuration**: Choose between minimal, standard, or full installation profiles
-- **Safe installation**: Automatic backup of existing files
+- **Safe linking by default**: Existing files are backed up; packages and
+  system changes require explicit opt-in
 - **Development tools**: Neovim, tmux, git, zsh, and more
 - **Language support**: Go, Python, Rust, and more with full LSP integration
 
@@ -32,11 +33,14 @@ brew install bash
 git clone https://github.com/a-kostevski/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 
-# Run bootstrap (minimal profile by default)
+# Link the minimal profile (the safe default; no packages or system settings)
 ./bootstrap.sh
 
 # Or choose a specific profile
 ./bootstrap.sh --profile standard --verbose
+
+# Install packages separately when you are ready
+./bootstrap.sh --install-packages
 ```
 
 ## Installation Profiles
@@ -75,8 +79,12 @@ Complete development environment:
 # Dry run to preview changes
 ./bootstrap.sh --profile standard --dry-run
 
-# Skip OS package installation
-./bootstrap.sh --profile full --skip-install
+# Install OS packages (explicit opt-in)
+./bootstrap.sh --profile full --install-packages
+
+# Apply macOS defaults or security hardening (each is explicit and macOS-only)
+./bootstrap.sh --apply-macos-defaults
+./bootstrap.sh --harden
 
 # Update symlinks only (no package installation)
 ./bootstrap.sh --sync
@@ -165,14 +173,14 @@ review provenance and is not an authoritative list of current work.
 ## Platform-Specific Features
 
 ### macOS
-- Homebrew package management
-- System defaults configuration
-- Security hardening options
+- Homebrew package management (`--install-packages`)
+- System defaults configuration (`--apply-macos-defaults`)
+- Security hardening (`--harden`)
 - Karabiner for keyboard customization
 - Kitty terminal configuration
 
 ### Ubuntu
-- APT package installation
+- APT package installation (`--install-packages`)
 - Essential development tools
 - Compatibility aliases (fd, bat)
 

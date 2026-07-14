@@ -60,10 +60,12 @@ done
 assert_eq "all profile configs exist in config/" "" "$missing"
 
 echo "== bootstrap dry run =="
-dry_out="$(./bootstrap.sh --profile minimal --dry-run --skip-install 2>&1)"
+dry_out="$(./bootstrap.sh --profile minimal --dry-run 2>&1)"
 assert_contains "dry run processes git" "Processing git configuration" "$dry_out"
 assert_contains "dry run processes zsh" "Processing zsh configuration" "$dry_out"
 assert_contains "dry run processes tmux" "Processing tmux configuration" "$dry_out"
+assert_contains "default bootstrap is link-only" "No system provisioning requested" "$dry_out"
+assert_eq "default bootstrap does not run provisioning" "" "$(grep -F 'Running requested system provisioning' <<<"$dry_out" || true)"
 assert_eq "dry run emits no [DEBUG] noise" "" "$(grep -F '[DEBUG]' <<<"$dry_out" || true)"
 
 echo "== cli entry behavior =="
@@ -72,6 +74,15 @@ help_out="$(./bootstrap.sh --help)"
 help_rc=$?
 assert_eq "--help exits 0" "0" "$help_rc"
 assert_contains "--help prints usage" "Usage:" "$help_out"
+assert_contains "--help documents package opt-in" "--install-packages" "$help_out"
+assert_contains "--help documents defaults opt-in" "--apply-macos-defaults" "$help_out"
+assert_contains "--help documents hardening opt-in" "--harden" "$help_out"
+
+ubuntu_installer="$(<"$REPO_ROOT/install/install-ubuntu.sh")"
+assert_contains "Ubuntu installer installs persistent tools with uv" \
+  "tool install thefuck" "$ubuntu_installer"
+assert_eq "Ubuntu installer no longer invokes pipx" "" \
+  "$(grep -E '(^|[[:space:]])pipx[[:space:]]+install' <<<"$ubuntu_installer" || true)"
 
 # an unknown flag must FAIL, not silently exit 0 (which would defeat set -e /
 # || error handling in a calling script, Makefile, or CI job)
@@ -80,6 +91,12 @@ unknown_rc=$?
 assert_eq "unknown flag exits non-zero (2)" "2" "$unknown_rc"
 unknown_both="$(./bootstrap.sh --definitely-not-a-flag 2>&1 || true)"
 assert_contains "unknown flag is reported" "Unknown option" "$unknown_both"
+
+./bootstrap.sh --sync --install-packages >/dev/null 2>&1
+provisioning_sync_rc=$?
+assert_eq "sync rejects system provisioning" "2" "$provisioning_sync_rc"
+provisioning_sync_out="$(./bootstrap.sh --sync --install-packages 2>&1 || true)"
+assert_contains "sync provisioning error is clear" "--sync cannot be combined" "$provisioning_sync_out"
 
 echo "== all profile exclusions =="
 # `all` must only emit real user configs; installer/scaffolding dirs under

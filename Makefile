@@ -20,8 +20,9 @@ NC := \033[0m # No Color
 .DEFAULT_GOAL := help
 
 # Phony targets
-.PHONY: help install install-minimal install-standard install-full update \
-        uninstall test validate clean backup docs deps version bootstrap-help
+.PHONY: help install install-minimal install-standard install-full install-packages \
+        apply-macos-defaults harden update uninstall test validate clean backup \
+        docs deps version bootstrap-help
 
 ## Help
 help:
@@ -33,6 +34,9 @@ help:
 	@echo "  make install-minimal  Install minimal profile"
 	@echo "  make install-standard Install standard profile"  
 	@echo "  make install-full     Install full profile"
+	@echo "  make install-packages Install OS packages (explicit opt-in)"
+	@echo "  make apply-macos-defaults Apply macOS system defaults"
+	@echo "  make harden           Apply macOS security hardening"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make update          Update existing installation"
@@ -73,6 +77,18 @@ install-standard:
 ## Install full profile
 install-full:
 	@$(MAKE) install PROFILE=full
+
+## Install OS packages explicitly
+install-packages:
+	@$(BOOTSTRAP) --profile $(PROFILE) --install-packages $(if $(filter true,$(VERBOSE)),--verbose) $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
+
+## Apply macOS system defaults explicitly
+apply-macos-defaults:
+	@$(BOOTSTRAP) --apply-macos-defaults $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
+
+## Apply macOS security hardening explicitly
+harden:
+	@$(BOOTSTRAP) --harden $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
 
 ## Update existing installation
 update:

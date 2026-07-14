@@ -23,3 +23,4 @@ brew "tmux"
 # Languages and package managers
 brew "node"
 brew "python"
+brew "uv"

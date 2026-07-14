@@ -38,6 +38,9 @@ declare -g PROFILE="minimal"
 declare -g DRY_RUN=""
 declare -g VERBOSE=false
 declare -g SKIP_INSTALL=false
+declare -g INSTALL_PACKAGES=false
+declare -g APPLY_MACOS_DEFAULTS=false
+declare -g APPLY_HARDENING=false
 declare -g FORCE=false
 declare -g SYNC_MODE=false
 declare -g SYNC_CONFIG=""
@@ -57,8 +60,9 @@ usage() {
   cat <<EOF
 Usage: $SCRIPT_NAME [OPTIONS]
 
-Bootstrap script for installing dotfiles across macOS and Ubuntu.
-Syncs all configurations in the config/ directory by default.
+Bootstrap script for linking dotfiles across macOS and Ubuntu.
+Syncs all configurations in the config/ directory by default. Package
+installation and macOS system changes require explicit opt-in flags.
 
 OPTIONS:
     -p, --profile <name>        Installation profile: minimal, standard, full, all
@@ -67,7 +71,11 @@ OPTIONS:
     --synced                    Re-sync only previously synced configs
     -c, --config-dest <path>    Config directory path (default: ~/.config)
     -b, --bin-dest <path>       Binary directory path (default: ~/.local/bin)
-    -s, --skip-install          Skip OS-specific installation scripts
+    --install-packages          Install OS-specific packages (explicit opt-in)
+    --apply-macos-defaults      Apply macOS system defaults (macOS only)
+    --harden                    Apply macOS security hardening (macOS only)
+    -s, --skip-install          Legacy compatibility flag; packages are already
+                                skipped unless --install-packages is provided
     -f, --force                 Force overwrite existing files without backup
     -n, --dry-run               Show what would be done without making changes
     -v, --verbose               Enable verbose output
@@ -97,8 +105,14 @@ EXAMPLES:
     # Installation with verbose output
     $SCRIPT_NAME --verbose
 
-    # Installation, skip OS packages
-    $SCRIPT_NAME --skip-install
+    # Link configs and install OS packages
+    $SCRIPT_NAME --install-packages
+
+    # Apply macOS defaults only (macOS)
+    $SCRIPT_NAME --apply-macos-defaults
+
+    # Apply macOS security hardening only (macOS)
+    $SCRIPT_NAME --harden
 
     # Sync configurations only (update symlinks)
     $SCRIPT_NAME --sync
@@ -137,6 +151,18 @@ parse_args() {
         SKIP_INSTALL=true
         shift
         ;;
+      --install-packages)
+        INSTALL_PACKAGES=true
+        shift
+        ;;
+      --apply-macos-defaults)
+        APPLY_MACOS_DEFAULTS=true
+        shift
+        ;;
+      --harden)
+        APPLY_HARDENING=true
+        shift
+        ;;
       -f | --force)
         FORCE=true
         shift
@@ -151,7 +177,6 @@ parse_args() {
         ;;
       --sync)
         SYNC_MODE=true
-        SKIP_INSTALL=true
         shift
         ;;
       --config)
@@ -174,6 +199,16 @@ parse_args() {
         ;;
     esac
   done
+
+  if [[ "$SKIP_INSTALL" == "true" ]] && [[ "$INSTALL_PACKAGES" == "true" ]]; then
+    dot_error "--skip-install cannot be combined with --install-packages"
+    exit 2
+  fi
+
+  if [[ "$SYNC_MODE" == "true" ]] && { [[ "$INSTALL_PACKAGES" == "true" ]] || [[ "$APPLY_MACOS_DEFAULTS" == "true" ]] || [[ "$APPLY_HARDENING" == "true" ]]; }; then
+    dot_error "--sync cannot be combined with system provisioning options"
+    exit 2
+  fi
 }
 
 # Validate environment
@@ -186,8 +221,7 @@ validate_environment() {
   fi
 
   # Check required commands
-  local required_commands=("git" "curl")
-  [[ "$OS_TYPE" == "ubuntu" ]] && required_commands+=("sudo")
+  local required_commands=("git")
 
   for cmd in "${required_commands[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
@@ -280,43 +314,40 @@ link_binaries() {
   dot_success "Binary scripts linked"
 }
 
-# Run OS-specific installation
+# Run explicitly requested system provisioning actions.
 run_os_installation() {
-  [[ "$SKIP_INSTALL" == "true" ]] && return 0
+  if [[ "$INSTALL_PACKAGES" != "true" ]] && [[ "$APPLY_MACOS_DEFAULTS" != "true" ]] && [[ "$APPLY_HARDENING" != "true" ]]; then
+    dot_info "No system provisioning requested; linking configuration only"
+    return 0
+  fi
 
-  dot_title "Running OS-specific installation"
+  if [[ "$OS_TYPE" != "macos" ]] && { [[ "$APPLY_MACOS_DEFAULTS" == "true" ]] || [[ "$APPLY_HARDENING" == "true" ]]; }; then
+    dot_error "--apply-macos-defaults and --harden are available only on macOS"
+    exit 2
+  fi
+
+  dot_title "Running requested system provisioning"
 
   case "$OS_TYPE" in
     macos)
+      # shellcheck source=install/install-macos.sh
       source "$SCRIPT_DIR/install/install-macos.sh"
+      run_macos_provisioning
       ;;
     ubuntu)
-      source "$SCRIPT_DIR/install/install-ubuntu.sh"
+      if [[ "$INSTALL_PACKAGES" == "true" ]]; then
+        # shellcheck source=install/install-ubuntu.sh
+        source "$SCRIPT_DIR/install/install-ubuntu.sh"
+        install_ubuntu_packages
+      fi
       ;;
   esac
 }
 
-# Create standard directory structure
-create_directories() {
-  dot_title "Creating directory structure"
-
-  local dirs=(
-    "$HOME/.cache"
-    "$HOME/.config"
-    "$HOME/.local"
-    "$HOME/.local/bin"
-    "$HOME/.local/share"
-    "$HOME/.local/state"
-    "$HOME/dev"
-    "$HOME/dev/projects"
-    "$HOME/dev/scripts"
-  )
-
-  for dir in "${dirs[@]}"; do
-    create_directory "$dir"
-  done
-
-  dot_success "Directory structure created"
+# Create only the destinations needed to reconcile links.
+create_link_directories() {
+  create_directory "$CONFIG_DEST"
+  create_directory "$BIN_DEST"
 }
 
 # Show summary
@@ -328,6 +359,11 @@ show_summary() {
   echo "  OS Version:     $OS_VERSION"
   echo "  Config Path:    $CONFIG_DEST"
   echo "  Binary Path:    $BIN_DEST"
+  echo "  Packages:       $([[ "$INSTALL_PACKAGES" == "true" ]] && echo "Requested" || echo "Not requested")"
+  if [[ "$OS_TYPE" == "macos" ]]; then
+    echo "  macOS Defaults: $([[ "$APPLY_MACOS_DEFAULTS" == "true" ]] && echo "Requested" || echo "Not requested")"
+    echo "  Hardening:      $([[ "$APPLY_HARDENING" == "true" ]] && echo "Requested" || echo "Not requested")"
+  fi
   echo "  Dry Run:        $([[ -n "$DRY_RUN" ]] && echo "Yes" || echo "No")"
   echo
 
@@ -371,6 +407,7 @@ main() {
   # (dot_root/CONFIG_DIR are already exported once near the top, before the
   # libraries are sourced; SCRIPT_DIR is readonly, so no need to repeat them)
   export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG SYNC_SYNCED
+  export INSTALL_PACKAGES APPLY_MACOS_DEFAULTS APPLY_HARDENING
   export CONFIG_DEST BIN_DEST
 
   # Show header
@@ -414,8 +451,8 @@ main() {
     # Validate environment
     validate_environment
 
-    # Create directories
-    create_directories
+    # Create only link destinations; do not provision unrelated user directories.
+    create_link_directories
 
     # Run OS installation
     run_os_installation

@@ -56,7 +56,7 @@ brew "perl"
 # Development Environment
 brew "pyenv"
 brew "pyenv-virtualenv"
-brew "pipx"
+brew "uv"
 brew "pnpm"
 
 # Network Tools
