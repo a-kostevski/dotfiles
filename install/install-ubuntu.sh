@@ -93,6 +93,7 @@ install_ubuntu_packages() {
     build-essential
     curl
     git
+    git-lfs
     wget
     zsh
     tmux
