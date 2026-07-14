@@ -281,6 +281,20 @@ chsh -s $(which zsh)
 # Then logout and login again
 ```
 
+### Machine-local Git identity
+
+Git identity and signing live in an untracked, machine-local file that the main
+config includes. `*.local` files are intentionally not symlinked, so create it
+once per machine:
+
+```bash
+cp config/git/gitconfig.local.example ~/.config/git/gitconfig.local
+# then edit it and set [user] name / email (and optional signing)
+```
+
+The example documents optional delta-pager and SSH-signing blocks. Nothing in
+`gitconfig.local` is committed.
+
 ### Install Language-Specific Tools
 ```bash
 # Go
