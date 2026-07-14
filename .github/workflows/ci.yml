@@ -40,6 +40,7 @@ jobs:
         run: |
           find config/zsh -name '*.zsh' -print0 | xargs -0 -n1 zsh -n
           zsh -n config/zsh/zshenv config/zsh/.zshrc config/zsh/.zprofile
+          zsh -n config/macos/harden.zsh
           # extensionless autoloaded functions and completions are zsh too
           find config/zsh/functions config/zsh/completions -type f -print0 | xargs -0 -n1 zsh -n
 
