@@ -2,7 +2,6 @@
 Brewfile*.lock.json
 
 .local/
-CLAUDE.md
 *.claude/
 .serena/
 .prompts
