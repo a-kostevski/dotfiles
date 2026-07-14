@@ -335,6 +335,24 @@ make update
 `dotfiles sync` uses the stored profile. To change it, run
 `dotfiles profile standard` (or `minimal`, `full`, or `all`) and then sync.
 
+The repository location is not hardcoded: `DOTDIR` is derived from the physical
+target of the linked `dotfiles` CLI, falling back to `~/.dotfiles`. Cloning
+elsewhere works as long as you re-link from that location.
+
+## Enabling auto-sync hooks (optional)
+
+Git hooks can re-sync your symlinks automatically after you pull or switch
+branches. They are opt-in — a fresh clone does not enable them. To turn them on:
+
+```bash
+bash .githooks/setup.sh   # sets: git config core.hooksPath .githooks
+```
+
+- `post-merge` runs after `git pull`, `post-checkout` after switching branches.
+- Both run `dotfiles sync` against your **stored profile**, so only that
+  profile's links are reconciled.
+- Disable at any time: `git config --unset core.hooksPath`.
+
 ## Troubleshooting
 
 ### Permission Denied
