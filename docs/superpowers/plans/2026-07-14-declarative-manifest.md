@@ -18,7 +18,7 @@
 - ShellCheck gate covers `bootstrap.sh install/*.sh bin/dotfiles tests/*.sh .githooks/*` — new `.sh` files must pass `shellcheck -S warning`.
 - Never edit `~/.config/` directly. Tests drive isolated layouts by overriding `HOME`.
 - Valid profiles after this work: `minimal | standard | full | all`. `custom` is rejected.
-- Placeholder tokens in the manifest: `{XDG_CONFIG}` → `${XDG_CONFIG_HOME:-$HOME/.config}`, `{HOME}` → `$HOME`, `{BIN}` → `$HOME/.local/bin`.
+- Placeholder tokens in the manifest: `{XDG_CONFIG}` → `$HOME/.config` (unconditional, does NOT honor a relocated `$XDG_CONFIG_HOME` — keeps linking in lock step with the hardcoded manifest/profile/clean/uninstall paths and with `HOME`-override test isolation), `{HOME}` → `$HOME`, `{BIN}` → `$HOME/.local/bin`.
 - Commit after every task with a `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` trailer.
 
 ---

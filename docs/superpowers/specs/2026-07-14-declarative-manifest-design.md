@@ -83,11 +83,21 @@ Grammar (the only shapes the reader accepts):
 
 ### Placeholders
 
-Resolved by the reader against the environment:
+Resolved by the reader:
 
-- `{XDG_CONFIG}` → `${XDG_CONFIG_HOME:-$HOME/.config}`
+- `{XDG_CONFIG}` → `$HOME/.config`
 - `{HOME}` → `$HOME`
 - `{BIN}` → `$HOME/.local/bin`
+
+`{XDG_CONFIG}` resolves to `$HOME/.config` unconditionally — it does **not**
+honor a relocated `$XDG_CONFIG_HOME`. This keeps every lifecycle path in lock
+step: the installed manifest (`$HOME/.config/.dotfiles-manifest`), the profile
+file, `clean`'s scan, and `uninstall`'s scan are all rooted at `$HOME/.config`,
+so honoring a divergent `$XDG_CONFIG_HOME` for linking alone would reintroduce
+the exact `$HOME`-vs-elsewhere split that removing the destination flags
+(DEST-01) was meant to eliminate. It also keeps `HOME`-override test isolation
+sound. On the normal setup (`$XDG_CONFIG_HOME` unset or equal to
+`$HOME/.config`) the two are identical.
 
 ### Entry kinds
 
