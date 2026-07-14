@@ -3,7 +3,11 @@
 confirm() {
    while true; do
       printf "Do you wish to continue? (y/n): "
-      read -r yn
+      if ! read -r yn; then
+         # EOF / closed stdin: decline rather than loop forever.
+         printf '\n' >&2
+         exit 1
+      fi
       case $yn in
          [Yy]* | [Yy][Ee][Ss]) return 0 ;;
          [Nn]* | [Nn][Oo]) exit 1 ;;
