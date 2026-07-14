@@ -23,38 +23,38 @@ the correctness fixes from that audit were committed on the
   uninstall/restore-from-backup command is the natural consumer.
   (done ecf6e6e — uninstall command + manifest dedup and entry removal landed
   on `feature/dotfiles-uninstall`)
-- [ ] **Ubuntu Neovim too old (HIGH)** (2026-07-11): `install-ubuntu.sh:30`
+- [x] **Ubuntu Neovim too old (HIGH)** (2026-07-11) — resolved, see UBUNTU-01 in REVIEW-2026-07-14.md: `install-ubuntu.sh:30`
   installs apt `neovim` (0.6–0.9) but this repo's config uses 0.11-only APIs,
   so standard/full Ubuntu installs error on startup. Install from the PPA or a
   0.11+ AppImage and add a version-floor check.
-- [ ] **`config/clang-format` is a file, not a directory.** The full profile
+- [x] **`config/clang-format` is a file, not a directory.** (resolved, see MAP-01 in REVIEW-2026-07-14.md) The full profile
   lists it but `link_configs` only handles directories, so it is silently
   skipped — and `~/.config/clang-format/` wouldn't be read by clang-format
   anyway. Decide: move into a directory with special-case linking to
   `~/.clang-format`, or drop it from the profile.
-- [ ] **Dead interactive profile subsystem + `custom` profile.** The `custom`
+- [x] **Dead interactive profile subsystem + `custom` profile.** (resolved, see PROFILE-04 in REVIEW-2026-07-14.md) The `custom`
   profile is unreachable non-interactively and missing from `--help`. More
   broadly (2026-07-11), ~180–250 lines in `install/profiles.sh`
   (`select_profile`, `select_custom_components`, `select_profile_with_current`,
   `detect_current_profile`, `CUSTOM_CONFIGS`) are never called — wire the
   interactive selector up or delete it and drop `custom` from `validate_profile`.
-- [ ] **`-c`/`-b` (`CONFIG_DEST`/`BIN_DEST`) only half-honored** (2026-07-11):
+- [x] **`-c`/`-b` (`CONFIG_DEST`/`BIN_DEST`) only half-honored** (2026-07-11) — resolved, see DEST-01 in REVIEW-2026-07-14.md:
   only `link_configs`/`link_binaries` respect them; the manifest, `clean`,
   `validate`, `uninstall`, and dir-creation all hardcode `$HOME`. Thread the
   destinations through everywhere or remove `-c`/`-b` from the usage.
-- [ ] **Broken-symlink logic reimplemented 4x** (2026-07-11):
+- [x] **Broken-symlink logic reimplemented 4x** (2026-07-11) — resolved, see VALIDATE-01/CLEAN-01 in REVIEW-2026-07-14.md:
   `clean_broken_symlinks` vs two Makefile `find` pipelines vs the inline
   `status` scan. The Makefile copies use bare `rm`, miss `$HOME` links, and
   ignore the manifest. Unify behind `bin/dotfiles`; delete dead
   `check_symlink_health` (no callers).
-- [ ] **Makefile gaps** (2026-07-11): no generic `ARGS` passthrough (can't reach
+- [x] **Makefile gaps** (2026-07-11) — resolved: `ARGS` passthrough, an `uninstall` target, and `DRY_RUN`-aware `update` all now exist in the Makefile. Original: no generic `ARGS` passthrough (can't reach
   `--force`/`--skip-install`/`-c`/`-b`), no `uninstall` target, and `update`
   ignores `DRY_RUN`.
-- [ ] **Ubuntu network failure aborts whole setup** (2026-07-11):
+- [x] **Ubuntu network failure aborts whole setup** (2026-07-11) — resolved, see UBUNTU-02 in REVIEW-2026-07-14.md:
   `install-ubuntu.sh` runs under `set -euo pipefail`, so a transient
   `wget`/`apt` hiccup (eza repo, thefuck, `apt-get update`) aborts everything
   after it. Wrap optional steps and add retry.
-- [ ] **Empty scaffolding dirs**: `config/security/`, `config/defaults/`,
+- [x] **Empty scaffolding dirs** (resolved, see SCAFFOLD-01 in REVIEW-2026-07-14.md): `config/security/`, `config/defaults/`,
   `config/ubuntu/apt/` — delete or populate.
 - [ ] **Smaller robustness nits**: `bin/nshift:94` uses `bc` without checking
   it exists (and computes `seconds` before validating, which breaks on
@@ -167,7 +167,7 @@ New from the 2026-07-11 audit.
 
 New from the 2026-07-11 audit.
 
-- [ ] **Headless nvim + `zsh -ic` load smoke test** in CI: `luac -p` / `zsh -n`
+- [ ] **Headless nvim + `zsh -ic` load smoke test** in CI (nvim half resolved — see TEST-01 in REVIEW-2026-07-14.md; zsh load test still open): `luac -p` / `zsh -n`
   are parse-only, so a broken `require` chain or an `rc.d` runtime error passes
   today. Add a real load test for both.
 - [ ] **luacheck + `stylua --check` CI gate** — blocked on a whole-tree
@@ -187,7 +187,7 @@ New from the 2026-07-11 audit.
 
 ## Misc configs
 
-- [ ] **macOS TouchID `sudo_local` clobbers PAM** (2026-07-11):
+- [x] **macOS TouchID `sudo_local` clobbers PAM** (2026-07-11) — resolved, see BOOT-02 in REVIEW-2026-07-14.md:
   `config/macos/defaults.zsh:270` unconditionally `cp`s the template over
   `/etc/pam.d/sudo_local` every run (destroys `pam_reattach` etc.) and has no
   macOS<14 guard. Make it idempotent and version-gated.
@@ -215,7 +215,7 @@ New from the 2026-07-11 audit.
   macOS (or `gh auth setup-git`) for HTTPS remotes.
 - [ ] **SSH config management**: no `config/ssh/` managing
   `IdentityAgent`/host aliases despite the 1Password SSH-agent setup.
-- [ ] **Tracking decisions**: `CLAUDE.md` and `docs/plans/` are git-ignored —
+- [x] **Tracking decisions** (resolved, see DOC-06 in REVIEW-2026-07-14.md — `CLAUDE.md` is now tracked; `docs/plans/` stays ignored as machine-local scratch): `CLAUDE.md` and `docs/plans/` are git-ignored —
   confirm that's intentional (a fresh clone gets neither, yet `docs/superpowers/`
   is tracked, so a clone loses the substantial project `CLAUDE.md`). Also
   (2026-07-11) add `.superpowers/` to `.gitignore` explicitly, and fix the
