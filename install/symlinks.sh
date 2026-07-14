@@ -155,7 +155,15 @@ clean_broken_symlinks() {
                 count=$((count + 1))
             done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
         done
-        for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
+        local -a home_links=()
+        if command -v manifest_home_dests >/dev/null 2>&1; then
+            while IFS= read -r link; do
+                [[ -n "$link" ]] && home_links+=("$link")
+            done < <(manifest_home_dests "${OS_TYPE:-}")
+        else
+            home_links=("$HOME/.zshenv" "$HOME/.lldbinit")
+        fi
+        for link in "${home_links[@]}"; do
             [[ -L "$link" && ! -e "$link" ]] || continue
             if [[ -n "$dry_run" ]]; then
                 print_status "broken" "Would remove: $link"

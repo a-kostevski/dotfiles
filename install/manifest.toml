@@ -3,7 +3,7 @@
 #   name       unique entry id
 #   kind       "tree" (link every non-ignored file under src) | "file" (single file)
 #   src        repo-relative source path
-#   dest       destination; {XDG_CONFIG}=${XDG_CONFIG_HOME:-~/.config}, {HOME}=~, {BIN}=~/.local/bin
+#   dest       destination; {XDG_CONFIG}=~/.config (always; not $XDG_CONFIG_HOME), {HOME}=~, {BIN}=~/.local/bin
 #   profiles   subset of ["minimal","standard","full"]; the "all" profile selects every entry
 #   platforms  ["all"] or subset of ["macos","ubuntu"]
 # A file entry whose src lives under a tree entry's src belongs to that tree's

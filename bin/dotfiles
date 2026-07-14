@@ -89,8 +89,8 @@ cmd_sync() {
         shift 2
         ;;
       *)
-        # If it matches a config directory name, treat as --config
-        if [[ -d "$CONFIG_DIR/$1" ]]; then
+        # If it matches a manifest component (directory- or file-backed), treat as --config
+        if manifest_component_exists "$1"; then
           config="$1"
           shift
         else

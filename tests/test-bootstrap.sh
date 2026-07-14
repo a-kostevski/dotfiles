@@ -193,6 +193,13 @@ else
 fi
 rm -rf "$tmp_profile"
 
+echo "== bare-name sync of a file-backed component =="
+tmp_fc="$(mktemp -d)"
+HOME="$tmp_fc" "$REPO_ROOT/bin/dotfiles" sync curl >/dev/null 2>&1
+assert_eq "bare-name sync curl links ~/.curlrc" \
+  "$REPO_ROOT/config/.curlrc" "$(readlink "$tmp_fc/.curlrc" 2>/dev/null)"
+rm -rf "$tmp_fc"
+
 echo "== install + uninstall round trip (real, not dry-run) =="
 # Covers the create/manifest/backup path (previously only dry-run tested) and
 # chains into uninstall for a full round trip. A pre-existing real file must be
