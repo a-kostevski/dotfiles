@@ -45,11 +45,11 @@ assert_contains "all includes nvim" "nvim|tree" "$all_macos"
 echo "== manifest_links tree expansion + shadowing =="
 links_min="$(manifest_links minimal macos)"
 assert_contains "zsh tree links .zshrc under XDG" \
-  "$REPO_ROOT/config/zsh/.zshrc|${XDG_CONFIG_HOME:-$HOME/.config}/zsh/.zshrc" "$links_min"
+  "$REPO_ROOT/config/zsh/.zshrc|$HOME/.config/zsh/.zshrc" "$links_min"
 assert_contains "zshenv is linked to HOME" \
   "$REPO_ROOT/config/zsh/zshenv|$HOME/.zshenv" "$links_min"
 assert_eq "zshenv is shadowed out of the zsh tree" "" \
-  "$(grep -F "config/zsh/zshenv|${XDG_CONFIG_HOME:-$HOME/.config}/zsh/zshenv" <<<"$links_min" || true)"
+  "$(grep -F "config/zsh/zshenv|$HOME/.config/zsh/zshenv" <<<"$links_min" || true)"
 assert_contains "bin tree links a script into BIN" \
   "$REPO_ROOT/bin/mkx|$HOME/.local/bin/mkx" "$links_min"
 
@@ -60,16 +60,16 @@ assert_contains "clang-format links to home" \
 assert_contains "curl links to home" \
   "$REPO_ROOT/config/.curlrc|$HOME/.curlrc" "$links_full"
 assert_contains "lldbinit.py links under XDG" \
-  "$REPO_ROOT/config/lldb/lldbinit.py|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/lldbinit.py" "$links_full"
+  "$REPO_ROOT/config/lldb/lldbinit.py|$HOME/.config/lldb/lldbinit.py" "$links_full"
 assert_contains ".lldbinit links to home on macos" \
   "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.lldbinit" "$links_full"
 assert_eq ".lldbinit shadowed out of lldb tree on macos" "" \
-  "$(grep -F "config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" <<<"$links_full" || true)"
+  "$(grep -F "config/lldb/.lldbinit|$HOME/.config/lldb/.lldbinit" <<<"$links_full" || true)"
 
 echo "== lldb on ubuntu keeps XDG .lldbinit (not shadowed) =="
 links_full_ubuntu="$(manifest_links full ubuntu)"
 assert_contains "ubuntu links .lldbinit under XDG (no home file selected)" \
-  "$REPO_ROOT/config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" "$links_full_ubuntu"
+  "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.config/lldb/.lldbinit" "$links_full_ubuntu"
 
 echo "== components + component_links + exists + home_dests =="
 comps="$(manifest_components full macos)"
@@ -77,7 +77,7 @@ assert_contains "components include zsh" $'\nzsh\n' $'\n'"$comps"$'\n'
 assert_eq "zsh-env is not its own component" "" "$(grep -x 'zsh-env' <<<"$comps" || true)"
 zsh_links="$(manifest_component_links zsh macos)"
 assert_contains "component zsh includes tree file" \
-  "$REPO_ROOT/config/zsh/.zshrc|${XDG_CONFIG_HOME:-$HOME/.config}/zsh/.zshrc" "$zsh_links"
+  "$REPO_ROOT/config/zsh/.zshrc|$HOME/.config/zsh/.zshrc" "$zsh_links"
 assert_contains "component zsh includes home zshenv" \
   "$REPO_ROOT/config/zsh/zshenv|$HOME/.zshenv" "$zsh_links"
 assert_eq "manifest_component_exists nvim" "0" "$(manifest_component_exists nvim; echo $?)"
@@ -95,12 +95,12 @@ lldb_macos="$(manifest_component_links lldb macos)"
 assert_contains "lldb/macos emits ~/.lldbinit" \
   "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.lldbinit" "$lldb_macos"
 assert_eq "lldb/macos shadows .lldbinit out of XDG" "" \
-  "$(grep -F "config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" <<<"$lldb_macos" || true)"
+  "$(grep -F "config/lldb/.lldbinit|$HOME/.config/lldb/.lldbinit" <<<"$lldb_macos" || true)"
 lldb_ubuntu="$(manifest_component_links lldb ubuntu)"
 assert_eq "lldb/ubuntu omits ~/.lldbinit home file" "" \
   "$(grep -F "$HOME/.lldbinit" <<<"$lldb_ubuntu" || true)"
 assert_contains "lldb/ubuntu keeps .lldbinit under XDG" \
-  "$REPO_ROOT/config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" "$lldb_ubuntu"
+  "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.config/lldb/.lldbinit" "$lldb_ubuntu"
 
 echo
 echo "Results: $PASS passed, $FAIL failed"

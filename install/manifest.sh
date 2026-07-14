@@ -71,7 +71,7 @@ manifest_select() {
 # Resolve destination placeholders against the environment.
 _manifest_resolve_dest() {
   local d="$1"
-  d="${d//\{XDG_CONFIG\}/${XDG_CONFIG_HOME:-$HOME/.config}}"
+  d="${d//\{XDG_CONFIG\}/$HOME/.config}"
   d="${d//\{HOME\}/$HOME}"
   d="${d//\{BIN\}/$HOME/.local/bin}"
   printf '%s' "$d"
