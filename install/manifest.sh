@@ -155,10 +155,12 @@ manifest_components() {
 # <name> plus any file entry whose src is contained in that entry's tree src.
 manifest_component_links() {
   local component="$1" os="$2"
-  local name kind src dest rest
+  local name kind src dest profiles platforms
   local -a picked=()
-  while IFS='|' read -r name kind src dest rest; do
+  while IFS='|' read -r name kind src dest profiles platforms; do
     [[ -z "$name" ]] && continue
+    # OS gate: only pick entries selectable on the given platform.
+    _manifest_csv_has "all" "$platforms" || _manifest_csv_has "$os" "$platforms" || continue
     if [[ "$name" == "$component" ]]; then
       picked+=("$name|$kind|$src|$dest")
     elif [[ "$kind" == "file" ]]; then
@@ -167,10 +169,9 @@ manifest_component_links() {
     fi
   done < <(manifest_records)
 
-  # OS gate the file-in-home entries so uninstall/status stay platform-correct
   local kind2 src2 dest2
   local shadow=""
-  # build shadow set from the picked file entries
+  # build shadow set from the picked (OS-gated) file entries
   local p
   for p in "${picked[@]}"; do
     IFS='|' read -r _ kind2 src2 dest2 <<<"$p"

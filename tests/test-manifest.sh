@@ -90,6 +90,18 @@ assert_contains "home_dests has lldbinit on macos" "$HOME/.lldbinit" "$home_maco
 assert_eq "home_dests omits lldbinit on ubuntu" "" \
   "$(grep -F "$HOME/.lldbinit" <<<"$(manifest_home_dests ubuntu)" || true)"
 
+echo "== manifest_component_links OS-gates file entries =="
+lldb_macos="$(manifest_component_links lldb macos)"
+assert_contains "lldb/macos emits ~/.lldbinit" \
+  "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.lldbinit" "$lldb_macos"
+assert_eq "lldb/macos shadows .lldbinit out of XDG" "" \
+  "$(grep -F "config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" <<<"$lldb_macos" || true)"
+lldb_ubuntu="$(manifest_component_links lldb ubuntu)"
+assert_eq "lldb/ubuntu omits ~/.lldbinit home file" "" \
+  "$(grep -F "$HOME/.lldbinit" <<<"$lldb_ubuntu" || true)"
+assert_contains "lldb/ubuntu keeps .lldbinit under XDG" \
+  "$REPO_ROOT/config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" "$lldb_ubuntu"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]
