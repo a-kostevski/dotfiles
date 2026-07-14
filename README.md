@@ -5,14 +5,17 @@ Personal development environment configuration for macOS and Ubuntu.
 ## Features
 
 - **Cross-platform support**: Works on macOS and Ubuntu/Debian
-- **Modular configuration**: Choose between minimal, standard, or full link profiles
-- **Safe linking by default**: Existing files are backed up; packages and
-  system changes require explicit opt-in
+- **Modular configuration**: Choose between minimal, standard, full, or all link profiles
+- **Safe linking by default**: A plain `./bootstrap.sh` only symlinks configs
+  (existing files are backed up). Every system-mutating action is a separate
+  opt-in flag — see [What the opt-in flags change](#what-the-opt-in-flags-change)
 - **Independent package tiers**: `--install-packages` installs OS packages
   separately from linking, defaulting to the link profile's tier but
   overridable with `--packages`
 - **Development tools**: Neovim, tmux, git, zsh, and more
-- **Language support**: Go, Python, Rust, and more with full LSP integration
+- **Language support**: LSP integration for many languages. Neovim enables
+  Lua, Terraform, and C++ by default; enable more in
+  `config/nvim/lua/kostevski/config/languages.lua`
 
 ## Prerequisites
 
@@ -45,6 +48,22 @@ cd ~/.dotfiles
 # Install packages separately when you are ready
 ./bootstrap.sh --install-packages
 ```
+
+## What the opt-in flags change
+
+A plain `./bootstrap.sh` is link-only: it creates symlinks and backs up any
+files it would overwrite. Nothing else is touched unless you pass one of these:
+
+- `--install-packages` — installs OS packages for the selected tier
+  (see [Package Installation](#package-installation)).
+- `--apply-macos-defaults` *(macOS only)* — **prompts for sudo**, writes system
+  and UI preferences, and on macOS 14+ appends a Touch ID entry to
+  `/etc/pam.d/sudo_local` (PAM). Skipped on older macOS or when the PAM
+  template is absent.
+- `--harden` *(macOS only)* — **prompts for sudo** and applies security
+  hardening (`config/macos/harden.zsh`).
+- `dotfiles clean --all` — removes **every** broken symlink under `~/.config`
+  and `~/.local/bin`. Ordinary sync/clean only touch links this repo owns.
 
 ## Installation Profiles
 
@@ -218,10 +237,11 @@ review provenance and is not an authoritative list of current work.
   pinned official 0.11.4 archive under `~/.local` when the distro package is
   too old.
 - Lazy.nvim for plugin management
-- Full LSP support for multiple languages
+- LSP support; languages enabled in `languages.lua` (Lua, Terraform, C++ by
+  default) with more available on demand
 - Modular plugin organization
 - Custom keybindings and workflows
-- AI integration (Copilot, Aider)
+- AI integration via `claude-code.nvim`
 
 ### Git
 - Global gitignore patterns
@@ -260,6 +280,20 @@ chsh -s $(which zsh)
 
 # Then logout and login again
 ```
+
+### Machine-local Git identity
+
+Git identity and signing live in an untracked, machine-local file that the main
+config includes. `*.local` files are intentionally not symlinked, so create it
+once per machine:
+
+```bash
+cp config/git/gitconfig.local.example ~/.config/git/gitconfig.local
+# then edit it and set [user] name / email (and optional signing)
+```
+
+The example documents optional delta-pager and SSH-signing blocks. Nothing in
+`gitconfig.local` is committed.
 
 ### Install Language-Specific Tools
 ```bash
@@ -314,6 +348,26 @@ make update
 
 `dotfiles sync` uses the stored profile. To change it, run
 `dotfiles profile standard` (or `minimal`, `full`, or `all`) and then sync.
+
+The repository location is not hardcoded: `DOTDIR` is derived from the physical
+target of the linked `dotfiles` CLI, falling back to `~/.dotfiles`. Cloning
+elsewhere works as long as you re-link from that location.
+
+## Enabling auto-sync hooks (optional)
+
+Git hooks can re-sync your symlinks automatically after you pull or switch
+branches. They are opt-in — a fresh clone does not enable them. To turn them on:
+
+```bash
+bash .githooks/setup.sh   # sets: git config core.hooksPath .githooks
+```
+
+- `post-merge` runs after `git pull`, `post-checkout` after switching branches.
+- Each runs `dotfiles sync` only when the change touched `config/`, `install/`,
+  `bin/`, or `bootstrap.sh` — and always against your **stored profile**, so
+  only that profile's links are reconciled (`post-checkout` syncs in the
+  background, logging to `~/.cache/dotfiles-sync.log`).
+- Disable at any time: `git config --unset core.hooksPath`.
 
 ## Troubleshooting
 
