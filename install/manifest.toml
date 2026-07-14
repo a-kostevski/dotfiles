@@ -1,0 +1,146 @@
+# Declarative source manifest for dotfiles.
+# Columns per [[entry]]:
+#   name       unique entry id
+#   kind       "tree" (link every non-ignored file under src) | "file" (single file)
+#   src        repo-relative source path
+#   dest       destination; {XDG_CONFIG}=${XDG_CONFIG_HOME:-~/.config}, {HOME}=~, {BIN}=~/.local/bin
+#   profiles   subset of ["minimal","standard","full"]; the "all" profile selects every entry
+#   platforms  ["all"] or subset of ["macos","ubuntu"]
+# A file entry whose src lives under a tree entry's src belongs to that tree's
+# component and shadows itself out of the tree's file set.
+
+[[entry]]
+name = "git"
+kind = "tree"
+src = "config/git"
+dest = "{XDG_CONFIG}/git"
+profiles = ["minimal", "standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "zsh"
+kind = "tree"
+src = "config/zsh"
+dest = "{XDG_CONFIG}/zsh"
+profiles = ["minimal", "standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "zsh-env"
+kind = "file"
+src = "config/zsh/zshenv"
+dest = "{HOME}/.zshenv"
+profiles = ["minimal", "standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "tmux"
+kind = "tree"
+src = "config/tmux"
+dest = "{XDG_CONFIG}/tmux"
+profiles = ["minimal", "standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "nvim"
+kind = "tree"
+src = "config/nvim"
+dest = "{XDG_CONFIG}/nvim"
+profiles = ["standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "bat"
+kind = "tree"
+src = "config/bat"
+dest = "{XDG_CONFIG}/bat"
+profiles = ["standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "python"
+kind = "tree"
+src = "config/python"
+dest = "{XDG_CONFIG}/python"
+profiles = ["standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "ripgrep"
+kind = "tree"
+src = "config/ripgrep"
+dest = "{XDG_CONFIG}/ripgrep"
+profiles = ["standard", "full"]
+platforms = ["all"]
+
+[[entry]]
+name = "clang-format"
+kind = "file"
+src = "config/clang-format"
+dest = "{HOME}/.clang-format"
+profiles = ["full"]
+platforms = ["all"]
+
+[[entry]]
+name = "curl"
+kind = "file"
+src = "config/.curlrc"
+dest = "{HOME}/.curlrc"
+profiles = ["full"]
+platforms = ["all"]
+
+[[entry]]
+name = "lldb"
+kind = "tree"
+src = "config/lldb"
+dest = "{XDG_CONFIG}/lldb"
+profiles = ["full"]
+platforms = ["all"]
+
+[[entry]]
+name = "lldb-init"
+kind = "file"
+src = "config/lldb/.lldbinit"
+dest = "{HOME}/.lldbinit"
+profiles = ["full"]
+platforms = ["macos"]
+
+[[entry]]
+name = "op"
+kind = "tree"
+src = "config/op"
+dest = "{XDG_CONFIG}/op"
+profiles = ["full"]
+platforms = ["all"]
+
+[[entry]]
+name = "homebrew"
+kind = "tree"
+src = "config/homebrew"
+dest = "{XDG_CONFIG}/homebrew"
+profiles = ["full"]
+platforms = ["macos"]
+
+[[entry]]
+name = "karabiner"
+kind = "tree"
+src = "config/karabiner"
+dest = "{XDG_CONFIG}/karabiner"
+profiles = ["full"]
+platforms = ["macos"]
+
+[[entry]]
+name = "kitty"
+kind = "tree"
+src = "config/kitty"
+dest = "{XDG_CONFIG}/kitty"
+profiles = ["full"]
+platforms = ["macos"]
+
+[[entry]]
+name = "bin"
+kind = "tree"
+src = "bin"
+dest = "{BIN}"
+profiles = ["minimal", "standard", "full"]
+platforms = ["all"]
