@@ -8,21 +8,23 @@
 
 set -euo pipefail
 
-readonly SCRIPT_NAME=$(basename "$0")
+SCRIPT_NAME=$(basename "$0")
+readonly SCRIPT_NAME
 readonly CLOCK_DOMAIN="com.apple.menuextra.clock"
 
 # Color setup (if supported)
 if command -v tput >/dev/null 2>&1 && [[ -t 1 ]]; then
-  readonly GREEN=$(tput setaf 2)
-  readonly YELLOW=$(tput setaf 3)
-  readonly BLUE=$(tput setaf 4)
-  readonly RESET=$(tput sgr0)
+  GREEN=$(tput setaf 2)
+  YELLOW=$(tput setaf 3)
+  BLUE=$(tput setaf 4)
+  RESET=$(tput sgr0)
 else
-  readonly GREEN=""
-  readonly YELLOW=""
-  readonly BLUE=""
-  readonly RESET=""
+  GREEN=""
+  YELLOW=""
+  BLUE=""
+  RESET=""
 fi
+readonly GREEN YELLOW BLUE RESET
 
 QUIET=false
 
@@ -46,7 +48,8 @@ get_clock_state() {
 
 # Get time-based message
 get_time_message() {
-  local hour=$(date +%H)
+  local hour
+  hour=$(date +%H)
 
   if [[ $hour -ge 22 || $hour -lt 6 ]]; then
     echo "${BLUE}🌙 It's late. Your body needs rest.${RESET}"
@@ -83,7 +86,8 @@ EOF
 
 # Show current status
 show_status() {
-  local state=$(get_clock_state)
+  local state
+  state=$(get_clock_state)
   if [[ "$state" == "1" ]]; then
     echo "Clock mode: ${GREEN}Analog${RESET}"
   else
@@ -93,7 +97,8 @@ show_status() {
 
 # Main toggle function
 toggle_clock() {
-  local current_state=$(get_clock_state)
+  local current_state
+  current_state=$(get_clock_state)
 
   if [[ "$current_state" == "1" ]]; then
     # Switch to digital (wind down mode OFF)
