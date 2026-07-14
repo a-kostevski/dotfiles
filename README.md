@@ -5,9 +5,10 @@ Personal development environment configuration for macOS and Ubuntu.
 ## Features
 
 - **Cross-platform support**: Works on macOS and Ubuntu/Debian
-- **Modular configuration**: Choose between minimal, standard, or full link profiles
-- **Safe linking by default**: Existing files are backed up; packages and
-  system changes require explicit opt-in
+- **Modular configuration**: Choose between minimal, standard, full, or all link profiles
+- **Safe linking by default**: A plain `./bootstrap.sh` only symlinks configs
+  (existing files are backed up). Every system-mutating action is a separate
+  opt-in flag — see [What the opt-in flags change](#what-the-opt-in-flags-change)
 - **Independent package tiers**: `--install-packages` installs OS packages
   separately from linking, defaulting to the link profile's tier but
   overridable with `--packages`
@@ -45,6 +46,22 @@ cd ~/.dotfiles
 # Install packages separately when you are ready
 ./bootstrap.sh --install-packages
 ```
+
+## What the opt-in flags change
+
+A plain `./bootstrap.sh` is link-only: it creates symlinks and backs up any
+files it would overwrite. Nothing else is touched unless you pass one of these:
+
+- `--install-packages` — installs OS packages for the selected tier
+  (see [Package Installation](#package-installation)).
+- `--apply-macos-defaults` *(macOS only)* — **prompts for sudo**, writes system
+  and UI preferences, and on macOS 14+ appends a Touch ID entry to
+  `/etc/pam.d/sudo_local` (PAM). Skipped on older macOS or when the PAM
+  template is absent.
+- `--harden` *(macOS only)* — **prompts for sudo** and applies security
+  hardening (`config/macos/harden.zsh`).
+- `dotfiles clean --all` — removes **every** broken symlink under `~/.config`
+  and `~/.local/bin`. Ordinary sync/clean only touch links this repo owns.
 
 ## Installation Profiles
 
