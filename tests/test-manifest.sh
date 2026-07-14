@@ -36,6 +36,7 @@ assert_contains "full/ubuntu keeps lldb tree" "lldb|tree" "$full_ubuntu"
 full_macos="$(manifest_select full macos)"
 assert_contains "full/macos includes kitty" "kitty|tree" "$full_macos"
 assert_contains "full/macos includes lldb-init" "lldb-init|file" "$full_macos"
+assert_eq "homebrew not a link component" "" "$(grep '^homebrew|' <<<"$full_macos" || true)"
 
 echo "== all profile =="
 all_macos="$(manifest_select all macos)"

@@ -114,14 +114,6 @@ profiles = ["full"]
 platforms = ["all"]
 
 [[entry]]
-name = "homebrew"
-kind = "tree"
-src = "config/homebrew"
-dest = "{XDG_CONFIG}/homebrew"
-profiles = ["full"]
-platforms = ["macos"]
-
-[[entry]]
 name = "karabiner"
 kind = "tree"
 src = "config/karabiner"
