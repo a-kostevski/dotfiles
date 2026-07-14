@@ -193,7 +193,7 @@ bootstrap-help:
 
 .lint-shell:
 	@if command -v shellcheck >/dev/null 2>&1; then \
-		shellcheck -S warning bootstrap.sh install/*.sh bin/dotfiles tests/*.sh .githooks/setup.sh .githooks/post-merge .githooks/post-checkout; \
+		tests/lint-shell.sh; \
 	else \
 		echo "shellcheck not installed"; \
 	fi

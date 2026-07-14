@@ -15,10 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: shellcheck (warning severity)
-        run: |
-          shellcheck -S warning bootstrap.sh install/*.sh bin/dotfiles tests/*.sh \
-            .githooks/setup.sh .githooks/post-merge .githooks/post-checkout
+      - name: shellcheck (shebang-discovered, warning severity)
+        run: tests/lint-shell.sh
 
   lua-syntax:
     runs-on: ubuntu-latest
