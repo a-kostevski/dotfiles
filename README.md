@@ -5,9 +5,12 @@ Personal development environment configuration for macOS and Ubuntu.
 ## Features
 
 - **Cross-platform support**: Works on macOS and Ubuntu/Debian
-- **Modular configuration**: Choose between minimal, standard, or full installation profiles
+- **Modular configuration**: Choose between minimal, standard, or full link profiles
 - **Safe linking by default**: Existing files are backed up; packages and
   system changes require explicit opt-in
+- **Independent package tiers**: `--install-packages` installs OS packages
+  separately from linking, defaulting to the link profile's tier but
+  overridable with `--packages`
 - **Development tools**: Neovim, tmux, git, zsh, and more
 - **Language support**: Go, Python, Rust, and more with full LSP integration
 
@@ -45,8 +48,13 @@ cd ~/.dotfiles
 
 ## Installation Profiles
 
+`profile` (`minimal | standard | full | all`) selects which configs get
+**symlinked** — it does not install any packages. Package installation is a
+separate, explicit opt-in; see [Package Installation](#package-installation)
+below.
+
 ### Minimal
-Essential tools only - perfect for servers or minimal setups:
+Essential configs only - perfect for servers or minimal setups:
 - Zsh with custom configuration
 - Git with sensible defaults  
 - Tmux configuration
@@ -62,13 +70,57 @@ Complete development environment:
 - Everything from Standard
 - clang-format, curl, and LLDB configuration
 - 1Password CLI (`op`) configuration
-- macOS-specific: Homebrew packages, Karabiner, Kitty terminal
+- macOS-specific: Karabiner, Kitty terminal configuration
 
 ### All
 - `--profile all` symlinks every component declared in `install/manifest.toml`,
   regardless of its `profiles` list
 
 Valid profiles are `minimal | standard | full | all`.
+
+## Package Installation
+
+Packages are **never** installed by a plain `./bootstrap.sh` run. Pass
+`--install-packages` to opt in:
+
+```bash
+# Install packages at the tier matching the active --profile (default: minimal)
+./bootstrap.sh --install-packages
+
+# Install packages at a tier different from the link profile
+./bootstrap.sh --profile minimal --install-packages --packages full
+```
+
+The package **tier** (`minimal | standard | full`) defaults to the link
+`profile` (`all` maps to `full`) and can be overridden independently with
+`--packages <tier>`. `--packages` without `--install-packages` is an error.
+
+Package tiers are declared in [`install/packages.toml`](install/packages.toml),
+the single source of truth read by `install/packages.sh`:
+
+- **minimal**: `git`, `git-lfs`, `curl`, `wget`, `zsh`, `tmux`
+- **standard**: everything in minimal, plus core dev tooling — build tools,
+  `ripgrep`, `fd`, `fzf`, `jq`, `tree`, `bat`, `htop`, `python`, `node`,
+  `neovim`, `eza`, `uv`, and related GNU/CLI utilities
+- **full**: everything in standard, plus language toolchains (Rust, Go, Ruby,
+  Java, Perl, `pyenv`, `cmake`, `llvm`, ...), networking/security tools, and
+  (macOS only) GUI casks such as 1Password, Kitty, Docker, and Brave
+
+Some entries are single-platform, so a tier is not installed identically on
+both OSes: `node` and the GNU userland (`coreutils`, `findutils`, `gnu-sed`,
+`grep`) are macOS-only via `brew`, while `thefuck` is Ubuntu-only.
+
+**macOS**: `--install-packages` installs Homebrew (if missing), links
+`~/.config/homebrew/brew.env` from this repo *before* running `brew bundle`
+(so environment settings apply to the install), then generates a Brewfile
+from the selected tier and runs `brew bundle` against it.
+
+**Ubuntu**: `--install-packages` first does a single atomic
+`apt-get install` of the tier's required packages (a failure here aborts, as
+system state is not yet mutated further). It then attempts optional,
+network-dependent extras — Neovim (official archive), `eza` (HTTPS apt repo),
+`uv`, and `thefuck` — each retried on failure; failures there are summarized
+at the end without aborting the rest of the install.
 
 ## Usage
 
@@ -140,7 +192,9 @@ dotfiles uninstall --yes        # skip the confirmation prompt
 │   ├── install-macos.sh   # macOS setup
 │   ├── install-ubuntu.sh  # Ubuntu setup
 │   ├── manifest.toml      # Declarative name/kind/src/dest/profiles/platforms manifest
-│   └── manifest.sh        # Manifest reader used by bootstrap.sh and dotfiles
+│   ├── manifest.sh        # Manifest reader used by bootstrap.sh and dotfiles
+│   ├── packages.toml      # Declarative package tiers (minimal/standard/full)
+│   └── packages.sh        # Package tier reader used by --install-packages
 ├── tests/                 # Regression tests (make test)
 ├── Makefile               # install/update/test/validate targets
 └── bootstrap.sh           # Main installation script
@@ -181,15 +235,18 @@ review provenance and is not an authoritative list of current work.
 ## Platform-Specific Features
 
 ### macOS
-- Homebrew package management (`--install-packages`)
+- Homebrew package management, tiered by `--packages` (`--install-packages`)
+- `brew.env` linked to `~/.config/homebrew/brew.env` before every Homebrew run
 - System defaults configuration (`--apply-macos-defaults`)
 - Security hardening (`--harden`)
 - Karabiner for keyboard customization
 - Kitty terminal configuration
 
 ### Ubuntu
-- APT package installation (`--install-packages`)
-- Essential development tools
+- Required apt packages installed atomically, tiered by `--packages`
+  (`--install-packages`)
+- Optional network extras (Neovim, eza, uv, thefuck) retried and reported
+  without aborting the rest of the install
 - Compatibility aliases (fd, bat)
 
 ## Manual Steps

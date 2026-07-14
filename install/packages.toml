@@ -1,0 +1,612 @@
+# Declarative package manifest. One [[package]] per tool.
+#   name   unique id / summary label
+#   tiers  subset of ["minimal","standard","full"] (list every tier it belongs to)
+#   brew   macOS Homebrew formula ("" = skip on macOS)
+#   cask   macOS Homebrew cask     ("" = none)
+#   apt    Ubuntu apt package      ("" = skip / handled by an imperative extra)
+
+[[package]]
+name = "git"
+tiers = ["minimal", "standard", "full"]
+brew = "git"
+cask = ""
+apt = "git"
+
+[[package]]
+name = "git-lfs"
+tiers = ["minimal", "standard", "full"]
+brew = "git-lfs"
+cask = ""
+apt = "git-lfs"
+
+[[package]]
+name = "curl"
+tiers = ["minimal", "standard", "full"]
+brew = "curl"
+cask = ""
+apt = "curl"
+
+[[package]]
+name = "wget"
+tiers = ["minimal", "standard", "full"]
+brew = "wget"
+cask = ""
+apt = "wget"
+
+[[package]]
+name = "zsh"
+tiers = ["minimal", "standard", "full"]
+brew = "zsh"
+cask = ""
+apt = "zsh"
+
+[[package]]
+name = "tmux"
+tiers = ["minimal", "standard", "full"]
+brew = "tmux"
+cask = ""
+apt = "tmux"
+
+[[package]]
+name = "build-essential"
+tiers = ["standard", "full"]
+brew = ""
+cask = ""
+apt = "build-essential"
+
+[[package]]
+name = "software-properties-common"
+tiers = ["standard", "full"]
+brew = ""
+cask = ""
+apt = "software-properties-common"
+
+[[package]]
+name = "coreutils"
+tiers = ["standard", "full"]
+brew = "coreutils"
+cask = ""
+apt = ""
+
+[[package]]
+name = "findutils"
+tiers = ["standard", "full"]
+brew = "findutils"
+cask = ""
+apt = ""
+
+[[package]]
+name = "gnu-sed"
+tiers = ["standard", "full"]
+brew = "gnu-sed"
+cask = ""
+apt = ""
+
+[[package]]
+name = "grep"
+tiers = ["standard", "full"]
+brew = "grep"
+cask = ""
+apt = ""
+
+[[package]]
+name = "ripgrep"
+tiers = ["standard", "full"]
+brew = "ripgrep"
+cask = ""
+apt = "ripgrep"
+
+[[package]]
+name = "fd"
+tiers = ["standard", "full"]
+brew = "fd"
+cask = ""
+apt = "fd-find"
+
+[[package]]
+name = "fzf"
+tiers = ["standard", "full"]
+brew = "fzf"
+cask = ""
+apt = "fzf"
+
+[[package]]
+name = "jq"
+tiers = ["standard", "full"]
+brew = "jq"
+cask = ""
+apt = "jq"
+
+[[package]]
+name = "tree"
+tiers = ["standard", "full"]
+brew = "tree"
+cask = ""
+apt = "tree"
+
+[[package]]
+name = "bat"
+tiers = ["standard", "full"]
+brew = "bat"
+cask = ""
+apt = "bat"
+
+[[package]]
+name = "htop"
+tiers = ["standard", "full"]
+brew = "htop"
+cask = ""
+apt = "htop"
+
+[[package]]
+name = "unzip"
+tiers = ["standard", "full"]
+brew = ""
+cask = ""
+apt = "unzip"
+
+[[package]]
+name = "xclip"
+tiers = ["standard", "full"]
+brew = ""
+cask = ""
+apt = "xclip"
+
+[[package]]
+name = "python"
+tiers = ["standard", "full"]
+brew = "python"
+cask = ""
+apt = "python3-pip"
+
+[[package]]
+name = "node"
+tiers = ["standard", "full"]
+brew = "node"
+cask = ""
+apt = ""
+
+# neovim (ubuntu via archive extra) and eza (ubuntu via apt-repo extra) carry
+# empty apt on purpose.
+[[package]]
+name = "neovim"
+tiers = ["standard", "full"]
+brew = "neovim"
+cask = ""
+apt = ""
+
+[[package]]
+name = "eza"
+tiers = ["standard", "full"]
+brew = "eza"
+cask = ""
+apt = ""
+
+[[package]]
+name = "uv"
+tiers = ["standard", "full"]
+brew = "uv"
+cask = ""
+apt = ""
+
+# ---- full-only formulae ----
+[[package]]
+name = "gh"
+tiers = ["full"]
+brew = "gh"
+cask = ""
+apt = ""
+
+[[package]]
+name = "git-delta"
+tiers = ["full"]
+brew = "git-delta"
+cask = ""
+apt = ""
+
+[[package]]
+name = "clang-format"
+tiers = ["full"]
+brew = "clang-format"
+cask = ""
+apt = ""
+
+[[package]]
+name = "openssl@3"
+tiers = ["full"]
+brew = "openssl@3"
+cask = ""
+apt = ""
+
+[[package]]
+name = "pcre"
+tiers = ["full"]
+brew = "pcre"
+cask = ""
+apt = ""
+
+[[package]]
+name = "readline"
+tiers = ["full"]
+brew = "readline"
+cask = ""
+apt = ""
+
+[[package]]
+name = "sqlite"
+tiers = ["full"]
+brew = "sqlite"
+cask = ""
+apt = ""
+
+[[package]]
+name = "xz"
+tiers = ["full"]
+brew = "xz"
+cask = ""
+apt = ""
+
+[[package]]
+name = "zlib"
+tiers = ["full"]
+brew = "zlib"
+cask = ""
+apt = ""
+
+[[package]]
+name = "gettext"
+tiers = ["full"]
+brew = "gettext"
+cask = ""
+apt = ""
+
+[[package]]
+name = "libssh2"
+tiers = ["full"]
+brew = "libssh2"
+cask = ""
+apt = ""
+
+[[package]]
+name = "libusb"
+tiers = ["full"]
+brew = "libusb"
+cask = ""
+apt = ""
+
+[[package]]
+name = "libxml2"
+tiers = ["full"]
+brew = "libxml2"
+cask = ""
+apt = ""
+
+[[package]]
+name = "libxslt"
+tiers = ["full"]
+brew = "libxslt"
+cask = ""
+apt = ""
+
+[[package]]
+name = "libzip"
+tiers = ["full"]
+brew = "libzip"
+cask = ""
+apt = ""
+
+[[package]]
+name = "cmake"
+tiers = ["full"]
+brew = "cmake"
+cask = ""
+apt = ""
+
+[[package]]
+name = "cmake-docs"
+tiers = ["full"]
+brew = "cmake-docs"
+cask = ""
+apt = ""
+
+[[package]]
+name = "cppcheck"
+tiers = ["full"]
+brew = "cppcheck"
+cask = ""
+apt = ""
+
+[[package]]
+name = "llvm"
+tiers = ["full"]
+brew = "llvm"
+cask = ""
+apt = ""
+
+[[package]]
+name = "colordiff"
+tiers = ["full"]
+brew = "colordiff"
+cask = ""
+apt = ""
+
+[[package]]
+name = "make"
+tiers = ["full"]
+brew = "make"
+cask = ""
+apt = ""
+
+[[package]]
+name = "python@3.12"
+tiers = ["full"]
+brew = "python@3.12"
+cask = ""
+apt = ""
+
+[[package]]
+name = "ruby"
+tiers = ["full"]
+brew = "ruby"
+cask = ""
+apt = ""
+
+[[package]]
+name = "rust"
+tiers = ["full"]
+brew = "rust"
+cask = ""
+apt = ""
+
+[[package]]
+name = "go"
+tiers = ["full"]
+brew = "go"
+cask = ""
+apt = ""
+
+[[package]]
+name = "openjdk"
+tiers = ["full"]
+brew = "openjdk"
+cask = ""
+apt = ""
+
+[[package]]
+name = "perl"
+tiers = ["full"]
+brew = "perl"
+cask = ""
+apt = ""
+
+[[package]]
+name = "pyenv"
+tiers = ["full"]
+brew = "pyenv"
+cask = ""
+apt = ""
+
+[[package]]
+name = "pyenv-virtualenv"
+tiers = ["full"]
+brew = "pyenv-virtualenv"
+cask = ""
+apt = ""
+
+[[package]]
+name = "pnpm"
+tiers = ["full"]
+brew = "pnpm"
+cask = ""
+apt = ""
+
+[[package]]
+name = "nmap"
+tiers = ["full"]
+brew = "nmap"
+cask = ""
+apt = ""
+
+[[package]]
+name = "netcat"
+tiers = ["full"]
+brew = "netcat"
+cask = ""
+apt = ""
+
+[[package]]
+name = "nghttp2"
+tiers = ["full"]
+brew = "nghttp2"
+cask = ""
+apt = ""
+
+[[package]]
+name = "aria2"
+tiers = ["full"]
+brew = "aria2"
+cask = ""
+apt = ""
+
+[[package]]
+name = "gnupg"
+tiers = ["full"]
+brew = "gnupg"
+cask = ""
+apt = ""
+
+[[package]]
+name = "lynis"
+tiers = ["full"]
+brew = "lynis"
+cask = ""
+apt = ""
+
+[[package]]
+name = "ffmpeg"
+tiers = ["full"]
+brew = "ffmpeg"
+cask = ""
+apt = ""
+
+[[package]]
+name = "imagemagick"
+tiers = ["full"]
+brew = "imagemagick"
+cask = ""
+apt = ""
+
+[[package]]
+name = "ghostscript"
+tiers = ["full"]
+brew = "ghostscript"
+cask = ""
+apt = ""
+
+# ---- full-only casks (macOS) ----
+[[package]]
+name = "1password"
+tiers = ["full"]
+brew = ""
+cask = "1password"
+apt = ""
+
+[[package]]
+name = "kitty"
+tiers = ["full"]
+brew = ""
+cask = "kitty"
+apt = ""
+
+[[package]]
+name = "1password-cli"
+tiers = ["full"]
+brew = ""
+cask = "1password-cli"
+apt = ""
+
+[[package]]
+name = "alfred"
+tiers = ["full"]
+brew = ""
+cask = "alfred"
+apt = ""
+
+[[package]]
+name = "appcleaner"
+tiers = ["full"]
+brew = ""
+cask = "appcleaner"
+apt = ""
+
+[[package]]
+name = "brave-browser"
+tiers = ["full"]
+brew = ""
+cask = "brave-browser"
+apt = ""
+
+[[package]]
+name = "daisydisk"
+tiers = ["full"]
+brew = ""
+cask = "daisydisk"
+apt = ""
+
+[[package]]
+name = "flux"
+tiers = ["full"]
+brew = ""
+cask = "flux"
+apt = ""
+
+[[package]]
+name = "font-hack-nerd-font"
+tiers = ["full"]
+brew = ""
+cask = "font-hack-nerd-font"
+apt = ""
+
+[[package]]
+name = "little-snitch"
+tiers = ["full"]
+brew = ""
+cask = "little-snitch"
+apt = ""
+
+[[package]]
+name = "the-unarchiver"
+tiers = ["full"]
+brew = ""
+cask = "the-unarchiver"
+apt = ""
+
+[[package]]
+name = "transmission"
+tiers = ["full"]
+brew = ""
+cask = "transmission"
+apt = ""
+
+[[package]]
+name = "vlc"
+tiers = ["full"]
+brew = ""
+cask = "vlc"
+apt = ""
+
+[[package]]
+name = "wireshark"
+tiers = ["full"]
+brew = ""
+cask = "wireshark"
+apt = ""
+
+[[package]]
+name = "docker"
+tiers = ["full"]
+brew = ""
+cask = "docker"
+apt = ""
+
+[[package]]
+name = "postman"
+tiers = ["full"]
+brew = ""
+cask = "postman"
+apt = ""
+
+[[package]]
+name = "mullvadvpn"
+tiers = ["full"]
+brew = ""
+cask = "mullvadvpn"
+apt = ""
+
+[[package]]
+name = "tor-browser"
+tiers = ["full"]
+brew = ""
+cask = "tor-browser"
+apt = ""
+
+[[package]]
+name = "knockknock"
+tiers = ["full"]
+brew = ""
+cask = "knockknock"
+apt = ""
+
+[[package]]
+name = "launchcontrol"
+tiers = ["full"]
+brew = ""
+cask = "launchcontrol"
+apt = ""
+
+[[package]]
+name = "taskexplorer"
+tiers = ["full"]
+brew = ""
+cask = "taskexplorer"
+apt = ""

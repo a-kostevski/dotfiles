@@ -98,6 +98,40 @@ safe_sudo() {
   fi
 }
 
+# Retry a command up to <attempts> times with <delay>s between tries.
+# retry 3 5 -- some_cmd arg
+retry() {
+  local attempts="$1" delay="$2"
+  shift 2
+  [[ "${1:-}" == "--" ]] && shift
+  local n=1
+  while true; do
+    if "$@"; then return 0; fi
+    (( n >= attempts )) && return 1
+    n=$((n + 1))
+    [[ -z "${DRY_RUN:-}" ]] && sleep "$delay"
+  done
+}
+
+# Optional steps: never abort the run; collect failures for a summary.
+OPTIONAL_FAILURES=()
+run_optional_step() {
+  local name="$1"
+  shift
+  if "$@"; then
+    return 0
+  fi
+  dot_warning "Optional step failed: $name"
+  OPTIONAL_FAILURES+=("$name")
+  return 0
+}
+report_optional_failures() {
+  if (( ${#OPTIONAL_FAILURES[@]} > 0 )); then
+    dot_warning "Optional steps that failed: ${OPTIONAL_FAILURES[*]}"
+  fi
+  return 0
+}
+
 # Check if command exists
 command_exists() {
   command -v "$1" &>/dev/null

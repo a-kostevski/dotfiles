@@ -39,6 +39,8 @@ declare -g DRY_RUN=""
 declare -g VERBOSE=false
 declare -g SKIP_INSTALL=false
 declare -g INSTALL_PACKAGES=false
+declare -g PACKAGE_TIER=""
+declare -g PACKAGE_TIER_OVERRIDE=""
 declare -g APPLY_MACOS_DEFAULTS=false
 declare -g APPLY_HARDENING=false
 declare -g FORCE=false
@@ -53,6 +55,7 @@ export CONFIG_DIR="$SCRIPT_DIR/config"
 source "$SCRIPT_DIR/install/lib.sh"
 source "$SCRIPT_DIR/install/symlinks.sh"
 source "$SCRIPT_DIR/install/manifest.sh"
+source "$SCRIPT_DIR/install/packages.sh"
 
 # Usage information
 usage() {
@@ -68,6 +71,9 @@ OPTIONS:
                                 (default: minimal)
     --config <name>             Sync only a specific config (e.g., nvim, zsh)
     --install-packages          Install OS-specific packages (explicit opt-in)
+    --packages <tier>           Package tier: minimal, standard, full
+                                (requires --install-packages; default: the
+                                profile's tier, e.g. standard -> standard)
     --apply-macos-defaults      Apply macOS system defaults (macOS only)
     --harden                    Apply macOS security hardening (macOS only)
     -s, --skip-install          Legacy compatibility flag; packages are already
@@ -103,6 +109,9 @@ EXAMPLES:
 
     # Link configs and install OS packages
     $SCRIPT_NAME --install-packages
+
+    # Install OS packages at a tier different from the link profile
+    $SCRIPT_NAME --install-packages --packages full
 
     # Apply macOS defaults only (macOS)
     $SCRIPT_NAME --apply-macos-defaults
@@ -140,6 +149,12 @@ parse_args() {
       --install-packages)
         INSTALL_PACKAGES=true
         shift
+        ;;
+      --packages)
+        PACKAGE_TIER_OVERRIDE="${2:-}"
+        [[ -z "$PACKAGE_TIER_OVERRIDE" ]] && dot_error "--packages requires a tier" && exit 1
+        validate_tier "$PACKAGE_TIER_OVERRIDE" || exit 1
+        shift 2
         ;;
       --apply-macos-defaults)
         APPLY_MACOS_DEFAULTS=true
@@ -184,6 +199,11 @@ parse_args() {
 
   if [[ "$SKIP_INSTALL" == "true" ]] && [[ "$INSTALL_PACKAGES" == "true" ]]; then
     dot_error "--skip-install cannot be combined with --install-packages"
+    exit 2
+  fi
+
+  if [[ -n "$PACKAGE_TIER_OVERRIDE" ]] && [[ "$INSTALL_PACKAGES" != "true" ]]; then
+    dot_error "--packages requires --install-packages"
     exit 2
   fi
 
@@ -316,6 +336,7 @@ show_summary() {
   echo "  Config Path:    $CONFIG_DEST"
   echo "  Binary Path:    $BIN_DEST"
   echo "  Packages:       $([[ "$INSTALL_PACKAGES" == "true" ]] && echo "Requested" || echo "Not requested")"
+  echo "  Package Tier:   $([[ "$INSTALL_PACKAGES" == "true" ]] && echo "$PACKAGE_TIER" || echo "Not requested")"
   if [[ "$OS_TYPE" == "macos" ]]; then
     echo "  macOS Defaults: $([[ "$APPLY_MACOS_DEFAULTS" == "true" ]] && echo "Requested" || echo "Not requested")"
     echo "  Hardening:      $([[ "$APPLY_HARDENING" == "true" ]] && echo "Requested" || echo "Not requested")"
@@ -361,11 +382,15 @@ main() {
   MANIFEST_FILE="${MANIFEST_FILE:-$CONFIG_DEST/.dotfiles-manifest}"
   PROFILE_FILE="${PROFILE_FILE:-$CONFIG_DEST/.dotfiles-profile}"
 
+  # Resolve the package tier now that OS detection and profile validation
+  # (in parse_args) have both completed, and before any installer runs.
+  PACKAGE_TIER="$(resolve_package_tier "$PROFILE" "$PACKAGE_TIER_OVERRIDE")" || exit 1
+
   # Export key variables for install scripts and shared libraries
   # (dot_root/CONFIG_DIR are already exported once near the top, before the
   # libraries are sourced; SCRIPT_DIR is readonly, so no need to repeat them)
   export DRY_RUN VERBOSE SCRIPT_DIR OS_TYPE OS_VERSION FORCE PROFILE SYNC_CONFIG
-  export INSTALL_PACKAGES APPLY_MACOS_DEFAULTS APPLY_HARDENING
+  export INSTALL_PACKAGES APPLY_MACOS_DEFAULTS APPLY_HARDENING PACKAGE_TIER
   export CONFIG_DEST BIN_DEST MANIFEST_FILE PROFILE_FILE
 
   # Show header

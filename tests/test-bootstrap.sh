@@ -98,6 +98,31 @@ assert_eq "sync rejects system provisioning" "2" "$provisioning_sync_rc"
 provisioning_sync_out="$(./bootstrap.sh --sync --install-packages 2>&1 || true)"
 assert_contains "sync provisioning error is clear" "--sync cannot be combined" "$provisioning_sync_out"
 
+echo "== --packages tier flag =="
+./bootstrap.sh --packages full --dry-run >/dev/null 2>&1
+packages_no_install_rc=$?
+assert_eq "--packages without --install-packages exits non-zero" "0" "$([[ "$packages_no_install_rc" -ne 0 ]] && echo 0 || echo 1)"
+packages_no_install_out="$(./bootstrap.sh --packages full --dry-run 2>&1 || true)"
+assert_contains "--packages without --install-packages gives guidance" \
+  "--packages requires --install-packages" "$packages_no_install_out"
+
+packages_full_out="$(./bootstrap.sh --install-packages --packages full --dry-run 2>&1)"
+packages_full_rc=$?
+assert_eq "--install-packages --packages full --dry-run exits 0" "0" "$packages_full_rc"
+assert_contains "summary shows full package tier" "Package Tier:   full" "$packages_full_out"
+
+packages_profile_out="$(./bootstrap.sh --install-packages --profile standard --dry-run 2>&1)"
+packages_profile_rc=$?
+assert_eq "--install-packages --profile standard --dry-run exits 0" "0" "$packages_profile_rc"
+assert_contains "summary shows standard package tier from profile default" \
+  "Package Tier:   standard" "$packages_profile_out"
+
+./bootstrap.sh --install-packages --packages bogus --dry-run >/dev/null 2>&1
+packages_bogus_rc=$?
+assert_eq "--packages bogus is rejected" "0" "$([[ "$packages_bogus_rc" -ne 0 ]] && echo 0 || echo 1)"
+packages_bogus_out="$(./bootstrap.sh --install-packages --packages bogus --dry-run 2>&1 || true)"
+assert_contains "--packages bogus reports invalid tier" "Invalid package tier" "$packages_bogus_out"
+
 echo "== all profile exclusions =="
 # `all` must only emit real user configs; installer/scaffolding dirs under
 # config/ must never be linked into ~/.config
