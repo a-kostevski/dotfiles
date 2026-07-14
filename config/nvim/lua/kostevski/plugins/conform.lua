@@ -1,9 +1,9 @@
 return {
   {
     "stevearc/conform.nvim",
-  dependencies = { "mason.nvim" },
-  lazy = true,
-  cmd = "ConformInfo",
+    dependencies = { "mason.nvim" },
+    lazy = true,
+    cmd = "ConformInfo",
     event = { "BufReadPre", "BufNewFile" },
     init = function()
       Utils.format.register({

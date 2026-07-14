@@ -1,3 +1,3 @@
 return {
-   { import = "kostevski.plugins.lsp" },
+  { import = "kostevski.plugins.lsp" },
 }

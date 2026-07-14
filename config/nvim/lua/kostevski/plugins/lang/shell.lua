@@ -80,4 +80,3 @@ return lang.register({
     },
   },
 })
-

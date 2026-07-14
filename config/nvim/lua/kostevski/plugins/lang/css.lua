@@ -114,4 +114,3 @@ return lang.register({
     },
   },
 })
-

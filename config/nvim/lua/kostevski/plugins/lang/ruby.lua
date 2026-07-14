@@ -5,44 +5,44 @@ local lang = require("kostevski.utils.lang")
 
 -- Method 1: Using the simple preset with overrides
 return lang.register(lang.create_simple("ruby", {
-   filetypes = { "ruby", "erb", "haml", "slim" },
-   lsp_server = "ruby_lsp",
-   formatters = {
-      list = { "rubocop", "prettier" },
-      tools = { "rubocop", "prettier" },
-      config = {
-         rubocop = {
-            -- Custom rubocop configuration
-            command = "rubocop",
-            args = { "--auto-correct", "--stdin", "$FILENAME", "--format", "quiet" },
-         },
+  filetypes = { "ruby", "erb", "haml", "slim" },
+  lsp_server = "ruby_lsp",
+  formatters = {
+    list = { "rubocop", "prettier" },
+    tools = { "rubocop", "prettier" },
+    config = {
+      rubocop = {
+        -- Custom rubocop configuration
+        command = "rubocop",
+        args = { "--auto-correct", "--stdin", "$FILENAME", "--format", "quiet" },
       },
-   },
-   linters = {
-      list = { "rubocop" },
-      tools = { "rubocop" },
-   },
-   treesitter_parsers = { "ruby", "erb" },
-   root_patterns = { "Gemfile", ".rubocop.yml", ".git" },
-   test_adapters = { "olimorris/neotest-rspec" },
-   settings = {
-      expandtab = true,
-      shiftwidth = 2,
-      tabstop = 2,
-      softtabstop = 2,
-   },
-   additional_plugins = {
-      -- Rails development support
-      {
-         "tpope/vim-rails",
-         ft = { "ruby", "eruby" },
-      },
-      -- Ruby text objects
-      {
-         "RRethy/nvim-treesitter-textsubjects",
-         ft = "ruby",
-      },
-   },
+    },
+  },
+  linters = {
+    list = { "rubocop" },
+    tools = { "rubocop" },
+  },
+  treesitter_parsers = { "ruby", "erb" },
+  root_patterns = { "Gemfile", ".rubocop.yml", ".git" },
+  test_adapters = { "olimorris/neotest-rspec" },
+  settings = {
+    expandtab = true,
+    shiftwidth = 2,
+    tabstop = 2,
+    softtabstop = 2,
+  },
+  additional_plugins = {
+    -- Rails development support
+    {
+      "tpope/vim-rails",
+      ft = { "ruby", "eruby" },
+    },
+    -- Ruby text objects
+    {
+      "RRethy/nvim-treesitter-textsubjects",
+      ft = "ruby",
+    },
+  },
 }))
 
 -- Method 2: Full manual configuration for more control
