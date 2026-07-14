@@ -299,7 +299,7 @@ cmd_uninstall() {
       --no-restore) export RESTORE=false; shift ;;
       --verbose | -v) export VERBOSE=true; shift ;;
       *)
-        if [[ -d "$CONFIG_DIR/$1" || "$1" == "bin" ]]; then
+        if [[ "$1" == "bin" ]] || manifest_component_exists "$1"; then
           configs+=("$1")
           shift
         else
@@ -334,9 +334,10 @@ cmd_uninstall() {
       < <(find_owned_symlinks "$HOME/.config" "$DOTFILES_ROOT")
     while IFS= read -r link; do targets+=("$link"); done \
       < <(find_owned_symlinks "$HOME/.local/bin" "$DOTFILES_ROOT")
-    for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
+    while IFS= read -r link; do
+      [[ -z "$link" ]] && continue
       is_owned_symlink "$link" "$DOTFILES_ROOT" && targets+=("$link")
-    done
+    done < <(manifest_home_dests "$OS_TYPE")
   else
     local config
     for config in "${configs[@]}"; do
@@ -345,12 +346,15 @@ cmd_uninstall() {
           < <(find_owned_symlinks "$HOME/.local/bin" "$DOTFILES_ROOT/bin")
         continue
       fi
-      while IFS= read -r link; do targets+=("$link"); done \
-        < <(find_owned_symlinks "$HOME/.config/$config" "$CONFIG_DIR/$config")
-      case "$config" in
-        zsh) is_owned_symlink "$HOME/.zshenv" "$CONFIG_DIR/zsh" && targets+=("$HOME/.zshenv") ;;
-        lldb) is_owned_symlink "$HOME/.lldbinit" "$CONFIG_DIR/lldb" && targets+=("$HOME/.lldbinit") ;;
-      esac
+      if ! manifest_component_exists "$config"; then
+        dot_error "Unknown config: $config"
+        exit 1
+      fi
+      local src dest
+      while IFS='|' read -r src dest; do
+        [[ -z "$dest" ]] && continue
+        is_owned_symlink "$dest" "$DOTFILES_ROOT" && targets+=("$dest")
+      done < <(manifest_component_links "$config" "$OS_TYPE")
     done
   fi
 
