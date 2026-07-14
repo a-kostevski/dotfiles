@@ -363,8 +363,10 @@ bash .githooks/setup.sh   # sets: git config core.hooksPath .githooks
 ```
 
 - `post-merge` runs after `git pull`, `post-checkout` after switching branches.
-- Both run `dotfiles sync` against your **stored profile**, so only that
-  profile's links are reconciled.
+- Each runs `dotfiles sync` only when the change touched `config/`, `install/`,
+  `bin/`, or `bootstrap.sh` — and always against your **stored profile**, so
+  only that profile's links are reconciled (`post-checkout` syncs in the
+  background, logging to `~/.cache/dotfiles-sync.log`).
 - Disable at any time: `git config --unset core.hooksPath`.
 
 ## Troubleshooting
