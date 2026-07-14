@@ -61,14 +61,14 @@ Common development setup:
 Complete development environment:
 - Everything from Standard
 - clang-format, curl, and LLDB configuration
+- 1Password CLI (`op`) configuration
 - macOS-specific: Homebrew packages, Karabiner, Kitty terminal
 
 ### All
-- `--profile all` symlinks every directory under `config/`
+- `--profile all` symlinks every component declared in `install/manifest.toml`,
+  regardless of its `profiles` list
 
-> **Note:** A `custom` profile name exists in the code, but the interactive
-> component selector is not wired up. `--profile custom` currently just links
-> the minimal set, so use `all` or a named profile instead.
+Valid profiles are `minimal | standard | full | all`.
 
 ## Usage
 
@@ -139,7 +139,8 @@ dotfiles uninstall --yes        # skip the confirmation prompt
 ├── install/               # OS-specific installation scripts
 │   ├── install-macos.sh   # macOS setup
 │   ├── install-ubuntu.sh  # Ubuntu setup
-│   └── profiles.sh        # Profile definitions (PROFILE_CONFIGS)
+│   ├── manifest.toml      # Declarative name/kind/src/dest/profiles/platforms manifest
+│   └── manifest.sh        # Manifest reader used by bootstrap.sh and dotfiles
 ├── tests/                 # Regression tests (make test)
 ├── Makefile               # install/update/test/validate targets
 └── bootstrap.sh           # Main installation script
@@ -265,13 +266,15 @@ grep -q "$(which zsh)" /etc/shells || echo "$(which zsh)" | sudo tee -a /etc/she
 
 ## Customization
 
-### Adding New Configurations
-1. Add configuration to `config/<tool-name>/`
-2. Update bootstrap script if needed
-3. Document any special requirements
+### Adding a Component
+Components are declared in `install/manifest.toml`, the single source of
+truth for name/kind/src/dest/profiles/platforms. `bootstrap.sh` link,
+`dotfiles status`, and `dotfiles uninstall` all derive their file set from it.
 
-### Creating Custom Profiles
-Edit the `PROFILE_CONFIGS` map in `install/profiles.sh` (profile logic lives there, not in `bootstrap.sh`).
+1. Add configuration files to `config/<tool-name>/`
+2. Add a matching `[[entry]]` to `install/manifest.toml` (name, kind, src,
+   dest, profiles, platforms)
+3. Document any special requirements
 
 ## Contributing
 

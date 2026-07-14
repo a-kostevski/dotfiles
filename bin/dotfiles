@@ -3,7 +3,7 @@
 # Commands: sync, clean, status, watch, uninstall
 # Version: 1.1.0
 
-# install/profiles.sh needs associative arrays; stock macOS bash is 3.2
+# install/manifest.sh needs associative arrays; stock macOS bash is 3.2
 if ((BASH_VERSINFO[0] < 4)); then
   echo "Error: dotfiles requires bash 4 or newer (found $BASH_VERSION)." >&2
   echo "On macOS: brew install bash, then re-run." >&2
@@ -36,7 +36,7 @@ export VERBOSE=false
 # Source shared libraries
 source "$DOTFILES_ROOT/install/lib.sh"
 source "$DOTFILES_ROOT/install/symlinks.sh"
-source "$DOTFILES_ROOT/install/profiles.sh"
+source "$DOTFILES_ROOT/install/manifest.sh"
 
 # Configuration
 export MANIFEST_FILE="$HOME/.config/.dotfiles-manifest"
@@ -89,8 +89,8 @@ cmd_sync() {
         shift 2
         ;;
       *)
-        # If it matches a config directory name, treat as --config
-        if [[ -d "$CONFIG_DIR/$1" ]]; then
+        # If it matches a manifest component (directory- or file-backed), treat as --config
+        if manifest_component_exists "$1"; then
           config="$1"
           shift
         else
@@ -160,13 +160,9 @@ cmd_clean() {
 # Command: status - Show symlink health
 cmd_status() {
   local show_details=true
-
-  # Check for summary-only flag
   for arg in "$@"; do
     case "$arg" in
-      --summary | -s)
-        show_details=false
-        ;;
+      --summary | -s) show_details=false ;;
     esac
   done
 
@@ -181,87 +177,44 @@ cmd_status() {
     return 2
   fi
 
-  local config_list
-  config_list=$(get_config_list "$profile" "$OS_TYPE")
-
-  # Check all config directories
   if [[ "$show_details" == "true" ]]; then
     dot_info "Checking configuration symlinks..."
     echo
   fi
 
   local total_ok=0 total_broken=0 total_missing=0
+  local component
 
-  # Check config directory symlinks
-  while IFS= read -r config; do
-    local config_path="$CONFIG_DIR/$config"
-    case "$config" in
-      clang-format) config_path="$CONFIG_DIR/clang-format" ;;
-      curl) config_path="$CONFIG_DIR/.curlrc" ;;
-    esac
-
-    if ! config_component_exists "$config"; then
-      dot_error "Invalid profile component: $config"
+  while IFS= read -r component; do
+    [[ -z "$component" ]] && continue
+    if ! manifest_component_exists "$component"; then
+      dot_error "Invalid manifest component: $component"
       return 2
     fi
 
-    # Show config section only if showing details
     if [[ "$show_details" == "true" ]]; then
-      printf "%b%s:%b\n" "$COLOR_HEADER" "$config" "$COLOR_RESET"
+      printf "%b%s:%b\n" "$COLOR_HEADER" "$component" "$COLOR_RESET"
     fi
 
-    # Check symlinks for this config (process substitution keeps the
-    # counters in the main shell; a pipe would lose them in a subshell)
+    local src dest
     while IFS='|' read -r src dest; do
+      [[ -z "$src" ]] && continue
       if [[ "$show_details" == "true" ]]; then
         check_symlink "$src" "$dest" true
       else
         check_symlink "$src" "$dest" false >/dev/null 2>&1
       fi
-
-      # Update counts based on exit status
       local status=$?
       case $status in
         0) ((total_ok++)) || true ;;
         1) ((total_broken++)) || true ;;
         2) ((total_missing++)) || true ;;
       esac
-    done < <(get_config_symlinks "$config" "$config_path" "$HOME/.config")
+    done < <(manifest_component_links "$component" "$OS_TYPE")
 
     [[ "$show_details" == "true" ]] && echo
-  done <<<"$config_list"
+  done < <(manifest_components "$profile" "$OS_TYPE")
 
-  # Check bin directory symlinks
-  if [[ "$show_details" == "true" ]]; then
-    printf "%bbin scripts:%b\n" "$COLOR_HEADER" "$COLOR_RESET"
-  fi
-
-  # Check each script in bin
-  if [[ -d "$DOTFILES_ROOT/bin" ]]; then
-    while IFS= read -r script; do
-      local script_name
-      script_name=$(basename "$script")
-      local dest="$HOME/.local/bin/$script_name"
-
-      if [[ "$show_details" == "true" ]]; then
-        check_symlink "$script" "$dest" true
-      else
-        check_symlink "$script" "$dest" false >/dev/null 2>&1
-      fi
-
-      # Update counts based on exit status
-      local status=$?
-      case $status in
-        0) ((total_ok++)) || true ;;
-        1) ((total_broken++)) || true ;;
-        2) ((total_missing++)) || true ;;
-      esac
-    done < <(find "$DOTFILES_ROOT/bin" -type f -not -name ".*" 2>/dev/null)
-    
-    [[ "$show_details" == "true" ]] && echo
-  fi
-
-  # Summary
   dot_title "Summary"
   print_status "ok" "Correct symlinks: $total_ok"
   print_status "broken" "Broken symlinks: $total_broken"
@@ -272,7 +225,6 @@ cmd_status() {
     dot_info "Run 'dotfiles sync' to fix issues"
     return 1
   fi
-
   return 0
 }
 
@@ -346,7 +298,7 @@ cmd_uninstall() {
       --no-restore) export RESTORE=false; shift ;;
       --verbose | -v) export VERBOSE=true; shift ;;
       *)
-        if [[ -d "$CONFIG_DIR/$1" || "$1" == "bin" ]]; then
+        if [[ "$1" == "bin" ]] || manifest_component_exists "$1"; then
           configs+=("$1")
           shift
         else
@@ -381,9 +333,10 @@ cmd_uninstall() {
       < <(find_owned_symlinks "$HOME/.config" "$DOTFILES_ROOT")
     while IFS= read -r link; do targets+=("$link"); done \
       < <(find_owned_symlinks "$HOME/.local/bin" "$DOTFILES_ROOT")
-    for link in "$HOME/.zshenv" "$HOME/.lldbinit"; do
+    while IFS= read -r link; do
+      [[ -z "$link" ]] && continue
       is_owned_symlink "$link" "$DOTFILES_ROOT" && targets+=("$link")
-    done
+    done < <(manifest_home_dests "$OS_TYPE")
   else
     local config
     for config in "${configs[@]}"; do
@@ -392,12 +345,15 @@ cmd_uninstall() {
           < <(find_owned_symlinks "$HOME/.local/bin" "$DOTFILES_ROOT/bin")
         continue
       fi
-      while IFS= read -r link; do targets+=("$link"); done \
-        < <(find_owned_symlinks "$HOME/.config/$config" "$CONFIG_DIR/$config")
-      case "$config" in
-        zsh) is_owned_symlink "$HOME/.zshenv" "$CONFIG_DIR/zsh" && targets+=("$HOME/.zshenv") ;;
-        lldb) is_owned_symlink "$HOME/.lldbinit" "$CONFIG_DIR/lldb" && targets+=("$HOME/.lldbinit") ;;
-      esac
+      if ! manifest_component_exists "$config"; then
+        dot_error "Unknown config: $config"
+        exit 1
+      fi
+      local src dest
+      while IFS='|' read -r src dest; do
+        [[ -z "$dest" ]] && continue
+        is_owned_symlink "$dest" "$DOTFILES_ROOT" && targets+=("$dest")
+      done < <(manifest_component_links "$config" "$OS_TYPE")
     done
   fi
 

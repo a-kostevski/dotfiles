@@ -12,59 +12,37 @@ cd "$REPO_ROOT" || exit 1
 # shellcheck source=tests/lib.sh
 source "$REPO_ROOT/tests/lib.sh"
 
-echo "== get_config_list =="
+echo "== manifest profile selection =="
 # shellcheck source=/dev/null
 source "$REPO_ROOT/install/lib.sh"
-# shellcheck source=/dev/null
-source "$REPO_ROOT/install/profiles.sh"
+export dot_root="$REPO_ROOT"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/install/symlinks.sh"
+# shellcheck source=/dev/null
+source "$REPO_ROOT/install/manifest.sh"
 
-# Named profiles must emit one config per line (regression: a quoting bug
-# once made every named profile emit a single space-joined line, which the
-# symlink loop silently skipped — profiles installed nothing)
-assert_eq "minimal emits one config per line" \
-  "$(printf 'git\nzsh\ntmux')" \
-  "$(get_config_list minimal)"
+assert_contains "minimal selects git" "git|tree" "$(manifest_select minimal macos)"
+assert_eq "minimal excludes nvim" "" "$(manifest_select minimal macos | grep '^nvim|' || true)"
+assert_contains "standard adds nvim" "nvim|tree" "$(manifest_select standard macos)"
 
-assert_eq "standard extends minimal" \
-  "$(printf 'git\nzsh\ntmux\nnvim\nbat\npython\nripgrep')" \
-  "$(get_config_list standard)"
+full_macos_links="$(manifest_links full macos)"
+assert_contains "full/macos links kitty" "/config/kitty/" "$full_macos_links"
+assert_contains "full maps curl to home" "$REPO_ROOT/config/.curlrc|$HOME/.curlrc" "$full_macos_links"
+assert_contains "full maps clang-format to home" "$REPO_ROOT/config/clang-format|$HOME/.clang-format" "$full_macos_links"
 
-full_macos="$(get_config_list full macos)"
-assert_contains "full/macos includes base configs" "nvim" "$full_macos"
-assert_contains "full profile includes home curl mapping" "curl" "$full_macos"
-assert_contains "full/macos includes karabiner" "karabiner" "$full_macos"
-assert_contains "full/macos includes kitty" "kitty" "$full_macos"
+assert_eq "full/ubuntu has no macOS extras" "" \
+  "$(manifest_links full ubuntu | grep -E '/config/(karabiner|kitty|homebrew)/' || true)"
 
-full_ubuntu="$(get_config_list full ubuntu)"
-assert_eq "full/ubuntu has no macOS extras" "" "$(grep -E 'karabiner|kitty|homebrew' <<<"$full_ubuntu" || true)"
-
-if get_config_list bogus >/dev/null 2>&1; then
-  FAIL=$((FAIL + 1))
-  echo "  FAIL: unknown profile should return non-zero"
+if validate_profile bogus >/dev/null 2>&1; then
+  FAIL=$((FAIL + 1)); echo "  FAIL: unknown profile should be rejected"
 else
-  PASS=$((PASS + 1))
-  echo "  ok: unknown profile returns non-zero"
+  PASS=$((PASS + 1)); echo "  ok: unknown profile rejected"
 fi
-
-# Every profile component must have a declared source (directories and explicit
-# home-file mappings are both valid).
-echo "== profile configs exist =="
-missing=""
-for profile in minimal standard full; do
-  while IFS= read -r cfg; do
-    config_component_exists "$cfg" || missing="$missing $profile:$cfg"
-  done < <(get_config_list "$profile" macos)
-done
-assert_eq "all profile components have sources" "" "$missing"
-
-clang_mapping="$(get_config_symlinks clang-format "$REPO_ROOT/config/clang-format" "$HOME/.config")"
-assert_eq "clang-format maps to home config" \
-  "$REPO_ROOT/config/clang-format|$HOME/.clang-format" "$clang_mapping"
-curl_mapping="$(get_config_symlinks curl "$REPO_ROOT/config/.curlrc" "$HOME/.config")"
-assert_eq "curl maps to home config" \
-  "$REPO_ROOT/config/.curlrc|$HOME/.curlrc" "$curl_mapping"
+if validate_profile custom >/dev/null 2>&1; then
+  FAIL=$((FAIL + 1)); echo "  FAIL: custom profile should be rejected"
+else
+  PASS=$((PASS + 1)); echo "  ok: custom profile rejected"
+fi
 
 echo "== bootstrap dry run =="
 dry_out="$(./bootstrap.sh --profile minimal --dry-run 2>&1)"
@@ -123,14 +101,14 @@ assert_contains "sync provisioning error is clear" "--sync cannot be combined" "
 echo "== all profile exclusions =="
 # `all` must only emit real user configs; installer/scaffolding dirs under
 # config/ must never be linked into ~/.config
-all_list="$(get_config_list all)"
+all_comps="$(manifest_components all macos)"
 for excluded in macos ubuntu defaults security; do
-  assert_eq "all profile excludes $excluded" "" "$(grep -x "$excluded" <<<"$all_list" || true)"
+  assert_eq "all profile excludes $excluded" "" "$(grep -x "$excluded" <<<"$all_comps" || true)"
 done
-assert_contains "all profile still includes real configs" "nvim" "$all_list"
+assert_contains "all profile still includes real configs" "nvim" "$all_comps"
 
 echo "== bash version guard =="
-# Stock macOS bash is 3.2; profiles.sh needs bash 4+ (declare -gA). The entry
+# Stock macOS bash is 3.2; manifest.sh needs bash 4+ (declare -gA). The entry
 # points must fail with a clear message instead of a parse error.
 if [[ -x /bin/bash ]] && [[ "$(/bin/bash -c 'echo "${BASH_VERSINFO[0]}"')" -lt 4 ]]; then
   guard_out="$(/bin/bash "$REPO_ROOT/bootstrap.sh" --help 2>&1 || true)"
@@ -214,6 +192,13 @@ else
   echo "  ok: profile-aware status fails for a missing expected link"
 fi
 rm -rf "$tmp_profile"
+
+echo "== bare-name sync of a file-backed component =="
+tmp_fc="$(mktemp -d)"
+HOME="$tmp_fc" "$REPO_ROOT/bin/dotfiles" sync curl >/dev/null 2>&1
+assert_eq "bare-name sync curl links ~/.curlrc" \
+  "$REPO_ROOT/config/.curlrc" "$(readlink "$tmp_fc/.curlrc" 2>/dev/null)"
+rm -rf "$tmp_fc"
 
 echo "== install + uninstall round trip (real, not dry-run) =="
 # Covers the create/manifest/backup path (previously only dry-run tested) and
