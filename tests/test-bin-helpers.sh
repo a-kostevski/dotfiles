@@ -89,6 +89,41 @@ EOF
   unset XDG_RUNTIME_DIR
 fi
 
+echo "== bin/osx-clock-toggle composite wrapper (BIN-03) =="
+oct_sandbox="$(mktemp -d)"
+mkdir -p "$oct_sandbox/bin"
+cp "$REPO_ROOT/bin/osx-clock-toggle" "$oct_sandbox/bin/osx-clock-toggle"
+oct_log="$oct_sandbox/calls.log"
+cat > "$oct_sandbox/bin/cantsleep" <<EOF
+#!/usr/bin/env bash
+echo "cantsleep \$*" >> "$oct_log"
+EOF
+cat > "$oct_sandbox/bin/nshift" <<EOF
+#!/usr/bin/env bash
+echo "nshift \$*" >> "$oct_log"
+EOF
+chmod +x "$oct_sandbox/bin/cantsleep" "$oct_sandbox/bin/nshift"
+
+: > "$oct_log"
+"$oct_sandbox/bin/osx-clock-toggle" >/dev/null 2>&1
+oct_calls="$(cat "$oct_log")"
+assert_contains "bare toggle delegates clock to cantsleep" "cantsleep" "$oct_calls"
+assert_contains "bare toggle toggles Night Shift" "nshift toggle" "$oct_calls"
+
+: > "$oct_log"
+"$oct_sandbox/bin/osx-clock-toggle" --quiet >/dev/null 2>&1
+oct_q="$(cat "$oct_log")"
+assert_contains "quiet forwards --quiet to cantsleep" "cantsleep --quiet" "$oct_q"
+assert_contains "quiet forwards -q to nshift" "nshift -q toggle" "$oct_q"
+
+: > "$oct_log"
+"$oct_sandbox/bin/osx-clock-toggle" --status >/dev/null 2>&1
+oct_s="$(cat "$oct_log")"
+assert_contains "status queries cantsleep" "cantsleep --status" "$oct_s"
+assert_contains "status queries nshift" "nshift status" "$oct_s"
+
+rm -rf "$oct_sandbox"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

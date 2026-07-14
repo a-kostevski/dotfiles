@@ -1,2 +1,51 @@
 #!/bin/sh
-defaults write com.apple.menuextra.clock.plist IsAnalog -int "$(defaults read com.apple.menuextra.clock.plist IsAnalog | grep -q '1' && echo '0' || echo '1')"
+
+#######################################
+# Script Name: osx-clock-toggle
+# Description: Wind-down toggle. Flips the menu bar clock (delegated to
+#              cantsleep) and Night Shift (delegated to nshift) together.
+#              Thin wrapper: the real logic lives in those two scripts.
+# Usage: osx-clock-toggle [--help|--status|--quiet]
+#######################################
+
+set -eu
+
+dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd -P)
+cantsleep="$dir/cantsleep"
+nshift="$dir/nshift"
+
+case "${1:-}" in
+   -h | --help)
+      cat <<EOF
+osx-clock-toggle - wind-down toggle for the menu bar clock and Night Shift
+
+USAGE:
+    osx-clock-toggle [OPTIONS]
+
+OPTIONS:
+    -h, --help      Show this help message
+    -s, --status    Show clock and Night Shift status without changing anything
+    -q, --quiet     Toggle without messages
+
+DESCRIPTION:
+    Toggles the macOS menu bar clock (delegated to cantsleep) and Night Shift
+    (delegated to nshift) in one step. The two toggle independently.
+EOF
+      ;;
+   -s | --status)
+      "$cantsleep" --status
+      "$nshift" status
+      ;;
+   -q | --quiet)
+      "$cantsleep" --quiet
+      "$nshift" -q toggle
+      ;;
+   "")
+      "$cantsleep"
+      "$nshift" toggle
+      ;;
+   *)
+      echo "Unknown option: $1. Use --help for usage information." >&2
+      exit 1
+      ;;
+esac
