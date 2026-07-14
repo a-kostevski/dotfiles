@@ -7,6 +7,7 @@ append_fpath() {
 
 # Homebrew-specific completion paths (only if Homebrew is installed)
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
+    append_fpath "$HOMEBREW_PREFIX/share/zsh/functions"
     append_fpath "$HOMEBREW_PREFIX/share/zsh/site-functions"
     append_fpath "$HOMEBREW_PREFIX/share/zsh-completions"
 fi
