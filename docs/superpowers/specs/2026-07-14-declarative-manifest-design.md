@@ -98,6 +98,18 @@ Resolved by the reader against the environment:
 - **`file`** — link the single `src` file to the exact `dest`. It shadows
   itself out of any overlapping tree.
 
+**Component grouping.** A `file` entry whose `src` lives under a `tree` entry's
+`src` belongs to that tree's logical component (this is the same containment
+relationship as shadowing, so no extra schema field is needed). Scoped
+operations (`sync <name>`, `uninstall <name>`, status headers) act on the
+component: `zsh` covers the `zsh` tree plus the `zsh-env` home file; `lldb`
+covers the `lldb` tree plus `lldb-init`. A `file` entry not contained in any
+tree (`clang-format`, `curl`) is its own component. Shadowing is evaluated
+against the *selected* (profile + platform filtered) file entries, so on Ubuntu
+— where `lldb-init` is macOS-gated and therefore unselected — `.lldbinit`
+remains linked under `{XDG_CONFIG}/lldb`, while on macOS it is consolidated to
+`~/.lldbinit` only.
+
 ### Profile and platform semantics
 
 - `profiles` — subset of `["minimal", "standard", "full"]`. A component is
