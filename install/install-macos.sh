@@ -49,13 +49,13 @@ install_macos_packages() {
     dot_info "Rosetta 2 not needed or already installed"
   fi
 
-  # Source and run Homebrew installation. The trailing "main" in
+  # Source and run Homebrew installation. The trailing "run_homebrew" in
   # homebrew.sh is guarded so sourcing it does not itself invoke brew;
-  # call main explicitly to run install_homebrew -> link_brew_env ->
+  # call run_homebrew explicitly to run install_homebrew -> link_brew_env ->
   # install_packages.
   # shellcheck source=install/homebrew.sh
   source "$dot_root/install/homebrew.sh"
-  main
+  run_homebrew
 }
 
 request_sudo() {

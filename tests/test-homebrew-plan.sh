@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Unit tests for the macOS package executor's pure planning function
 # (install/homebrew.sh:generate_brewfile). Sourcing homebrew.sh must not
-# invoke brew: the trailing "main" is guarded, so this only exercises
+# invoke brew: the trailing "run_homebrew" is guarded, so this only exercises
 # generate_brewfile directly.
 set -uo pipefail
 
@@ -20,6 +20,10 @@ source "$REPO_ROOT/install/symlinks.sh"
 source "$REPO_ROOT/install/packages.sh"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/install/homebrew.sh"
+# install/homebrew.sh enables set -euo pipefail when sourced; disable
+# errexit again so a benign non-zero here is reported by the harness
+# instead of aborting this file.
+set +e
 
 echo "== macOS Brewfile generation =="
 bf="$(mktemp)"

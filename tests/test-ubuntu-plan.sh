@@ -16,6 +16,10 @@ source "$REPO_ROOT/install/lib.sh"
 source "$REPO_ROOT/install/packages.sh"
 # shellcheck source=/dev/null
 source "$REPO_ROOT/install/install-ubuntu.sh"
+# install/install-ubuntu.sh enables set -euo pipefail when sourced; disable
+# errexit again so a benign non-zero here is reported by the harness
+# instead of aborting this file.
+set +e
 
 echo "== Ubuntu apt selection + optional failures =="
 assert_contains "minimal apt has git" "git" "$(ubuntu_required_apt minimal)"

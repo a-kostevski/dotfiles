@@ -106,6 +106,10 @@ the single source of truth read by `install/packages.sh`:
   Java, Perl, `pyenv`, `cmake`, `llvm`, ...), networking/security tools, and
   (macOS only) GUI casks such as 1Password, Kitty, Docker, and Brave
 
+Some entries are single-platform, so a tier is not installed identically on
+both OSes: `node` and the GNU userland (`coreutils`, `findutils`, `gnu-sed`,
+`grep`) are macOS-only via `brew`, while `thefuck` is Ubuntu-only.
+
 **macOS**: `--install-packages` installs Homebrew (if missing), links
 `~/.config/homebrew/brew.env` from this repo *before* running `brew bundle`
 (so environment settings apply to the install), then generates a Brewfile

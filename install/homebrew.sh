@@ -73,7 +73,7 @@ install_packages() {
 }
 
 # Main execution
-main() {
+run_homebrew() {
   install_homebrew || return 1
   link_brew_env || return 1 # before any brew bundle
   install_packages || return 1
@@ -81,6 +81,6 @@ main() {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  main "$@"
+  run_homebrew "$@"
 fi
 
