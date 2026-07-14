@@ -42,6 +42,54 @@ all_macos="$(manifest_select all macos)"
 assert_contains "all includes op" "op|tree" "$all_macos"
 assert_contains "all includes nvim" "nvim|tree" "$all_macos"
 
+echo "== manifest_links tree expansion + shadowing =="
+links_min="$(manifest_links minimal macos)"
+assert_contains "zsh tree links .zshrc under XDG" \
+  "$REPO_ROOT/config/zsh/.zshrc|${XDG_CONFIG_HOME:-$HOME/.config}/zsh/.zshrc" "$links_min"
+assert_contains "zshenv is linked to HOME" \
+  "$REPO_ROOT/config/zsh/zshenv|$HOME/.zshenv" "$links_min"
+assert_eq "zshenv is shadowed out of the zsh tree" "" \
+  "$(grep -F "config/zsh/zshenv|${XDG_CONFIG_HOME:-$HOME/.config}/zsh/zshenv" <<<"$links_min" || true)"
+assert_contains "bin tree links a script into BIN" \
+  "$REPO_ROOT/bin/mkx|$HOME/.local/bin/mkx" "$links_min"
+
+echo "== manifest_links home files (full) =="
+links_full="$(manifest_links full macos)"
+assert_contains "clang-format links to home" \
+  "$REPO_ROOT/config/clang-format|$HOME/.clang-format" "$links_full"
+assert_contains "curl links to home" \
+  "$REPO_ROOT/config/.curlrc|$HOME/.curlrc" "$links_full"
+assert_contains "lldbinit.py links under XDG" \
+  "$REPO_ROOT/config/lldb/lldbinit.py|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/lldbinit.py" "$links_full"
+assert_contains ".lldbinit links to home on macos" \
+  "$REPO_ROOT/config/lldb/.lldbinit|$HOME/.lldbinit" "$links_full"
+assert_eq ".lldbinit shadowed out of lldb tree on macos" "" \
+  "$(grep -F "config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" <<<"$links_full" || true)"
+
+echo "== lldb on ubuntu keeps XDG .lldbinit (not shadowed) =="
+links_full_ubuntu="$(manifest_links full ubuntu)"
+assert_contains "ubuntu links .lldbinit under XDG (no home file selected)" \
+  "$REPO_ROOT/config/lldb/.lldbinit|${XDG_CONFIG_HOME:-$HOME/.config}/lldb/.lldbinit" "$links_full_ubuntu"
+
+echo "== components + component_links + exists + home_dests =="
+comps="$(manifest_components full macos)"
+assert_contains "components include zsh" $'\nzsh\n' $'\n'"$comps"$'\n'
+assert_eq "zsh-env is not its own component" "" "$(grep -x 'zsh-env' <<<"$comps" || true)"
+zsh_links="$(manifest_component_links zsh macos)"
+assert_contains "component zsh includes tree file" \
+  "$REPO_ROOT/config/zsh/.zshrc|${XDG_CONFIG_HOME:-$HOME/.config}/zsh/.zshrc" "$zsh_links"
+assert_contains "component zsh includes home zshenv" \
+  "$REPO_ROOT/config/zsh/zshenv|$HOME/.zshenv" "$zsh_links"
+assert_eq "manifest_component_exists nvim" "0" "$(manifest_component_exists nvim; echo $?)"
+assert_eq "manifest_component_exists bogus" "1" "$(manifest_component_exists bogus; echo $?)"
+home_macos="$(manifest_home_dests macos)"
+assert_contains "home_dests has zshenv" "$HOME/.zshenv" "$home_macos"
+assert_contains "home_dests has clang-format" "$HOME/.clang-format" "$home_macos"
+assert_contains "home_dests has curl" "$HOME/.curlrc" "$home_macos"
+assert_contains "home_dests has lldbinit on macos" "$HOME/.lldbinit" "$home_macos"
+assert_eq "home_dests omits lldbinit on ubuntu" "" \
+  "$(grep -F "$HOME/.lldbinit" <<<"$(manifest_home_dests ubuntu)" || true)"
+
 echo
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

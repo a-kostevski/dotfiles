@@ -67,3 +67,145 @@ manifest_select() {
     printf '%s|%s|%s|%s|%s|%s\n' "$name" "$kind" "$src" "$dest" "$profiles" "$platforms"
   done < <(manifest_records)
 }
+
+# Resolve destination placeholders against the environment.
+_manifest_resolve_dest() {
+  local d="$1"
+  d="${d//\{XDG_CONFIG\}/${XDG_CONFIG_HOME:-$HOME/.config}}"
+  d="${d//\{HOME\}/$HOME}"
+  d="${d//\{BIN\}/$HOME/.local/bin}"
+  printf '%s' "$d"
+}
+
+# Absolute srcs of file-kind entries in the given selected record set (stdin).
+# Used to shadow those files out of their containing tree.
+_manifest_shadow_srcs() {
+  local name kind src rest
+  while IFS='|' read -r name kind src rest; do
+    [[ "$kind" == "file" ]] || continue
+    printf '%s\n' "${dot_root}/${src}"
+  done
+}
+
+# Expand one entry to src|dest pairs. $4 is a newline list of shadowed abs srcs.
+_manifest_emit() {
+  local kind="$1" src="$2" dest="$3" shadow="$4"
+  local abs_src="${dot_root}/${src}"
+  local res_dest; res_dest="$(_manifest_resolve_dest "$dest")"
+
+  if [[ "$kind" == "file" ]]; then
+    [[ -f "$abs_src" ]] && printf '%s|%s\n' "$abs_src" "$res_dest"
+    return 0
+  fi
+
+  local f rel
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    is_ignored "$f" && continue
+    if [[ -n "$shadow" ]] && grep -qxF "$f" <<<"$shadow"; then
+      continue
+    fi
+    rel="${f#"$abs_src"/}"
+    printf '%s|%s\n' "$f" "$res_dest/$rel"
+  done < <(find "$abs_src" -type f 2>/dev/null | sort)
+}
+
+# THE single source of link truth: src|dest pairs for a profile + OS.
+manifest_links() {
+  local profile="$1" os="$2"
+  local selected; selected="$(manifest_select "$profile" "$os")"
+  local shadow; shadow="$(_manifest_shadow_srcs <<<"$selected")"
+  local name kind src dest rest
+  while IFS='|' read -r name kind src dest rest; do
+    [[ -z "$name" ]] && continue
+    _manifest_emit "$kind" "$src" "$dest" "$shadow"
+  done <<<"$selected"
+}
+
+# Print the component that owns a repo-relative src: the name of a tree entry
+# whose src is a path-prefix of $1, else $1's own entry name.
+manifest_component_of() {
+  local target="$1"
+  local name kind src rest owner=""
+  while IFS='|' read -r name kind src rest; do
+    [[ -z "$name" ]] && continue
+    if [[ "$kind" == "tree" && ( "$target" == "$src" || "$target" == "$src"/* ) ]]; then
+      owner="$name"
+    fi
+  done < <(manifest_records)
+  printf '%s' "$owner"
+}
+
+# Component names for a profile + OS. A file entry contained in a tree entry's
+# src is folded into that tree's component (no standalone header).
+manifest_components() {
+  local profile="$1" os="$2"
+  local name kind src rest
+  while IFS='|' read -r name kind src rest; do
+    [[ -z "$name" ]] && continue
+    if [[ "$kind" == "file" ]]; then
+      local owner; owner="$(manifest_component_of "$src")"
+      [[ -n "$owner" ]] && continue   # folded into its tree component
+    fi
+    printf '%s\n' "$name"
+  done < <(manifest_select "$profile" "$os")
+}
+
+# src|dest pairs for a single component (unfiltered by profile): the entry named
+# <name> plus any file entry whose src is contained in that entry's tree src.
+manifest_component_links() {
+  local component="$1" os="$2"
+  local name kind src dest rest
+  local -a picked=()
+  while IFS='|' read -r name kind src dest rest; do
+    [[ -z "$name" ]] && continue
+    if [[ "$name" == "$component" ]]; then
+      picked+=("$name|$kind|$src|$dest")
+    elif [[ "$kind" == "file" ]]; then
+      local owner; owner="$(manifest_component_of "$src")"
+      [[ "$owner" == "$component" ]] && picked+=("$name|$kind|$src|$dest")
+    fi
+  done < <(manifest_records)
+
+  # OS gate the file-in-home entries so uninstall/status stay platform-correct
+  local kind2 src2 dest2
+  local shadow=""
+  # build shadow set from the picked file entries
+  local p
+  for p in "${picked[@]}"; do
+    IFS='|' read -r _ kind2 src2 dest2 <<<"$p"
+    [[ "$kind2" == "file" ]] && shadow+="${dot_root}/${src2}"$'\n'
+  done
+  for p in "${picked[@]}"; do
+    IFS='|' read -r _ kind2 src2 dest2 <<<"$p"
+    _manifest_emit "$kind2" "$src2" "$dest2" "$shadow"
+  done
+}
+
+# 0 if <name> is a component (a top-level entry name that is not a file folded
+# into another tree) whose source exists.
+manifest_component_exists() {
+  local component="$1"
+  local name kind src rest
+  while IFS='|' read -r name kind src rest; do
+    [[ "$name" == "$component" ]] || continue
+    [[ -e "${dot_root}/${src}" ]] && return 0
+    return 1
+  done < <(manifest_records)
+  return 1
+}
+
+# Resolved dests of file entries that live outside {XDG_CONFIG} and {BIN}
+# (i.e. home-directory targets like ~/.zshenv), OS-gated. Used by uninstall.
+manifest_home_dests() {
+  local os="$1"
+  local name kind src dest profiles platforms res
+  while IFS='|' read -r name kind src dest profiles platforms; do
+    [[ -z "$name" ]] && continue
+    [[ "$kind" == "file" ]] || continue
+    [[ "$dest" == '{XDG_CONFIG}'* || "$dest" == '{BIN}'* ]] && continue
+    _manifest_csv_has "all" "$platforms" || _manifest_csv_has "$os" "$platforms" || continue
+    res="$(_manifest_resolve_dest "$dest")"
+    printf '%s\n' "$res"
+  done < <(manifest_records)
+}
