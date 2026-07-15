@@ -291,7 +291,9 @@ function M.register(def)
     table.insert(specs, {
       "mfussenegger/nvim-dap",
       optional = true,
-      config = function()
+      -- opts (not config): a config here would replace coding/dap.lua's
+      -- config in lazy.nvim's fragment resolution
+      opts = function()
         local dap = require("dap")
         -- Apply DAP configurations
         for key, value in pairs(def.dap) do

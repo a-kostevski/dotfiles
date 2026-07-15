@@ -203,11 +203,11 @@ function toggle.setup()
   toggle.create({
     name = "indent_guides",
     get = function()
-      local ok, ibl = pcall(require, "ibl")
+      local ok, ibl_config = pcall(require, "ibl.config")
       if not ok then
         return false
       end
-      local config = ibl.config.get_config(0)
+      local config = ibl_config.get_config(0)
       return config and config.enabled
     end,
     set = function(state)
