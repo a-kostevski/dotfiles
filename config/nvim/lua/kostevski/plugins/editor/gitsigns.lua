@@ -20,8 +20,7 @@ return {
     on_attach = function(buf)
       local gs = package.loaded.gitsigns
 
-      local wk = require("which-key")
-      wk.add({
+      local spec = {
         {
           mode = { "n", "v" },
           group = "GHunk",
@@ -31,7 +30,7 @@ return {
               if vim.wo.diff then
                 vim.cmd.normal({ cmd = "]c", bang = true })
               else
-                gs.next_hunk()
+                gs.nav_hunk("next")
               end
             end,
             desc = "Next Hunk",
@@ -43,7 +42,7 @@ return {
               if vim.wo.diff then
                 vim.cmd.normal({ cmd = "[c", bang = true })
               else
-                gs.prev_hunk()
+                gs.nav_hunk("prev")
               end
             end,
             desc = "Prev Hunk",
@@ -52,7 +51,7 @@ return {
           {
             "]H",
             function()
-              gs.next_hunk()
+              gs.nav_hunk("next")
             end,
             desc = "Next Hunk",
             buffer = buf,
@@ -60,7 +59,7 @@ return {
           {
             "[H",
             function()
-              gs.prev_hunk()
+              gs.nav_hunk("prev")
             end,
             desc = "Prev Hunk",
             buffer = buf,
@@ -68,7 +67,7 @@ return {
           {
             "<leader>ghs",
             ":Gitsigns stage_hunk<CR>",
-            desc = "Stage Hunk",
+            desc = "Stage Hunk (toggle)",
             buffer = buf,
           },
           {
@@ -81,12 +80,6 @@ return {
             "<leader>ghr",
             ":Gitsigns reset_hunk<CR>",
             desc = "Reset Hunk",
-            buffer = buf,
-          },
-          {
-            "<leader>ghu",
-            gs.undo_stage_hunk,
-            desc = "Undo Stage Hunk",
             buffer = buf,
           },
           {
@@ -136,7 +129,14 @@ return {
             buffer = buf,
           },
         },
-      })
+      }
+
+      -- Defer registration so a BufReadPre attach doesn't force-load which-key
+      Utils.plugin.on_load("which-key.nvim", function()
+        if vim.api.nvim_buf_is_valid(buf) then
+          require("which-key").add(spec)
+        end
+      end)
     end,
   },
 }

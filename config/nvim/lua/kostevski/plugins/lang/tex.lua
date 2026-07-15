@@ -38,6 +38,18 @@ require("kostevski.utils.root").add_patterns("tex", {
   "graphics/",
 })
 
+-- Editor options for tex buffers (moved from lsp/texlab.lua so they only
+-- apply when this language is enabled)
+vim.api.nvim_create_autocmd("FileType", {
+  group = vim.api.nvim_create_augroup("kostevski_lang_tex", { clear = true }),
+  pattern = { "tex", "plaintex" },
+  callback = function()
+    vim.opt_local.wrap = true
+    vim.opt_local.spell = true
+    vim.opt_local.textwidth = 80
+  end,
+})
+
 return {
   -- Formatter Configuration
   {

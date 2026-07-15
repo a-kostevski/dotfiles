@@ -10,7 +10,7 @@ return {
     "MunifTanjim/nui.nvim",
   },
   init = function()
-    if not Utils.plugin.is_loaded("neo-tree") then
+    if not Utils.plugin.is_loaded("neo-tree.nvim") then
       vim.api.nvim_create_autocmd("BufEnter", {
         group = vim.api.nvim_create_augroup("Neotree_start_directory", { clear = true }),
         desc = "Load Neotree if entering a directory",
@@ -184,7 +184,7 @@ return {
         symbols = {
           added = icons.git.add,
           deleted = icons.git.removed,
-          renamed = icons.git.renamed,
+          renamed = icons.git.rename,
           untracked = icons.git.untracked or "",
           ignored = icons.git.ignored or "",
           unstaged = icons.git.unstaged,

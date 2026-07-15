@@ -130,23 +130,6 @@ function toggle.create(opts)
   end
 end
 
----Get the current state of a registered toggle
----
----@param name string The toggle identifier (e.g., "inlay_hints")
----@return boolean? state The current toggle state, or nil if toggle doesn't exist
----
----@usage
----  local enabled = toggle.get("inlay_hints")
-function toggle.get(name)
-  if toggle[name] and toggle[name].get then
-    return toggle[name].get()
-  else
-    local Utils = require("kostevski.utils")
-    Utils.notify.error("Toggle '" .. name .. "' does not exist")
-    return nil
-  end
-end
-
 ---Initialize all built-in toggles with keybindings
 ---
 ---Creates and registers all standard toggles for common Neovim features.
@@ -280,15 +263,18 @@ function toggle.setup()
   toggle.create({
     name = "noneckpain",
     get = function()
-      -- NoNeckPain doesn't have a direct state check
-      -- We'll use a buffer variable to track state
-      return vim.b.noneckpain_enabled or false
+      -- The plugin's state is tab-scoped: read it from the plugin instead of
+      -- tracking it ourselves (a buffer/tab variable would drift)
+      local state = _G.NoNeckPain and _G.NoNeckPain.state
+      return state ~= nil
+        and state.enabled == true
+        and state.tabs ~= nil
+        and state.tabs[vim.api.nvim_get_current_tabpage()] ~= nil
     end,
     set = function(_)
+      -- :NoNeckPain toggles the current tab; state is owned by the plugin
       local ok = pcall(vim.cmd, "NoNeckPain")
-      if ok then
-        vim.b.noneckpain_enabled = not (vim.b.noneckpain_enabled or false)
-      else
+      if not ok then
         Utils.notify.warn("NoNeckPain plugin not available")
       end
     end,
