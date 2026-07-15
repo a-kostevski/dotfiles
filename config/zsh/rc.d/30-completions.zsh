@@ -69,7 +69,7 @@ zstyle ':completion:*' cache-path $XDG_CACHE_HOME/zsh/zcompcache
 # --- Style ---
 # Colors
 # -e: evaluate at completion time, after .zshrc's dircolors sets LS_COLORS
-zstyle -e ':completion:*' list-colors 'reply=("${(s.:.)LS_COLORS}")'
+zstyle -e ':completion:*' list-colors 'reply=(${(s.:.)LS_COLORS})'
 
 # Groups
 zstyle ':completion:*' group-name ''

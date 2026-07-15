@@ -144,7 +144,7 @@ return {
       -- Mason has installed (strays, disabled languages) never auto-enables
       local enable = {}
 
-      ---@return boolean? exclude automatic setup
+      ---@return boolean? install via mason
       local function configure(server)
         local sopts = opts.servers[server]
         sopts = sopts == true and {} or (not sopts) and { enabled = false } or sopts --[[@as lazyvim.lsp.Config]]

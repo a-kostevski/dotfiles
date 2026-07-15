@@ -10,7 +10,7 @@ setopt hist_verify               # Do not execute immediately upon history expan
 setopt share_history             # Share history between all sessions.
 
 # zsh does not create HISTFILE's parent directory
-[[ -d "$XDG_STATE_HOME/zsh" ]] || command mkdir -p -m 0700 "$XDG_STATE_HOME/zsh"
+[[ -d "${XDG_STATE_HOME:-$HOME/.local/state}/zsh" ]] || command mkdir -p -m 0700 "${XDG_STATE_HOME:-$HOME/.local/state}/zsh"
 export HISTFILE=$XDG_STATE_HOME/zsh/zhistory
 export HISTSIZE=110000
 export SAVEHIST=100000
