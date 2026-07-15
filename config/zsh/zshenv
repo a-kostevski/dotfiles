@@ -96,21 +96,10 @@ export PSQL_HISTORY=$XDG_STATE_HOME/psql_history
 export PGPASSFILE=$XDG_CONFIG_HOME/pg/pgpass
 export PGSERVICEFILE=$XDG_CONFIG_HOME/pg/pg_service.conf
 
-# Set LANG to the best available UTF-8 locale. Do not export LC_ALL globally;
-# reserve it for individual commands that need deterministic locale behavior.
-() {
-  emulate -L zsh
-  command -v locale >/dev/null 2>&1 || return
-  local -a avail
-  avail=(${(f)"$(locale -a 2>/dev/null)"})
-  local want
-  for want in en_GB.UTF-8 en_GB.utf8 en_US.UTF-8 en_US.utf8 C.UTF-8 C.utf8; do
-    if (( ${avail[(Ie)$want]} )); then
-      export LANG=$want
-      return
-    fi
-  done
-}
+# Default LANG to a UTF-8 locale when the environment doesn't provide one.
+# Do not export LC_ALL globally; reserve it for individual commands that need
+# deterministic locale behavior.
+export LANG=${LANG:-en_GB.UTF-8}
 export EDITOR="nvim"
 export VISUAL=$EDITOR 
 
