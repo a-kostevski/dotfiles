@@ -1,5 +1,5 @@
 # Machine-specific git configuration.
-# Copy this file to gitconfig.local (same directory) and fill in your details.
+# Copy this file to ~/.config/git/gitconfig.local and fill in your details.
 # gitconfig.local is git-ignored, so nothing here gets committed.
 
 [user]
