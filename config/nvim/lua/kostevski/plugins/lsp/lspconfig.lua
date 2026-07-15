@@ -86,11 +86,9 @@ return {
     end,
     config = function(_, opts)
       Utils.format.register(Utils.lsp.formatter())
-      Utils.lsp.on_attach(function(client, buffer)
-        require("kostevski.utils.keys").on_attach(client, buffer)
-      end)
-
-      Utils.lsp.setup()
+      -- Keys.on_attach registration and Utils.lsp.setup() run once from
+      -- Utils.setup()/Keys.setup(); repeating them here double-registered
+      -- keymaps and double-wrapped the rename handler
       Utils.lsp.on_dynamic_capability(require("kostevski.utils.keys").on_attach)
       Utils.lsp.words.setup(opts.document_highlight)
 
@@ -142,7 +140,9 @@ return {
       local mason_all = have_mason
           and vim.tbl_keys(require("mason-lspconfig.mappings").get_mason_map().lspconfig_to_package)
         or {}
-      local mason_exclude = {}
+      -- Allowlist of mason-managed servers configured below; anything else
+      -- Mason has installed (strays, disabled languages) never auto-enables
+      local enable = {}
 
       ---@return boolean? exclude automatic setup
       local function configure(server)
@@ -150,39 +150,29 @@ return {
         sopts = sopts == true and {} or (not sopts) and { enabled = false } or sopts --[[@as lazyvim.lsp.Config]]
 
         if sopts.enabled == false then
-          mason_exclude[#mason_exclude + 1] = server
           return
         end
 
         local use_mason = sopts.mason ~= false and vim.tbl_contains(mason_all, server)
         local setup = opts.setup[server] or opts.setup["*"]
         if setup and setup(server, sopts) then
-          mason_exclude[#mason_exclude + 1] = server
+          return use_mason -- custom setup owns enabling; keep it out of the allowlist
+        end
+        vim.lsp.config(server, sopts) -- configure the server
+        if use_mason then
+          enable[#enable + 1] = server
         else
-          vim.lsp.config(server, sopts) -- configure the server
-          if not use_mason then
-            vim.lsp.enable(server)
-          end
+          vim.lsp.enable(server)
         end
         return use_mason
       end
 
       local install = vim.tbl_filter(configure, vim.tbl_keys(opts.servers))
 
-      -- Servers of disabled languages never enter opts.servers, but a
-      -- previously Mason-installed binary would still be picked up by
-      -- automatic_enable and load lsp/<server>.lua, whose requires may
-      -- depend on plugins the disabled language no longer installs
-      for _, server in ipairs(require("kostevski.utils.lang").get_disabled_servers()) do
-        if opts.servers[server] == nil then
-          mason_exclude[#mason_exclude + 1] = server
-        end
-      end
-
       if have_mason then
         require("mason-lspconfig").setup({
           ensure_installed = vim.list_extend(install, Utils.plugin.opts("mason-lspconfig.nvim").ensure_installed or {}),
-          automatic_enable = { exclude = mason_exclude },
+          automatic_enable = enable,
         })
       end
     end,
