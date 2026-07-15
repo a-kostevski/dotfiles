@@ -27,6 +27,12 @@ if command_exists thefuck; then
   _lazy_load_cmd fuck 'eval "$(thefuck --alias)"'
 fi
 
+## direnv - cannot lazy load; the precmd hook must be active before the
+## first prompt in a directory with an .envrc
+if command_exists direnv; then
+  eval "$(direnv hook zsh)"
+fi
+
 if test -n "$KITTY_INSTALLATION_DIR"; then
   export KITTY_SHELL_INTEGRATION="enabled"
   autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
