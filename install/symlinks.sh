@@ -228,15 +228,25 @@ find_owned_symlinks() {
     return 0
 }
 
-# Print the mtime-newest backup for a destination, if any.
-# (The .N collision suffix breaks lexical ordering, so compare with -nt.)
+# Print the newest backup for a destination, ranked by the timestamp (and
+# numeric .N collision suffix) embedded in the backup name. mv preserves the
+# original file's mtime, so -nt would rank by content age, not backup time.
 newest_backup_path() {
     local dest="$1"
-    local newest="" b
+    local newest="" newest_key="" b key suffix
     for b in "$dest".backup.*; do
         [[ -e "$b" || -L "$b" ]] || continue
-        if [[ -z "$newest" || "$b" -nt "$newest" ]]; then
+        key="${b##*.backup.}"   # 20260715_101530 or 20260715_101530.3
+        if [[ "$key" == *.* ]]; then
+            suffix="${key##*.}"
+            [[ "$suffix" =~ ^[0-9]+$ ]] || suffix=0
+            key="${key%%.*}.$(printf '%06d' "$suffix")"
+        else
+            key="${key}.000000"
+        fi
+        if [[ -z "$newest" || "$key" > "$newest_key" ]]; then
             newest="$b"
+            newest_key="$key"
         fi
     done
     [[ -n "$newest" ]] || return 1

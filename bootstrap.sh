@@ -275,6 +275,11 @@ link_configs() {
     links="$(manifest_links "$PROFILE" "$OS_TYPE")"
   fi
 
+  if [[ -z "$links" ]]; then
+    dot_error "No links selected (missing manifest or empty selection); aborting"
+    exit 1
+  fi
+
   local source dest
   while IFS='|' read -r source dest; do
     [[ -z "$source" ]] && continue
@@ -446,7 +451,7 @@ main() {
     # Link binaries
     link_binaries
 
-    if [[ -z "$DRY_RUN" ]]; then
+    if [[ -z "$SYNC_CONFIG" && -z "$DRY_RUN" ]]; then
       printf '%s\n' "$PROFILE" >"$PROFILE_FILE"
     fi
 

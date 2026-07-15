@@ -7,6 +7,9 @@ set -euo pipefail
 # Source shared library
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh" 2>/dev/null || source "$(pwd)/install/lib.sh"
 
+# Executed directly (not via bootstrap): derive the repo root ourselves
+: "${dot_root:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+
 if ! declare -f packages_select >/dev/null; then
   source "$dot_root/install/packages.sh"
 fi
