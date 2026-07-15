@@ -102,7 +102,7 @@ update:
 
 ## Uninstall dotfiles symlinks (restores backups; pass ARGS='nvim' to scope)
 uninstall:
-	@bin/dotfiles uninstall $(ARGS)
+	@bin/dotfiles uninstall $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
 
 ## Validate symlinks
 validate:
@@ -110,11 +110,15 @@ validate:
 
 ## Clean broken symlinks
 clean:
-	@bin/dotfiles clean $(ARGS)
+	@bin/dotfiles clean $(if $(filter true,$(DRY_RUN)),--dry-run) $(ARGS)
 
 ## Backup current configurations
 backup:
 	@backup_dir="$$HOME/dotfiles-backup-$$(date +%Y%m%d-%H%M%S)"; \
+	if [ "$(DRY_RUN)" = "true" ]; then \
+		echo "[DRY-RUN] would back up .config .local/bin .zshenv .lldbinit to $$backup_dir"; \
+		exit 0; \
+	fi; \
 	echo -e "$(YELLOW)Backing up to $$backup_dir...$(NC)"; \
 	mkdir -p "$$backup_dir"; \
 	for dir in .config .local/bin .zshenv .lldbinit; do \

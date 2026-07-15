@@ -111,6 +111,11 @@ _manifest_emit() {
     return 0
   fi
 
+  if [[ "$kind" != "tree" ]]; then
+    dot_warning "manifest: unknown kind '$kind' for entry src $src, skipped" >&2
+    return 0
+  fi
+
   if [[ ! -d "$abs_src" ]]; then
     dot_warning "manifest: src not found: $src" >&2
     return 0

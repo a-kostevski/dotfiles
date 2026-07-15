@@ -161,8 +161,8 @@ is_ignored() {
   local base_dir="${2:-$dot_root}"
   local rel_path="${file#"$base_dir"/}"
 
-  # Use git check-ignore if we're in a git repo
-  if [[ -d "$base_dir/.git" ]] && command -v git &>/dev/null; then
+  # Use git check-ignore if we're in a git repo (.git is a file in worktrees)
+  if [[ -e "$base_dir/.git" ]] && command -v git &>/dev/null; then
     git -C "$base_dir" check-ignore -q "$rel_path" 2>/dev/null
     return $?
   fi

@@ -69,9 +69,8 @@ mkdir -p "$HOME/Pictures/mac-screenshots"
 # Disable the sound effects on boot
 sudo nvram SystemAudioVolume="%80"
 
-# Hide remaining battery time; show percentage
-defaults write com.apple.menuextra.battery ShowPercent -bool true
-defaults write com.apple.menuextra.battery ShowTime -bool false
+# Increase window resize speed for Cocoa applications
+defaults write NSGlobalDomain NSWindowResizeTime -float 0.001
 
 # Save to disk (not to iCloud) by default
 defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
@@ -151,7 +150,7 @@ defaults write com.apple.screencapture type -string "png"
 defaults write com.apple.finder DisableAllAnimations -bool true
 
 # Show hidden files
-defaults write com.apple.finder AppleShowAllFiles YES
+defaults write com.apple.finder AppleShowAllFiles -bool true
 
 # Always open everything in Finder's list view.
 # (domain is case-sensitive: com.apple.finder, not com.apple.Finder)
@@ -219,10 +218,12 @@ defaults write com.apple.finder QuitMenuItem -bool true
 # Dock, Dashboard, and hot corners                                            #
 ###############################################################################
 
-# Minimize windows into their application’s icon
+# Icon size and magnification
 defaults write com.apple.dock largesize -int 64
 defaults write com.apple.dock tilesize -int 32
 defaults write com.apple.dock magnification -bool true
+
+# Minimize windows into their application’s icon
 defaults write com.apple.dock minimize-to-application -bool true
 
 # Don’t automatically rearrange Spaces based on most recent use
@@ -257,23 +258,9 @@ defaults write com.apple.appstore WebKitDeveloperExtras -bool true
 # Enable Debug Menu in the Mac App Store
 defaults write com.apple.appstore ShowDebugMenu -bool true
 
-# Enable the automatic update check
-defaults write com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
-
-# Check for software updates daily, not just once per week
-defaults write com.apple.SoftwareUpdate ScheduleFrequency -int 1
-
-# Download newly available updates in background
-defaults write com.apple.SoftwareUpdate AutomaticDownload -int 1
-
-# Install System data files & security updates
-defaults write com.apple.SoftwareUpdate CriticalUpdateInstall -int 1
-
-# Automatically download apps purchased on other Macs
-defaults write com.apple.SoftwareUpdate ConfigDataInstall -int 1
-
-# Turn on app auto-update
-defaults write com.apple.commerce AutoUpdate -bool true
+# Software update policy (automatic checks/downloads, critical updates, app
+# auto-update) is owned by harden.zsh, which writes the effective system-level
+# /Library/Preferences keys. Apply it with: ./bootstrap.sh --harden
 
 ###############################################################################
 # Terminal & iTerm 2                                                          #
@@ -343,7 +330,6 @@ defaults write com.apple.TimeMachine DoNotOfferNewDisksForBackup -bool true
 # Don’t send search queries to Apple
 defaults write com.apple.Safari UniversalSearchEnabled -bool false
 defaults write com.apple.Safari SuppressSearchSuggestions -bool true
-defaults write NSGlobalDomain NSWindowResizeTime .001
 
 # Enable the Develop menu and the Web Inspector in Safari
 defaults write com.apple.Safari IncludeDevelopMenu -bool true
