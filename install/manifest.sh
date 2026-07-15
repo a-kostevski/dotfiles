@@ -1,49 +1,58 @@
 #!/usr/bin/env bash
 
 # Declarative manifest reader for dotfiles.
-# Single source of source->destination truth. All TOML parsing is isolated in
-# _manifest_awk; the rest of the codebase consumes the pipe-delimited records.
+# Single source of source->destination truth. All manifest parsing is isolated
+# in _manifest_awk; the rest of the codebase consumes the pipe-delimited records.
 
 # Source shared library if not already loaded
 if [[ -z "${dot_title:-}" ]]; then
   source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 fi
 
-# Location of the declarative manifest (repo-relative by default)
-MANIFEST_TOML="${MANIFEST_TOML:-${dot_root:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}/install/manifest.toml}"
+# Location of the declarative manifest (repo-relative by default). Distinct
+# from MANIFEST_FILE, the runtime record of created symlinks (symlinks.sh).
+MANIFEST_CONF="${MANIFEST_CONF:-${dot_root:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}/manifest.conf}"
 
-# Parse the constrained TOML subset into `name|kind|src|dest|profiles|platforms`
-# records (one per entry). profiles/platforms are comma-joined with no spaces.
+# Parse the grouped-profile manifest into `name|kind|src|dest|profiles|platforms`
+# records (one per entry). Sections are cumulative ([minimal] entries belong to
+# standard and full too), so an entry's profiles are its section plus every
+# higher tier. profiles/platforms are comma-joined with no spaces.
 _manifest_awk() {
   awk '
-    function flush() {
-      if (have) printf "%s|%s|%s|%s|%s|%s\n", \
-        e["name"], e["kind"], e["src"], e["dest"], e["profiles"], e["platforms"]
-      have = 0; delete e
+    BEGIN {
+      tier["minimal"]  = "minimal,standard,full"
+      tier["standard"] = "standard,full"
+      tier["full"]     = "full"
     }
-    /^[[:space:]]*#/ { next }
-    /^[[:space:]]*\[\[entry\]\]/ { flush(); have = 1; next }
-    /^[[:space:]]*[a-z][a-z-]*[[:space:]]*=/ {
-      key = $1
-      eq = index($0, "=")
-      val = substr($0, eq + 1)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
-      if (val ~ /^\[/) {
-        gsub(/^\[|\]$/, "", val); gsub(/"/, "", val); gsub(/[[:space:]]+/, "", val)
-      } else {
-        gsub(/^"|"$/, "", val)
+    /^[[:space:]]*(#|$)/ { next }
+    /^[[:space:]]*\[[a-z]+\][[:space:]]*$/ {
+      s = $0
+      gsub(/[^a-z]/, "", s)
+      if (s in tier) { section = s } else {
+        printf "manifest: unknown section [%s] at line %d\n", s, NR > "/dev/stderr"
+        section = ""
       }
-      e[key] = val; have = 1; next
+      next
     }
-    END { flush() }
+    {
+      if (section == "") {
+        printf "manifest: entry outside a profile section at line %d, skipped\n", NR > "/dev/stderr"
+        next
+      }
+      if (NF < 4 || NF > 5) {
+        printf "manifest: malformed entry at line %d (expected 4-5 columns, got %d), skipped\n", NR, NF > "/dev/stderr"
+        next
+      }
+      platforms = (NF == 5) ? $5 : "all"
+      printf "%s|%s|%s|%s|%s|%s\n", $1, $2, $3, $4, tier[section], platforms
+    }
   ' "$1"
 }
 
 # Print every manifest entry as name|kind|src|dest|profiles|platforms.
 manifest_records() {
-  [[ -f "$MANIFEST_TOML" ]] || { dot_error "Manifest not found: $MANIFEST_TOML"; return 1; }
-  _manifest_awk "$MANIFEST_TOML"
+  [[ -f "$MANIFEST_CONF" ]] || { dot_error "Manifest not found: $MANIFEST_CONF"; return 1; }
+  _manifest_awk "$MANIFEST_CONF"
 }
 
 # csv-membership test: does comma-list $2 contain exact token $1?

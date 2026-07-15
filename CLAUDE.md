@@ -96,15 +96,17 @@ bin/                      # Utility scripts
 ### Configuration Management
 
 The dotfiles use a **symlink-based system** driven by a declarative manifest:
-- `install/manifest.toml` is the source of truth: each `[[entry]]` declares
-  name/kind/src/dest/profiles/platforms, and `install/manifest.sh` parses it
+- `manifest.conf` is the source of truth: entries are grouped under
+  cumulative profile sections (`[minimal]` ⊂ `[standard]` ⊂ `[full]`), one
+  line per entry (`name kind src dest [platforms]`), and `install/manifest.sh`
+  parses it
 - `bootstrap.sh` link, `dotfiles status`, and `dotfiles uninstall` all derive
   their file set from the manifest — none of them hardcode a symlink list
 - Config files in `config/` are symlinked to `~/.config/` (or another `dest`
   per the entry, e.g. `{HOME}` for dotfiles like `~/.zshenv`)
 - Existing files are automatically backed up before being replaced
 - `~/.config/.dotfiles-manifest` remains the runtime record of symlinks
-  actually created; it is separate from `install/manifest.toml`, the
+  actually created; it is separate from `manifest.conf`, the
   declarative source
 
 ### Neovim Architecture
@@ -174,8 +176,9 @@ nvim
 ### Adding New Configurations
 
 1. Add configuration files to `config/<tool-name>/`
-2. Add a matching `[[entry]]` to `install/manifest.toml` (name, kind, src,
-   dest, profiles, platforms) — `bootstrap.sh`, `dotfiles status`, and
+2. Add a matching line under the right profile section in
+   `manifest.conf` (`name kind src dest [platforms]`; platforms
+   defaults to `all`) — `bootstrap.sh`, `dotfiles status`, and
    `dotfiles uninstall` all pick it up automatically once declared there
 3. No need to manually update symlink logic in any script
 
@@ -183,9 +186,9 @@ nvim
 
 Packages are declarative and independent of the link manifest above:
 
-1. Append a `[[package]]` entry to `install/packages.toml` (`name`, `tiers`
-   — subset of `["minimal", "standard", "full"]`, `brew`, `cask`, `apt`; use
-   `""` to skip a field for a given platform)
+1. Add a line under the right tier section in `packages.conf`
+   (`name brew cask apt`; sections are cumulative `[minimal]` ⊂ `[standard]`
+   ⊂ `[full]`; use `-` to skip a field for a given platform)
 2. No script changes needed — `install/packages.sh` (`packages_select`)
    is read by `install/homebrew.sh` (macOS Brewfile generation) and
    `install/install-ubuntu.sh` (`ubuntu_required_apt`) automatically

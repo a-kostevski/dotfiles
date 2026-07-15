@@ -92,7 +92,7 @@ Complete development environment:
 - macOS-specific: Karabiner, Kitty terminal configuration
 
 ### All
-- `--profile all` symlinks every component declared in `install/manifest.toml`,
+- `--profile all` symlinks every component declared in `manifest.conf`,
   regardless of its `profiles` list
 
 Valid profiles are `minimal | standard | full | all`.
@@ -114,7 +114,7 @@ The package **tier** (`minimal | standard | full`) defaults to the link
 `profile` (`all` maps to `full`) and can be overridden independently with
 `--packages <tier>`. `--packages` without `--install-packages` is an error.
 
-Package tiers are declared in [`install/packages.toml`](install/packages.toml),
+Package tiers are declared in [`packages.conf`](packages.conf),
 the single source of truth read by `install/packages.sh`:
 
 - **minimal**: `git`, `git-lfs`, `curl`, `wget`, `zsh`, `tmux`
@@ -209,12 +209,12 @@ dotfiles uninstall --yes        # skip the confirmation prompt
 ├── install/               # OS-specific installation scripts
 │   ├── install-macos.sh   # macOS setup
 │   ├── install-ubuntu.sh  # Ubuntu setup
-│   ├── manifest.toml      # Declarative name/kind/src/dest/profiles/platforms manifest
 │   ├── manifest.sh        # Manifest reader used by bootstrap.sh and dotfiles
-│   ├── packages.toml      # Declarative package tiers (minimal/standard/full)
 │   └── packages.sh        # Package tier reader used by --install-packages
 ├── Makefile               # install/update/validate targets
-└── bootstrap.sh           # Main installation script
+├── bootstrap.sh           # Main installation script
+├── manifest.conf          # Declarative link manifest, grouped by profile section
+└── packages.conf          # Declarative package tiers, grouped by tier section
 ```
 
 ## Configuration Details
@@ -381,13 +381,14 @@ grep -q "$(which zsh)" /etc/shells || echo "$(which zsh)" | sudo tee -a /etc/she
 ## Customization
 
 ### Adding a Component
-Components are declared in `install/manifest.toml`, the single source of
-truth for name/kind/src/dest/profiles/platforms. `bootstrap.sh` link,
+Components are declared in `manifest.conf`, the single source of
+truth for name/kind/src/dest/platforms, grouped into cumulative profile
+sections (`[minimal]` ⊂ `[standard]` ⊂ `[full]`). `bootstrap.sh` link,
 `dotfiles status`, and `dotfiles uninstall` all derive their file set from it.
 
 1. Add configuration files to `config/<tool-name>/`
-2. Add a matching `[[entry]]` to `install/manifest.toml` (name, kind, src,
-   dest, profiles, platforms)
+2. Add a matching line under the right profile section in
+   `manifest.conf` (`name kind src dest [platforms]`)
 3. Document any special requirements
 
 ## Contributing

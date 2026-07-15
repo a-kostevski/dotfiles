@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Declarative package manifest reader. All TOML parsing is isolated in
+# Declarative package manifest reader. All manifest parsing is isolated in
 # _packages_awk; the rest consumes pipe-delimited records. Pure: no network,
 # sudo, or filesystem mutation.
 
@@ -8,32 +8,49 @@ if [[ -z "${dot_title:-}" ]]; then
   source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 fi
 
-PACKAGES_TOML="${PACKAGES_TOML:-${dot_root:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}/install/packages.toml}"
+PACKAGES_CONF="${PACKAGES_CONF:-${dot_root:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)}/packages.conf}"
 
+# Parse the grouped-tier manifest into `name|tiers|brew|cask|apt` records.
+# Sections are cumulative ([minimal] packages belong to standard and full too),
+# so a package's tiers are its section plus every higher tier. "-" columns
+# become empty fields.
 _packages_awk() {
   awk '
-    function flush() {
-      if (have) printf "%s|%s|%s|%s|%s\n", p["name"], p["tiers"], p["brew"], p["cask"], p["apt"]
-      have = 0; delete p
+    BEGIN {
+      tier["minimal"]  = "minimal,standard,full"
+      tier["standard"] = "standard,full"
+      tier["full"]     = "full"
     }
-    /^[[:space:]]*#/ { next }
-    /^[[:space:]]*\[\[package\]\]/ { flush(); have = 1; next }
-    /^[[:space:]]*[a-z][a-z-]*[[:space:]]*=/ {
-      key = $1
-      eq = index($0, "="); val = substr($0, eq + 1)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
-      if (val ~ /^\[/) { gsub(/^\[|\]$/, "", val); gsub(/"/, "", val); gsub(/[[:space:]]+/, "", val) }
-      else { gsub(/^"|"$/, "", val) }
-      p[key] = val; have = 1; next
+    /^[[:space:]]*(#|$)/ { next }
+    /^[[:space:]]*\[[a-z]+\][[:space:]]*$/ {
+      s = $0
+      gsub(/[^a-z]/, "", s)
+      if (s in tier) { section = s } else {
+        printf "packages: unknown section [%s] at line %d\n", s, NR > "/dev/stderr"
+        section = ""
+      }
+      next
     }
-    END { flush() }
+    {
+      if (section == "") {
+        printf "packages: entry outside a tier section at line %d, skipped\n", NR > "/dev/stderr"
+        next
+      }
+      if (NF != 4) {
+        printf "packages: malformed entry at line %d (expected 4 columns, got %d), skipped\n", NR, NF > "/dev/stderr"
+        next
+      }
+      brew = ($2 == "-") ? "" : $2
+      cask = ($3 == "-") ? "" : $3
+      apt  = ($4 == "-") ? "" : $4
+      printf "%s|%s|%s|%s|%s\n", $1, tier[section], brew, cask, apt
+    }
   ' "$1"
 }
 
 packages_records() {
-  [[ -f "$PACKAGES_TOML" ]] || { dot_error "Package manifest not found: $PACKAGES_TOML"; return 1; }
-  _packages_awk "$PACKAGES_TOML"
+  [[ -f "$PACKAGES_CONF" ]] || { dot_error "Package manifest not found: $PACKAGES_CONF"; return 1; }
+  _packages_awk "$PACKAGES_CONF"
 }
 
 _packages_csv_has() {
