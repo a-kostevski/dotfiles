@@ -25,7 +25,8 @@ jobs:
       - name: Install lua
         run: sudo apt-get update && sudo apt-get install -y lua5.3
       - name: Install StyLua
-        run: cargo install stylua --version 2.5.2 --locked
+        # default features parse Lua 5.1 only; the config uses goto (5.2+)
+        run: cargo install stylua --version 2.5.2 --locked --features lua52,lua53,lua54
       - name: Check Neovim Lua formatting
         run: stylua --check config/nvim
       - name: luac -p on nvim config
