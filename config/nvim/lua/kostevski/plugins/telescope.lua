@@ -46,7 +46,7 @@ return {
       {
         "<leader>fF",
         function()
-          require("telescope.builtin").find_files({ root = false })
+          require("telescope.builtin").find_files()
         end,
         desc = "Find Files (cwd)",
       },
@@ -80,7 +80,7 @@ return {
       {
         "<leader>sG",
         function()
-          require("telescope.builtin").live_grep({ root = false })
+          require("telescope.builtin").live_grep()
         end,
         desc = "Grep (cwd)",
       },
@@ -95,10 +95,6 @@ return {
       { "<leader>sR", "<cmd>Telescope resume<cr>", desc = "Resume" },
       { "<leader>sq", "<cmd>Telescope quickfix<cr>", desc = "Quickfix List" },
       { "<leader>fu", "<cmd>Telescope colorscheme enable_preview=true<cr>", desc = "Colorscheme with Preview" },
-      -- { "<leader>sw", LazyVim.pick("grep_string", { word_match = "-w" }), desc = "Word (Root Dir)" },
-      -- { "<leader>sW", LazyVim.pick("grep_string", { root = false, word_match = "-w" }), desc = "Word (cwd)" },
-      -- { "<leader>sw", LazyVim.pick("grep_string"), mode = "v", desc = "Selection (Root Dir)" },
-      -- { "<leader>sW", LazyVim.pick("grep_string", { root = false }), mode = "v", desc = "Selection (cwd)" },
       {
         "<leader>ss",
         function()

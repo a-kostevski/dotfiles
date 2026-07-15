@@ -156,8 +156,6 @@ return {
         { "]", group = "Next" },
         -- better descriptions
         { "gx", desc = "Open with system app" },
-        { "<BS>", desc = "Decrement Selection", mode = "x" },
-        { "<c-space>", desc = "Increment Selection", mode = { "x" } },
       },
     },
   },

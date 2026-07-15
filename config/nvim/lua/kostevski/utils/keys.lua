@@ -135,27 +135,6 @@ local function normalize_modes(mode)
   return type(mode) == "table" and mode or { mode or "n" }
 end
 
----@param lhs string
----@param rhs function|string
----@param opts? table
-function Keys.map(lhs, rhs, opts)
-  vim.validate("lhs", lhs, "string")
-  vim.validate("rhs", rhs, { "function", "string" })
-  vim.validate("opts", opts, "table", true)
-
-  opts = opts or {}
-  local keymap_def = {
-    lhs,
-    rhs,
-    desc = opts.desc,
-    mode = opts.mode or "n",
-    nowait = opts.nowait,
-    has = opts.has,
-    cond = opts.cond,
-  }
-  table.insert(Keys.keys, keymap_def)
-end
-
 ---Apply keymap safely with error handling
 ---@param keymap KeymapDefinition
 ---@param opts table
@@ -183,7 +162,6 @@ end
 ---@param client table LSP client
 ---@param buffer number Buffer number
 function Keys.on_attach(client, buffer)
-  -- Use Utils.lsp.has for capability checking
   for _, keymap in ipairs(Keys.keys) do
     -- Check capabilities first
     if keymap.has then

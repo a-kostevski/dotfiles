@@ -61,32 +61,6 @@ setmetatable(Utils, {
   end,
 })
 
----Check if a table is a list (array-like table with consecutive integer keys)
----
----Determines if a table has only consecutive integer keys starting from 1,
----which is the definition of a Lua list/array
----
----@param t table The table to check
----@return boolean is_list True if the table is a list, false otherwise
----
----@usage
----  Utils.is_list({1, 2, 3})        -- true
----  Utils.is_list({a = 1, b = 2})   -- false
----  Utils.is_list({1, 2, [4] = 4})  -- false (gap at index 3)
-function Utils.is_list(t)
-  if type(t) ~= "table" then
-    return false
-  end
-  local i = 0
-  for _ in pairs(t) do
-    i = i + 1
-    if t[i] == nil then
-      return false
-    end
-  end
-  return true
-end
-
 ---Recursively flatten a nested table structure into a single-level list
 ---
 ---Takes any nested table structure and extracts all non-table values into
@@ -110,44 +84,6 @@ function Utils.flatten(item, result)
     result[#result + 1] = item
   end
   return result
-end
-
----Deep merge multiple tables recursively
----
----Merges tables from left to right, with later values overriding earlier ones.
----Handles nested tables intelligently - only merges tables that aren't lists.
----Supports vim.NIL to explicitly set values to nil.
----
----@vararg table Tables to merge
----@return table merged_table The merged result
----
----@usage
----  Utils.merge({a = 1}, {b = 2})              -- {a = 1, b = 2}
----  Utils.merge({a = {x = 1}}, {a = {y = 2}})  -- {a = {x = 1, y = 2}}
----  Utils.merge({a = 1}, {a = vim.NIL})        -- {} (a is removed)
-function Utils.merge(...)
-  local function can_merge(v)
-    return type(v) == "table" and (vim.tbl_isempty(v) or not Utils.is_list(v))
-  end
-
-  local ret = select(1, ...)
-  if ret == vim.NIL then
-    ret = nil
-  end
-
-  for i = 2, select("#", ...) do
-    local value = select(i, ...)
-    if can_merge(ret) and can_merge(value) then
-      for k, v in pairs(value) do
-        ret[k] = Utils.merge(ret[k], v)
-      end
-    elseif value == vim.NIL then
-      ret = nil
-    elseif value ~= nil then
-      ret = value
-    end
-  end
-  return ret
 end
 
 ---Remove duplicate values from a list while preserving order
@@ -210,25 +146,6 @@ function Utils.norm(path)
   end
 
   return path
-end
-
----Terminal codes for creating undo breakpoints in insert mode
----This constant holds the terminal codes for Ctrl-G u, which creates an undo breakpoint
-Utils.CREATE_UNDO = vim.api.nvim_replace_termcodes("<c-G>u", true, true, true)
-
----Create an undo breakpoint in insert mode
----
----When called in insert mode, creates an undo breakpoint at the current position.
----This allows for finer-grained undo operations instead of undoing entire insert sessions.
----Useful when implementing custom insert mode mappings or auto-completion.
----
----@usage
----  -- In a completion function
----  Utils.create_undo()  -- Create undo point before inserting text
-function Utils.create_undo()
-  if vim.api.nvim_get_mode().mode == "i" then
-    vim.api.nvim_feedkeys(Utils.CREATE_UNDO, "n", false)
-  end
 end
 
 ---Pretty print a value using vim.inspect and return it (for chaining)
@@ -305,41 +222,6 @@ function Utils.debounce(ms, fn)
       vim.schedule_wrap(fn)(unpack(argv))
     end)
   end
-end
-
----Execute a function with automatic error handling
----
----Wraps a function in pcall and handles errors gracefully with notifications.
----Supports custom error messages and error handlers.
----
----@generic R
----@param fn fun():R? The function to execute
----@param opts? string|{msg:string, on_error:fun(msg)} Error message or options table
----@return R? result The function result on success, nil on error
----
----@usage
----  Utils.try(function() vim.cmd.edit("file.txt") end, "Failed to open file")
----  Utils.try(fn, { msg = "Error", on_error = function(err) log(err) end })
-function Utils.try(fn, opts)
-  -- Normalize opts
-  local options = type(opts) == "string" and { msg = opts } or opts or {}
-
-  -- Execute function in protected mode
-  local ok, result = pcall(fn)
-
-  if ok then
-    return result
-  end
-
-  -- Handle error case
-  local err_msg = options.msg or tostring(result)
-
-  if options.on_error then
-    options.on_error(err_msg)
-  else
-    vim.notify(err_msg, vim.log.levels.ERROR)
-  end
-  return nil
 end
 
 ---Initialize all utility modules that require setup

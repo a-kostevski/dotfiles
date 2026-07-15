@@ -1,13 +1,6 @@
 local M = {}
 
 local icons = {
-  borders = {
-    dashed = { "┄", "┊", "┄", "┊", "╭", "╮", "╯", "╰" },
-    double = { "═", "║", "═", "║", "╔", "╗", "╝", "╚" },
-    single = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
-    blocks = { "▀", "▐", "▄", "▌", "▛", "▜", "▟", "▙" },
-    blocky = { "▀", "▐", "▄", "▌", "▄", "▄", "▓", "▀" },
-  },
   diagnostics = {
     ERROR = " ", -- Alternatively: " "
     WARN = " ",
@@ -142,14 +135,6 @@ local icons = {
       "Trait",
     },
   },
-  misc = {
-    breadcrumb = "»",
-    separator = "➜",
-    group = "",
-    ellipsis = "…",
-    dots = "",
-    spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
-  },
 }
 
 M.icons = icons
@@ -218,13 +203,6 @@ function M.get_kind_filter(buf)
       and type(M.icons.kind_filter.default) == "table"
       and M.icons.kind_filter.default
     or nil
-end
-
-function M.spinner(interval)
-  local spinner = M.icons.misc.spinner_frames
-  local ms = vim.uv.hrtime() / 1000000
-  local frame = math.floor(ms / interval) % #spinner
-  return spinner[frame + 1]
 end
 
 return M

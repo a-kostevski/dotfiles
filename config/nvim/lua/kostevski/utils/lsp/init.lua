@@ -37,14 +37,6 @@ function Lsp.get_clients(...)
   return Lsp.clients.get_clients(...)
 end
 
----Check if any LSP client supports a specific method for a buffer
----@param bufnr? integer Buffer number (0 or nil for current buffer)
----@param method string LSP method name
----@return boolean
-function Lsp.has(bufnr, method)
-  return Lsp.capabilities.has_method(bufnr, method)
-end
-
 ---Get LSP clients that support formatting for a buffer
 ---@param bufnr? integer Buffer number
 ---@return table[] clients
