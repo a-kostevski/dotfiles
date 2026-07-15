@@ -64,7 +64,7 @@ command_exists bat && alias cat="bat"
 alias map="xargs -n1"
 alias vi="nvim"
 alias vim="nvim"
-alias zotify="zotify --config-location \"${XDG_CONFIG_HOME:-$HOME}/zotify/zconfig.json\""
+command_exists zotify && alias zotify="zotify --config-location \"${XDG_CONFIG_HOME:-$HOME}/zotify/zconfig.json\""
 
 # --- ls ---
 if command_exists eza; then
@@ -102,7 +102,8 @@ alias drun=drun-fn
 alias dsp="docker system prune --all"
 alias dsr=dsr-fn
 
-for p in path fpath manpath infopath; do
+# Note: no manpath entry here — it would shadow manpath(1)
+for p in path fpath infopath; do
     alias $p='echo "${'${(U)p}'}" | tr ":" "\n"'
 done
 

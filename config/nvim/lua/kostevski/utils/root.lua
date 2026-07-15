@@ -122,14 +122,6 @@ function root.get(opts)
   return result
 end
 
----Get git root directory
----@return string?
-function root.git()
-  local current_root = root.get()
-  local git_root = vim.fs.find(".git", { path = current_root, upward = true })[1]
-  return git_root and vim.fn.fnamemodify(git_root, ":h") or current_root
-end
-
 ---Change directory to project root
 ---@param opts? { buf?: number, silent?: boolean }
 function root.cd(opts)
@@ -141,11 +133,6 @@ function root.cd(opts)
       Utils.notify.info(string.format("Changed directory to: %s", dir), { title = "Root" })
     end
   end
-end
-
----Clear the root cache
-function root.clear_cache()
-  cache = {}
 end
 
 function root.setup()

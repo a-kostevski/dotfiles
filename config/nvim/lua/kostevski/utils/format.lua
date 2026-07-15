@@ -18,12 +18,6 @@ function Format.register(formatter)
   end)
 end
 
--- Fix formatexpr return type annotation
----@return integer formatexpr The formatexpr value
-function Format.formatexpr()
-  return require("conform").formatexpr()
-end
-
 --- Resolves the active formatters for a buffer.
 --- @param buf number: The buffer number (optional).
 --- @return table: The resolved formatters.
@@ -73,12 +67,6 @@ function Format.info(buf)
   if Utils.notify then
     Utils.notify[enabled and "info" or "warn"](table.concat(lines, "\n"))
   end
-end
-
---- Toggles autoformatting for a buffer.
---- @param buf number: The buffer number (optional).
-function Format.toggle(buf)
-  Format.enable(buf, not Format.enabled(buf))
 end
 
 --- Checks if autoformatting is enabled for a buffer.

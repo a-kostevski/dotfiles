@@ -5,7 +5,8 @@ function M.setup()
   local LAZY_REVISION = "85c7ff3711b730b4030d03144f6db6375044ae82"
   local offline = vim.env.DOTFILES_NVIM_OFFLINE == "1"
 
-  -- Bootstrap lazy.nvim
+  -- Bootstrap lazy.nvim (pin verified only at install time; no git calls on
+  -- normal startups once the install exists)
   if not vim.uv.fs_stat(lazypath) then
     assert(not offline, "lazy.nvim is absent in offline mode; run :Lazy restore first")
     local lazyrepo = "https://github.com/folke/lazy.nvim.git"
@@ -19,16 +20,6 @@ function M.setup()
     })
     if vim.v.shell_error ~= 0 then
       vim.notify("Failed to install lazy.nvim:\n" .. out, vim.log.levels.ERROR)
-      return false
-    end
-  end
-
-  local revision = vim.fn.system({ "git", "-C", lazypath, "rev-parse", "HEAD" }):gsub("%s+$", "")
-  if revision ~= LAZY_REVISION then
-    assert(not offline, "lazy.nvim revision differs in offline mode; run :Lazy restore first")
-    local out = vim.fn.system({ "git", "-C", lazypath, "fetch", "--filter=blob:none", "origin", LAZY_REVISION })
-    if vim.v.shell_error ~= 0 then
-      vim.notify("Failed to fetch pinned lazy.nvim revision:\n" .. out, vim.log.levels.ERROR)
       return false
     end
     out = vim.fn.system({ "git", "-C", lazypath, "checkout", "--detach", LAZY_REVISION })

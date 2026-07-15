@@ -43,7 +43,7 @@ return lang.register({
   },
   lsp_server = "marksman",
   formatters = {
-    list = { "prettier", "markdownlint-cli2", "markdown-toc" },
+    list = { "prettierd", "markdownlint-cli2", "markdown-toc" },
     tools = { "markdownlint-cli2", "markdown-toc", "prettierd" },
     config = {
       ["markdown-toc"] = {

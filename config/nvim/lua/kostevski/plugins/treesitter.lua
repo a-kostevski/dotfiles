@@ -45,12 +45,13 @@ return {
       ts.install(parsers)
 
       vim.api.nvim_create_autocmd("FileType", {
+        group = vim.api.nvim_create_augroup("kostevski_treesitter", { clear = true }),
         callback = function(args)
           local ft = args.match
           local lang = vim.treesitter.language.get_lang(ft) or ft
           if pcall(vim.treesitter.language.inspect, lang) then
-            vim.treesitter.start()
-            vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+            vim.treesitter.start(args.buf)
+            vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
           end
         end,
       })

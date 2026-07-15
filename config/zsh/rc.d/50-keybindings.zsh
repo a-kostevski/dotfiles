@@ -2,10 +2,7 @@
 typeset -gA keys=(
     Up '^[[A'
     Down '^[[B'
-    Right '^[[C'
-    Left '^[[D'
     Shift+Tab '^[[Z'
-    Backspace $'\x7f'
 )
 
 # Vi mode settings

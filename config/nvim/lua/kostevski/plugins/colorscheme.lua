@@ -1,44 +1,5 @@
 return {
-  {
-    "catppuccin/nvim",
-    enabled = false,
-    lazy = true,
-    name = "catppuccin",
-    priority = 1000,
-    config = function()
-      require("catppuccin").setup({
-        flavour = "latte",
-        integrations = {
-          blink_cmp = true,
-          flash = true,
-          dap = true,
-          dap_ui = true,
-          gitsigns = true,
-          grug_far = true,
-          indent_blankline = { enabled = true },
-          mason = true,
-          markdown = true,
-          mini = true,
-          native_lsp = {
-            enabled = true,
-            underlines = {
-              errors = { "undercurl" },
-              hints = { "undercurl" },
-              warnings = { "undercurl" },
-              information = { "undercurl" },
-            },
-          },
-          neotree = true,
-          notify = true,
-          render_markdown = true,
-          telescope = true,
-          treesitter = true,
-          treesitter_context = true,
-          which_key = true,
-        },
-      })
-    end,
-  },
+  { "catppuccin/nvim", name = "catppuccin", enabled = false },
   {
     "folke/tokyonight.nvim",
     lazy = false,
@@ -50,10 +11,5 @@ return {
       style = "night",
     },
   },
-  {
-    "shaunsingh/nord.nvim",
-    enabled = false,
-    lazy = true,
-    priority = 1000,
-  },
+  { "shaunsingh/nord.nvim", enabled = false },
 }

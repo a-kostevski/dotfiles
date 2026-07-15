@@ -22,7 +22,7 @@ return lang.register(lang.create_simple("ruby", {
     list = { "rubocop" },
     tools = { "rubocop" },
   },
-  treesitter_parsers = { "ruby", "erb" },
+  treesitter_parsers = { "ruby", "embedded_template" },
   root_patterns = { "Gemfile", ".rubocop.yml", ".git" },
   test_adapters = { "olimorris/neotest-rspec" },
   settings = {

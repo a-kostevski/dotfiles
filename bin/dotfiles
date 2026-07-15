@@ -38,10 +38,12 @@ source "$DOTFILES_ROOT/install/lib.sh"
 source "$DOTFILES_ROOT/install/symlinks.sh"
 source "$DOTFILES_ROOT/install/manifest.sh"
 
-# Configuration
-export MANIFEST_FILE="$HOME/.config/.dotfiles-manifest"
+# Configuration (paths derive from CONFIG_DEST, matching bootstrap.sh)
+CONFIG_DEST="${CONFIG_DEST:-$HOME/.config}"
+export CONFIG_DEST
+export MANIFEST_FILE="$CONFIG_DEST/.dotfiles-manifest"
 export CACHE_FILE="$HOME/.cache/dotfiles-status"
-export PROFILE_FILE="$HOME/.config/.dotfiles-profile"
+export PROFILE_FILE="$CONFIG_DEST/.dotfiles-profile"
 
 # Detect OS for profile management
 detect_os
@@ -156,7 +158,8 @@ cmd_clean() {
         shift
         ;;
       *)
-        shift
+        dot_error "Unknown option: $1"
+        return 2
         ;;
     esac
   done

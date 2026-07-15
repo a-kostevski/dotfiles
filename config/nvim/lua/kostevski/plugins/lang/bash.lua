@@ -24,21 +24,7 @@ return lang.register({
     -- Version control
     ".git",
   },
-  lsp_server = {
-    name = "bashls",
-    config = {
-      filetypes = { "sh", "bash" },
-      settings = {
-        bashIde = {
-          globPattern = "*@(.sh|.inc|.bash|.command)",
-          shellcheckPath = "shellcheck",
-          includeAllWorkspaceSymbols = true,
-          explainshellEndpoint = "",
-          shellcheckArguments = { "-x" },
-        },
-      },
-    },
-  },
+  lsp_server = "bashls",
   formatters = {
     list = { "shfmt", "beautysh" },
     tools = { "shfmt", "beautysh" },

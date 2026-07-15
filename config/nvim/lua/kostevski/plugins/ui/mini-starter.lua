@@ -8,20 +8,6 @@ local function create_header(text)
   return string.format("%s %s %s", pad, text:upper(), pad)
 end
 
-local M = {
-  sections = {},
-}
-
-function M.format_section(content, _)
-  local current_section = ""
-  local coords = MiniStarter.content_coords(content, "item")
-  for _, c in ipairs(coords) do
-    local unit = content[c.line][c.unit]
-    local item = unit.item
-  end
-  return content
-end
-
 return {
   "echasnovski/mini.starter",
   lazy = false,
@@ -79,7 +65,6 @@ return {
       content_hooks = {
         starter.gen_hook.adding_bullet("░ ", false),
         starter.gen_hook.aligning("center", "center"),
-        M.format_section,
       },
     }
     return config

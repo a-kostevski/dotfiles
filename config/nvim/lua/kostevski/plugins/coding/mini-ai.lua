@@ -104,7 +104,7 @@ function ai_config.whichkey(opts)
       if prefix:sub(1, 1) == "i" then
         desc = desc:gsub(" with ws", "")
       end
-      ret[#ret + 1] = { prefix .. obj[1], desc = obj.desc }
+      ret[#ret + 1] = { prefix .. obj[1], desc = desc }
     end
   end
   require("which-key").add(ret, { notify = false })

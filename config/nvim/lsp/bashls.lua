@@ -52,19 +52,6 @@ return {
       configuration = true,
     },
   },
-  on_attach = function(client, bufnr)
-    -- Enable completion triggered by <c-x><c-o>
-    vim.bo[bufnr].omnifunc = "v:lua.vim.lsp.omnifunc"
-
-    -- Format on save for shell scripts
-    vim.api.nvim_create_autocmd("BufWritePre", {
-      buffer = bufnr,
-      callback = function()
-        -- Only format if shfmt is available
-        if vim.fn.executable("shfmt") == 1 then
-          vim.lsp.buf.format({ async = false })
-        end
-      end,
-    })
-  end,
+  -- No on_attach format-on-save here: conform.nvim owns formatting; an LSP
+  -- BufWritePre format would double-format shell buffers
 }

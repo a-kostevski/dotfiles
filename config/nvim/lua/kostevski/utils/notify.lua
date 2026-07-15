@@ -1,13 +1,7 @@
 ---@alias NotifyLevel integer|string Log level (number or string)
----@alias NotifyIcon string Icon character
----@alias NotifySpinnerFrame string Spinner animation frame
 
 ---@class NotifyConfig
 ---@field timeout integer Default timeout in milliseconds
----@field max_width integer Maximum notification width
----@field max_height integer Maximum notification height
----@field icons table<string, NotifyIcon> Icons for log levels
----@field spinner_frames NotifySpinnerFrame[] Spinner animation frames
 
 ---@class NotifyOptions
 ---@field title? string Notification title
@@ -25,16 +19,6 @@ local Notify = {}
 ---@type NotifyConfig
 Notify.config = {
   timeout = 2500,
-  max_width = 80,
-  max_height = 20,
-  icons = {
-    ERROR = "",
-    WARN = "",
-    INFO = "",
-    DEBUG = "",
-    TRACE = "",
-  },
-  spinner_frames = { "⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷" },
 }
 
 -- Duplicate notification tracking

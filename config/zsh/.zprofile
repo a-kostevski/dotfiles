@@ -1,12 +1,16 @@
 export SHELL_SESSIONS_DISABLE=1
 
-MANPATH=
-export MANPATH
-[ -x /usr/libexec/path_helper ] && eval "$(/usr/libexec/path_helper -s)"
+# macOS only: clear MANPATH so path_helper rebuilds it from /etc/manpaths.
+# Do not export an empty MANPATH elsewhere (it breaks man-db's own derivation).
+if [[ -x /usr/libexec/path_helper ]]; then
+   MANPATH=
+   export MANPATH
+   eval "$(/usr/libexec/path_helper -s)"
+fi
 
 # Next, set up Homebrew
 if [ -z $HOMEBREW_PREFIX ]; then
-   if [[ $(uname -m) == "arm64" ]]; then
+   if [[ $CPUTYPE == arm64 ]]; then
       HOMEBREW_PREFIX="/opt/homebrew"
    else
       HOMEBREW_PREFIX="/usr/local"

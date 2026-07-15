@@ -19,7 +19,7 @@ return {
     },
     config = function(_, opts)
       require("project_nvim").setup(opts)
-      Utils.plugin.on_load("telescope", function()
+      Utils.plugin.on_load("telescope.nvim", function()
         require("telescope").load_extension("projects")
       end)
     end,

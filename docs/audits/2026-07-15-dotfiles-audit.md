@@ -2,8 +2,10 @@
 
 > **Status:** Tier 1 and Tier 2 fixed and merged in `4e76c31` (branch `audit-fixes`,
 > 2026-07-16; spec `docs/superpowers/specs/2026-07-15-audit-fixes-design.md`, plan
-> `docs/superpowers/plans/2026-07-15-audit-fixes.md`). Tier 3 remains open and is
-> the cleanup backlog. Line numbers below refer to the pre-fix tree (`1fabfaf`).
+> `docs/superpowers/plans/2026-07-15-audit-fixes.md`). Tier 3 fixed on branch
+> `audit-tier3` (2026-07-16); the only item left as-is is the dangling `includeIf`
+> in the machine-local, untracked `gitconfig.local` (harmless — git ignores
+> missing include paths). Line numbers below refer to the pre-fix tree (`1fabfaf`).
 
 Four parallel audits: zsh (18 findings), nvim (43), install tooling (14), misc tool configs (14). Every finding was verified against the actual code by the auditing agent (quoted lines, `luac -p`, shellcheck, kitty's own parser, empirical repro for the shell bugs).
 
