@@ -2,10 +2,6 @@ return {
   "echasnovski/mini.surround",
   event = "VeryLazy",
   opts = {
-    modes = { insert = true, command = true, terminal = false },
-    skip_ts = { "string" },
-    skip_unbalanced = true,
-    markdown = true,
     mappings = {
       add = "gsa",
       delete = "gsd",
@@ -17,9 +13,7 @@ return {
     },
   },
   keys = {
-    mode = { "n", "v" },
-    { "gs", group = "Surrounding" },
-    { "gsa", desc = "Add Surrounding" },
+    { "gsa", desc = "Add Surrounding", mode = { "n", "v" } },
     { "gsd", desc = "Delete Surrounding" },
     { "gsf", desc = "Find Right Surrounding" },
     { "gsF", desc = "Find Left Surrounding" },

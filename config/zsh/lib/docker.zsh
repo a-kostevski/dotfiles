@@ -52,7 +52,7 @@ drmid-fn() {
   local imgs
   imgs=$(docker images -q -f dangling=true)
   if [[ -n "$imgs" ]]; then
-    docker rmi "$imgs"
+    docker rmi ${(f)imgs}
   else
     echo "no dangling images."
   fi

@@ -97,15 +97,15 @@ function Format.enabled(buf)
 end
 
 --- Enables or disables autoformatting for a buffer.
---- @param enable boolean: True to enable, false to disable
---- @param buf number: The buffer number (optional).
+--- @param buf number: The buffer number (optional; global toggle when nil).
+--- @param enable boolean: True to enable, false to disable.
 function Format.enable(buf, enable)
   if enable == nil then
     enable = true
   end
 
   if buf then
-    vim.b.autoformat = enable
+    vim.b[buf].autoformat = enable
   else
     vim.g.autoformat = enable
     vim.b.autoformat = nil

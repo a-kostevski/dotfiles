@@ -128,13 +128,13 @@ return {
       local find_files_no_ignore = function()
         local action_state = require("telescope.actions.state")
         local line = action_state.get_current_line()
-        require("telescope.builtin").find_files({ no_ignore = true, default_text = line })()
+        require("telescope.builtin").find_files({ no_ignore = true, default_text = line })
       end
 
       local find_files_with_hidden = function()
         local action_state = require("telescope.actions.state")
         local line = action_state.get_current_line()
-        require("telescope.builtin").find_files({ hidden = true, default_text = line })()
+        require("telescope.builtin").find_files({ hidden = true, default_text = line })
       end
 
       return {

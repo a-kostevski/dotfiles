@@ -246,6 +246,12 @@ function Keys.setup()
 
   vim.api.nvim_create_autocmd("LspDetach", {
     callback = function(args)
+      -- Keep buffer keymaps while another client is still attached
+      for _, client in ipairs(vim.lsp.get_clients({ bufnr = args.buf })) do
+        if client.id ~= args.data.client_id then
+          return
+        end
+      end
       Keys.detach(args.buf)
     end,
   })

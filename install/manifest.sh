@@ -103,7 +103,16 @@ _manifest_emit() {
   local res_dest; res_dest="$(_manifest_resolve_dest "$dest")"
 
   if [[ "$kind" == "file" ]]; then
-    [[ -f "$abs_src" ]] && printf '%s|%s\n' "$abs_src" "$res_dest"
+    if [[ -f "$abs_src" ]]; then
+      printf '%s|%s\n' "$abs_src" "$res_dest"
+    else
+      dot_warning "manifest: src not found: $src" >&2
+    fi
+    return 0
+  fi
+
+  if [[ ! -d "$abs_src" ]]; then
+    dot_warning "manifest: src not found: $src" >&2
     return 0
   fi
 

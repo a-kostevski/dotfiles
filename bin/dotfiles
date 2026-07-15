@@ -80,12 +80,20 @@ cmd_sync() {
           profile="$1"
           shift
         else
-          profile="${2:-}"
+          if [[ -z "${2:-}" ]]; then
+            dot_error "Option $1 requires a value"
+            return 2
+          fi
+          profile="$2"
           shift 2
         fi
         ;;
       --config)
-        config="${2:-}"
+        if [[ -z "${2:-}" ]]; then
+          dot_error "Option $1 requires a value"
+          return 2
+        fi
+        config="$2"
         shift 2
         ;;
       *)

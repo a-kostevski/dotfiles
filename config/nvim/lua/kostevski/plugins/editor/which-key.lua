@@ -150,6 +150,7 @@ return {
         { "gcc", desc = "Toggle line" },
         { "gco", "o<esc>Vcx<esc><cmd>normal gcc<cr>fxa<bs>", desc = "Add Comment Below", mode = { "n", "v" } },
         { "gcO", "O<esc>Vcx<esc><cmd>normal gcc<cr>fxa<bs>", desc = "Add Comment Above" },
+        { "gs", group = "Surrounding", mode = { "n", "v" } },
         { "z", group = "Fold" },
         { "[", group = "Previous" },
         { "]", group = "Next" },

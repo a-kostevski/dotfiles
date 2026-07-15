@@ -12,14 +12,18 @@ _lazy_load_cmd() {
 
 ## fzf - load immediately as it's frequently used
 if command_exists fzf; then
-  # Capture once, then source only when generation succeeded.
-  _fzf_init="$(fzf --zsh 2>/dev/null)"
-  if [[ -n "$_fzf_init" ]]; then
-    source <(print -r -- "$_fzf_init")
+  # Cache the init script for faster startup (mirrors op_completion caching)
+  local fzf_cache="$XDG_CACHE_HOME/zsh/fzf_init"
+  local fzf_bin="$(command -v fzf)"
+  if [[ ! -f "$fzf_cache" ]] || [[ "$fzf_bin" -nt "$fzf_cache" ]]; then
+    mkdir -p "${fzf_cache:h}"
+    fzf --zsh > "$fzf_cache" 2>/dev/null || : > "$fzf_cache"
+  fi
+  if [[ -s "$fzf_cache" ]]; then
+    source "$fzf_cache"
   elif [[ -f ~/.fzf.zsh ]]; then
     source ~/.fzf.zsh
   fi
-  unset _fzf_init
 fi
 
 ## thefuck - lazy load as it's not needed immediately

@@ -28,12 +28,6 @@ local M = {}
 -- LSP servers belonging to disabled languages, recorded by register()
 M._disabled_servers = {}
 
----LSP servers whose language is disabled (and not claimed by an enabled one)
----@return string[]
-function M.get_disabled_servers()
-  return vim.tbl_keys(M._disabled_servers)
-end
-
 ---Record a disabled language's LSP server and return an empty spec list.
 ---For lang modules that bypass register(): keeps mason-lspconfig's
 ---automatic_enable from enabling a leftover Mason install of the server.
@@ -291,7 +285,9 @@ function M.register(def)
     table.insert(specs, {
       "mfussenegger/nvim-dap",
       optional = true,
-      config = function()
+      -- opts (not config): a config here would replace coding/dap.lua's
+      -- config in lazy.nvim's fragment resolution
+      opts = function()
         local dap = require("dap")
         -- Apply DAP configurations
         for key, value in pairs(def.dap) do
