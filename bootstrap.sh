@@ -266,6 +266,11 @@ link_configs() {
     fi
     dot_info "Processing $SYNC_CONFIG configuration..."
     links="$(manifest_component_links "$SYNC_CONFIG" "$OS_TYPE")"
+
+    if [[ -z "$links" ]]; then
+      dot_warning "No entries for $SYNC_CONFIG on $OS_TYPE; nothing to link"
+      return 0
+    fi
   else
     local comp
     while IFS= read -r comp; do
@@ -273,11 +278,11 @@ link_configs() {
       dot_info "Processing $comp configuration..."
     done < <(manifest_components "$PROFILE" "$OS_TYPE")
     links="$(manifest_links "$PROFILE" "$OS_TYPE")"
-  fi
 
-  if [[ -z "$links" ]]; then
-    dot_error "No links selected (missing manifest or empty selection); aborting"
-    exit 1
+    if [[ -z "$links" ]]; then
+      dot_error "No links selected (missing manifest or empty selection); aborting"
+      exit 1
+    fi
   fi
 
   local source dest
