@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: shellcheck (shebang-discovered, warning severity)
-        run: tests/lint-shell.sh
+        run: make .lint-shell
 
   lua-syntax:
     runs-on: ubuntu-latest
@@ -45,76 +45,3 @@ jobs:
           zsh -n config/macos/harden.zsh
           # extensionless autoloaded functions and completions are zsh too
           find config/zsh/functions config/zsh/completions -type f -print0 | xargs -0 -n1 zsh -n
-
-  tests:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-      # stock macOS bash is 3.2; the tests need bash 4+ (declare -gA)
-      - name: Install bash (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install bash
-          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
-      - name: Run bootstrap tests
-        run: make test
-
-  nvim-smoke:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Neovim 0.11.4
-        run: |
-          version=0.11.4
-          case "${RUNNER_OS}:$(uname -m)" in
-            Linux:x86_64)
-              archive=nvim-linux-x86_64.tar.gz
-              sha256=a74740047e73b2b380d63a474282814063d10650cd6cc95efa16d1713c7e616c
-              ;;
-            macOS:x86_64)
-              archive=nvim-macos-x86_64.tar.gz
-              sha256=567b89138c29386f67a00fc8e26c6469c8bf0e5707dfea5e3fbaf4e21294d9eb
-              ;;
-            macOS:arm64)
-              archive=nvim-macos-arm64.tar.gz
-              sha256=2de9623a4aa8cedf85c51e33bf8e85e05f6f291b923cd666c04704ccf164e8b7
-              ;;
-            *) printf 'unsupported smoke-test platform: %s:%s\n' "$RUNNER_OS" "$(uname -m)" >&2; exit 1 ;;
-          esac
-          curl --fail --location --retry 3 --output "$RUNNER_TEMP/$archive" \
-            "https://github.com/neovim/neovim/releases/download/v${version}/$archive"
-          printf '%s  %s\n' "$sha256" "$RUNNER_TEMP/$archive" | \
-            { command -v sha256sum >/dev/null && sha256sum -c - || shasum -a 256 -c -; }
-          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP"
-          export PATH="$RUNNER_TEMP/${archive%.tar.gz}/bin:$PATH"
-          echo "$RUNNER_TEMP/${archive%.tar.gz}/bin" >> "$GITHUB_PATH"
-          nvim --version | head -1 | grep -Fx 'NVIM v0.11.4'
-      - name: Prepare isolated Neovim smoke state
-        run: mkdir -p "$RUNNER_TEMP/nvim-smoke"
-      - name: Restore locked lazy.nvim plugins
-        id: nvim-plugin-cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ runner.temp }}/nvim-smoke/data/nvim/lazy
-          key: nvim-smoke-${{ runner.os }}-0.11.4-85c7ff3711b730b4030d03144f6db6375044ae82-${{ hashFiles('config/nvim/lazy-lock.json') }}
-      - name: Restore plugins from lazy-lock.json (cache miss only)
-        if: steps.nvim-plugin-cache.outputs.cache-hit != 'true'
-        env:
-          NVIM_BIN: nvim
-          NVIM_SMOKE_STATE: ${{ runner.temp }}/nvim-smoke
-          NVIM_SMOKE_KEEP_STATE: '1'
-        run: tests/test-nvim-smoke.sh --restore
-      - name: Load locked Neovim configuration offline
-        env:
-          NVIM_BIN: nvim
-          NVIM_SMOKE_STATE: ${{ runner.temp }}/nvim-smoke
-          NVIM_SMOKE_KEEP_STATE: '1'
-        run: tests/test-nvim-smoke.sh

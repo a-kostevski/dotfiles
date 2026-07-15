@@ -168,7 +168,18 @@ return {
       end
 
       local install = vim.tbl_filter(configure, vim.tbl_keys(opts.servers))
-      if have_mason and vim.env.DOTFILES_NVIM_SMOKE ~= "1" then
+
+      -- Servers of disabled languages never enter opts.servers, but a
+      -- previously Mason-installed binary would still be picked up by
+      -- automatic_enable and load lsp/<server>.lua, whose requires may
+      -- depend on plugins the disabled language no longer installs
+      for _, server in ipairs(require("kostevski.utils.lang").get_disabled_servers()) do
+        if opts.servers[server] == nil then
+          mason_exclude[#mason_exclude + 1] = server
+        end
+      end
+
+      if have_mason then
         require("mason-lspconfig").setup({
           ensure_installed = vim.list_extend(install, Utils.plugin.opts("mason-lspconfig.nvim").ensure_installed or {}),
           automatic_enable = { exclude = mason_exclude },
@@ -189,9 +200,6 @@ return {
     },
     config = function(_, opts)
       require("mason").setup(opts)
-      if vim.env.DOTFILES_NVIM_SMOKE == "1" then
-        return
-      end
       -- ensure_installed holds CLI tools (formatters/linters), not LSP
       -- servers, so install via the registry; mason-lspconfig.setup() is
       -- called once from the nvim-lspconfig config with automatic_enable

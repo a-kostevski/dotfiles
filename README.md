@@ -213,8 +213,7 @@ dotfiles uninstall --yes        # skip the confirmation prompt
 │   ├── manifest.sh        # Manifest reader used by bootstrap.sh and dotfiles
 │   ├── packages.toml      # Declarative package tiers (minimal/standard/full)
 │   └── packages.sh        # Package tier reader used by --install-packages
-├── tests/                 # Regression tests (make test)
-├── Makefile               # install/update/test/validate targets
+├── Makefile               # install/update/validate targets
 └── bootstrap.sh           # Main installation script
 ```
 
@@ -304,8 +303,7 @@ rustup component add rust-analyzer
 ```
 
 For a local provider verification, run the setup commands above once, start
-Neovim normally, and confirm `:checkhealth provider` is successful. Do not run
-it with the CI smoke XDG state, which intentionally has no provider virtualenv.
+Neovim normally, and confirm `:checkhealth provider` is successful.
 
 ### Reproducible plugin recovery
 After syncing this configuration on a new or repaired machine, open Neovim and
@@ -313,23 +311,14 @@ run `:Lazy restore`. It installs the revisions in `config/nvim/lazy-lock.json`.
 
 ### Intentional updates
 Update plugins only when you intend to review a dependency change: run
-`:Lazy update`, inspect `config/nvim/lazy-lock.json`, run the smoke test, and
-commit the lockfile with the related configuration change. Update the pinned
+`:Lazy update`, inspect `config/nvim/lazy-lock.json`, verify Neovim starts
+cleanly, and commit the lockfile with the related configuration change. Update the pinned
 lazy.nvim bootstrap revision in `lazy.lua` in the same change when upgrading
 the manager.
 
 Mason tools are deliberately not version-pinned. Run `:MasonUpdate` and update
 or install a needed tool only when you choose to do so; verify the affected
 language locally. CI does not install or update Mason tools.
-
-The smoke overlay includes disabled-language dependencies. To refresh every
-pinned lockfile entry, run:
-
-```bash
-state_dir="$(mktemp -d)"
-NVIM_BIN="$(command -v nvim)" NVIM_SMOKE_STATE="$state_dir" \
-  tests/test-nvim-smoke.sh --sync
-```
 
 ## Updating
 

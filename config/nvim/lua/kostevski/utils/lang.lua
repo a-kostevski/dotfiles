@@ -25,6 +25,25 @@
 ---@class LangUtils Language configuration utilities
 local M = {}
 
+-- LSP servers belonging to disabled languages, recorded by register()
+M._disabled_servers = {}
+
+---LSP servers whose language is disabled (and not claimed by an enabled one)
+---@return string[]
+function M.get_disabled_servers()
+  return vim.tbl_keys(M._disabled_servers)
+end
+
+---Record a disabled language's LSP server and return an empty spec list.
+---For lang modules that bypass register(): keeps mason-lspconfig's
+---automatic_enable from enabling a leftover Mason install of the server.
+---@param server string LSP server name (lspconfig name)
+---@return table[] empty plugin spec list
+function M.disabled_server(server)
+  M._disabled_servers[server] = true
+  return {}
+end
+
 -- Default configuration when no languages.lua exists
 local DEFAULT_CONFIG = {
   enabled = { "lua" },
@@ -163,6 +182,16 @@ function M.register(def)
 
   -- Check if language is enabled
   if not M.is_enabled(def.name) then
+    -- Record the server so lspconfig can exclude it from mason-lspconfig's
+    -- automatic_enable: a previously Mason-installed server would otherwise
+    -- load lsp/<server>.lua, which may require plugins this disabled
+    -- language no longer installs (e.g. jsonls -> schemastore)
+    if def.lsp_server then
+      local server = type(def.lsp_server) == "string" and def.lsp_server or def.lsp_server.name
+      if server then
+        M._disabled_servers[server] = true
+      end
+    end
     return {}
   end
 

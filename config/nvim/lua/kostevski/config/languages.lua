@@ -9,8 +9,4 @@
 --     python = { lsp_server = "pyright" },
 --   }
 
-local smoke_languages = vim.env.DOTFILES_NVIM_SMOKE_LANGUAGES
-local enabled = smoke_languages and vim.split(smoke_languages, ",", { trimempty = true })
-  or { "lua", "terraform", "cpp" }
-
-return { enabled = enabled, overrides = {} }
+return { enabled = { "lua", "terraform", "cpp" }, overrides = {} }

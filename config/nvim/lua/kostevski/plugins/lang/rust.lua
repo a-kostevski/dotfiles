@@ -1,7 +1,7 @@
 local Lang = require("kostevski.utils.lang")
 
 if not Lang.is_enabled("rust") then
-  return {}
+  return Lang.disabled_server("rust_analyzer")
 end
 
 -- Root patterns for Rust projects

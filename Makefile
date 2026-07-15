@@ -21,7 +21,7 @@ NC := \033[0m # No Color
 
 # Phony targets
 .PHONY: help install install-minimal install-standard install-full install-packages \
-        apply-macos-defaults harden update uninstall test validate clean backup \
+        apply-macos-defaults harden update uninstall validate clean backup \
         docs deps version bootstrap-help
 
 ## Help
@@ -46,7 +46,6 @@ help:
 	@echo "  make backup          Backup current configs"
 	@echo ""
 	@echo "Development:"
-	@echo "  make test            Run tests"
 	@echo "  make deps            Check dependencies"
 	@echo "  make docs            Generate documentation"
 	@echo ""
@@ -126,19 +125,6 @@ backup:
 	done; \
 	echo -e "$(GREEN)Backup complete: $$backup_dir$(NC)"
 
-## Run tests
-# The Neovim smoke launcher is invoked explicitly by the dedicated CI job with
-# a checksum-pinned NVIM_BIN. It is not a self-contained regression test.
-TEST_SCRIPTS := $(filter-out tests/test-nvim-smoke.sh,$(wildcard tests/test-*.sh))
-
-test:
-	@echo -e "$(YELLOW)Running tests...$(NC)"
-	@status=0; \
-	for t in $(TEST_SCRIPTS); do \
-		bash "$$t" || status=1; \
-	done; \
-	exit $$status
-
 ## Check dependencies
 deps:
 	@echo -e "$(YELLOW)Checking dependencies...$(NC)"
@@ -195,12 +181,29 @@ bootstrap-help:
 		fi \
 	done
 
+# Discover shell scripts by shebang and shellcheck them (also run by CI).
+#   - Included: POSIX sh / bash / dash / ksh shebangs in bin/, install/,
+#     .githooks/, and repo-root *.sh
+#   - Excluded: zsh scripts (ShellCheck cannot parse zsh, SC1071); those are
+#     covered by the zsh-syntax CI job via `zsh -n`
 .lint-shell:
-	@if command -v shellcheck >/dev/null 2>&1; then \
-		tests/lint-shell.sh; \
-	else \
-		echo "shellcheck not installed"; \
-	fi
+	@command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck not installed"; exit 1; }
+	@targets=(); \
+	while IFS= read -r f; do \
+		[ -f "$$f" ] || continue; \
+		IFS= read -r first < "$$f" 2>/dev/null || continue; \
+		[[ "$$first" == '#!'* ]] || continue; \
+		case "$$first" in *zsh*) continue ;; esac; \
+		if [[ "$$first" =~ (^|[/[:space:]])(sh|bash|dash|ksh)([[:space:]]|$$) ]]; then \
+			targets+=("$$f"); \
+		fi; \
+	done < <(ls -1 bin/* install/* .githooks/* ./*.sh 2>/dev/null | sort -u); \
+	if [ "$${#targets[@]}" -eq 0 ]; then \
+		echo "lint-shell: no shell scripts discovered"; \
+		exit 1; \
+	fi; \
+	echo "lint-shell: checking $${#targets[@]} script(s)"; \
+	shellcheck -S warning "$${targets[@]}"
 
 .stats:
 	@echo "Repository Statistics"

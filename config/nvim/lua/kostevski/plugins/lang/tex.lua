@@ -1,7 +1,7 @@
 local Lang = require("kostevski.utils.lang")
 
 if not Lang.is_enabled("tex") then
-  return {}
+  return Lang.disabled_server("texlab")
 end
 
 -- Root patterns for LaTeX projects
