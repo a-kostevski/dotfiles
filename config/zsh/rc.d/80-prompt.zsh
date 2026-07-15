@@ -2,9 +2,11 @@ autoload -Uz vcs_info add-zsh-hook
 
 # Configure vcs_info
 zstyle ':vcs_info:*' enable git
+# %u/%c only render when check-for-changes is on
+zstyle ':vcs_info:*' check-for-changes true
 zstyle ':vcs_info:*' formats ' %F{red}λ%f:%b%u%c'
 zstyle ':vcs_info:*' actionformats ' %F{red}λ%f:%b|%a%u%c'
-zstyle ':vcs_info:*' unstagedstr ' %F{blue}%f'
+zstyle ':vcs_info:*' unstagedstr ' %F{blue}*%f'
 zstyle ':vcs_info:*' stagedstr ' %F{green}+%f'
 
 # Add vcs_info to precmd hooks instead of overwriting precmd

@@ -9,6 +9,8 @@ setopt hist_reduce_blanks        # Remove superfluous blanks before recording.
 setopt hist_verify               # Do not execute immediately upon history expansion.
 setopt share_history             # Share history between all sessions.
 
+# zsh does not create HISTFILE's parent directory
+[[ -d "$XDG_STATE_HOME/zsh" ]] || command mkdir -p -m 0700 "$XDG_STATE_HOME/zsh"
 export HISTFILE=$XDG_STATE_HOME/zsh/zhistory
 export HISTSIZE=110000
 export SAVEHIST=100000

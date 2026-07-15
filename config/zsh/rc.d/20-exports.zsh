@@ -36,10 +36,22 @@ export MANPAGER='less'
 export CLICOLOR=1
 export TERM=${TERM:-xterm-256color}
 
-# Homebrew-specific compiler flags (only set if Homebrew is installed)
+# Homebrew-specific compiler flags, only for kegs that are actually present
+# (bzip2 dropped: it was never declared in packages.conf)
 if [[ -n "$HOMEBREW_PREFIX" ]]; then
-    export LDFLAGS="-L${HOMEBREW_PREFIX}/opt/zlib/lib -L${HOMEBREW_PREFIX}/opt/bzip2/lib -L${HOMEBREW_PREFIX}/opt/readline/lib"
-    export CPPFLAGS="-I${HOMEBREW_PREFIX}/opt/zlib/include -I${HOMEBREW_PREFIX}/opt/bzip2/include -I${HOMEBREW_PREFIX}/opt/readline/include"
+    _ldflags=""
+    _cppflags=""
+    for _keg in zlib readline; do
+        if [[ -d "$HOMEBREW_PREFIX/opt/$_keg" ]]; then
+            _ldflags+="-L$HOMEBREW_PREFIX/opt/$_keg/lib "
+            _cppflags+="-I$HOMEBREW_PREFIX/opt/$_keg/include "
+        fi
+    done
+    if [[ -n "$_ldflags" ]]; then
+        export LDFLAGS="${_ldflags% }"
+        export CPPFLAGS="${_cppflags% }"
+    fi
+    unset _ldflags _cppflags _keg
 fi
 
 # Python

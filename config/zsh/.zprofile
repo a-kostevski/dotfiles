@@ -25,6 +25,9 @@ if [ -x $HOMEBREW_PREFIX/bin/brew ]; then
    fi
 
    source "$brew_cache"
+else
+   # No brew here: downstream [[ -n $HOMEBREW_PREFIX ]] guards must not fire
+   unset HOMEBREW_PREFIX
 fi
 
 for config_file in $ZDOTDIR/profile.d/*.zsh(N); do
