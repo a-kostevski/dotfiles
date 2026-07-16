@@ -1,0 +1,56 @@
+# Login-shell setup for bash. Mirrors zsh/.zprofile.
+# Symlinked to ~/.bash_profile by the manifest.
+
+export BDOTDIR="${BDOTDIR:-${XDG_CONFIG_HOME:-$HOME/.config}/bash}"
+[[ -r "$BDOTDIR/env.bash" ]] && source "$BDOTDIR/env.bash"
+
+export SHELL_SESSIONS_DISABLE=1
+
+# macOS only: clear MANPATH so path_helper rebuilds it from /etc/manpaths.
+# Do not export an empty MANPATH elsewhere (it breaks man-db's own derivation).
+if [[ -x /usr/libexec/path_helper ]]; then
+   MANPATH=
+   export MANPATH
+   eval "$(/usr/libexec/path_helper -s)"
+fi
+
+# Next, set up Homebrew ($HOSTTYPE is unreliable here: Homebrew's own bash
+# reports aarch64 where Apple's reports arm64, so probe for the binary instead)
+if [[ -z "${HOMEBREW_PREFIX:-}" ]]; then
+   if [[ -x /opt/homebrew/bin/brew ]]; then
+      HOMEBREW_PREFIX="/opt/homebrew"
+   else
+      HOMEBREW_PREFIX="/usr/local"
+   fi
+fi
+
+# Cache brew shellenv for faster startup
+if [[ -x "$HOMEBREW_PREFIX/bin/brew" ]]; then
+   brew_cache="${XDG_CACHE_HOME:-$HOME/.cache}/bash/brew_shellenv"
+   brew_bin="$HOMEBREW_PREFIX/bin/brew"
+
+   # Regenerate cache if brew is newer than cache or cache doesn't exist
+   if [[ ! -f "$brew_cache" ]] || [[ "$brew_bin" -nt "$brew_cache" ]]; then
+      mkdir -p "$(dirname "$brew_cache")"
+      "$brew_bin" shellenv bash > "$brew_cache"
+   fi
+
+   source "$brew_cache"
+   unset brew_cache brew_bin
+else
+   # No brew here: downstream [[ -n $HOMEBREW_PREFIX ]] guards must not fire
+   unset HOMEBREW_PREFIX
+fi
+
+for config_file in "$BDOTDIR"/profile.d/*.bash; do
+    [[ -r "$config_file" ]] && source "$config_file"
+done
+unset config_file
+
+# Interactive login shells skip ~/.bashrc by default; source it so they get
+# the same interactive setup. _BASHRC_SOURCED guards the reverse direction
+# (a non-login .bashrc sourcing this file) against recursion.
+export _BASH_PROFILE_SOURCED=1
+if [[ $- == *i* && -z "${_BASHRC_SOURCED:-}" && -r "$HOME/.bashrc" ]]; then
+    source "$HOME/.bashrc"
+fi

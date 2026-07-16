@@ -1,0 +1,118 @@
+# Environment variables for bash. Mirrors zsh/zshenv (kept in sync by hand;
+# zshenv stays the canonical copy). Safe to source more than once.
+[[ -n "${_BASH_ENV_SOURCED:-}" ]] && return 0
+export _BASH_ENV_SOURCED=1
+
+export XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
+export XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+export XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
+export XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+
+# Respect an existing runtime directory (for example, one supplied by systemd).
+# Without one, use a private, UID-specific directory rather than a shared
+# fallback such as /tmp/run.
+if [[ -z "${XDG_RUNTIME_DIR:-}" ]]; then
+  runtime_parent="${TMPDIR:-/tmp}"
+  runtime_parent="${runtime_parent%/}"
+  runtime_candidate="$runtime_parent/run-${EUID}"
+
+  if [[ ! -e "$runtime_candidate" && ! -L "$runtime_candidate" ]]; then
+    command mkdir -p -m 0700 "$runtime_candidate" 2>/dev/null
+  fi
+
+  if [[ -d "$runtime_candidate" && ! -L "$runtime_candidate" && -O "$runtime_candidate" ]]; then
+    command chmod 0700 "$runtime_candidate" 2>/dev/null && export XDG_RUNTIME_DIR="$runtime_candidate"
+  fi
+  unset runtime_parent runtime_candidate
+fi
+
+# Bash config directory (bash has no ZDOTDIR; ~/.bash_profile and ~/.bashrc
+# are thin symlinks into this directory)
+export BDOTDIR=$XDG_CONFIG_HOME/bash
+
+# Disable less history
+export LESSHISTFILE=-
+
+# Ripgrep
+export RIPGREP_CONFIG_PATH=$XDG_CONFIG_HOME/ripgrep/config
+
+# Composer
+export COMPOSER_HOME=$XDG_CONFIG_HOME/composer
+export COMPOSER_CACHE_DIR=$XDG_CACHE_HOME/composer
+
+# Docker
+export DOCKER_CONFIG=$XDG_CONFIG_HOME/docker
+
+# Cpanm
+export PERL_CPANM_HOME=$XDG_CONFIG_HOME/cpanm
+
+# Python & iPython
+export PYTHONSTARTUP=$XDG_CONFIG_HOME/python/startup.py
+export IPYTHONDIR=$XDG_CONFIG_HOME/ipython
+export PYTHON_HISTORY=$XDG_STATE_HOME/python/history
+export PYTHONPYCACHEPREFIX=$XDG_CACHE_HOME/python
+export PYTHONUSERBASE=$XDG_DATA_HOME/python
+
+# Poetry
+export POETRY_HOME=$XDG_DATA_HOME/poetry
+export POETRY_DATA_DIR=$XDG_DATA_HOME/poetry
+export POETRY_CACHE_DIR=$XDG_CACHE_HOME/poetry
+export POETRY_CONFIG_DIR=$XDG_CONFIG_HOME/poetry
+export POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true
+
+# pnpm
+export PNPM_HOME=$XDG_DATA_HOME/pnpm
+
+# Matplotlib
+export MPLCONFIGDIR=$XDG_CONFIG_HOME/matplotlib
+
+# ffmpeg
+export FFMPEG_DATADIR=$XDG_CONFIG_HOME/ffmpeg
+
+# Gnupg
+export GNUPGHOME=$XDG_DATA_HOME/gnupg
+
+# Go (GOPATH must exist before profile.d/10-path.bash builds PATH)
+export GOPATH=$XDG_DATA_HOME/go
+export GOMODCACHE=$XDG_CACHE_HOME/go/mod
+export GOCACHE=$XDG_CACHE_HOME/go/build
+export GOENV=$XDG_CONFIG_HOME/go/env
+
+# Gem
+export GEM_HOME=$XDG_DATA_HOME/gem
+export GEM_SPEC_CACHE=$XDG_CACHE_HOME/gem
+
+# npm
+export NPM_CONFIG_USERCONFIG=$XDG_CONFIG_HOME/npm/npmrc
+export NODE_REPL_HISTORY=$XDG_STATE_HOME/node/node_repl_history
+
+# electrum
+export ELECTRUMDIR=$XDG_DATA_HOME/electrum
+
+# Bundle
+export BUNDLE_USER_CONFIG=$XDG_CONFIG_HOME/bundle
+export BUNDLE_USER_CACHE=$XDG_CACHE_HOME/bundle
+export BUNDLE_USER_PLUGIN=$XDG_DATA_HOME/bundle
+
+# sqlite and postgres
+export SQLITE_HISTORY=$XDG_DATA_HOME/sqlite_history
+export PSQLRC=$XDG_CONFIG_HOME/pg/psqlrc
+export PSQL_HISTORY=$XDG_STATE_HOME/psql_history
+export PGPASSFILE=$XDG_CONFIG_HOME/pg/pgpass
+export PGSERVICEFILE=$XDG_CONFIG_HOME/pg/pg_service.conf
+
+# Default LANG to a UTF-8 locale when the environment doesn't provide one.
+# Do not export LC_ALL globally; reserve it for individual commands that need
+# deterministic locale behavior.
+export LANG=${LANG:-en_GB.UTF-8}
+export EDITOR="nvim"
+export VISUAL=$EDITOR
+
+# Build architecture flags (macOS only; $HOSTTYPE is a bash builtin, no fork,
+# but Homebrew's bash spells arm64 as aarch64 — normalize for clang)
+if [[ $OSTYPE == darwin* ]]; then
+  _arch="${HOSTTYPE:-$(uname -m)}"
+  [[ "$_arch" == aarch64 ]] && _arch=arm64
+  export ARCHFLAGS="-arch $_arch"
+  unset _arch
+fi

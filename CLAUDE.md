@@ -78,6 +78,13 @@ config/                    # All configuration files
 │   ├── profile.d/       # Profile configurations
 │   ├── functions/       # Autoloadable functions
 │   └── lib/             # Shared library functions
+├── bash/                # Bash configuration (mirrors the zsh layout)
+│   ├── bash_profile     # Login shells (→ ~/.bash_profile): env, brew, profile.d/
+│   ├── bashrc           # Interactive shells (→ ~/.bashrc): loads rc.d/
+│   ├── env.bash         # Environment variables (mirrors zshenv)
+│   ├── rc.d/            # Modular rc configurations (numbered for load order)
+│   ├── profile.d/       # PATH construction
+│   └── lib/             # Shared library functions (platform, docker)
 ├── git/                 # Git configuration
 ├── tmux/                # Tmux configuration
 └── [other tools]/       # Other tool-specific configs

@@ -1,0 +1,31 @@
+# Interactive-shell setup for bash. Mirrors zsh/.zshrc.
+# Symlinked to ~/.bashrc by the manifest.
+
+# Interactive shells only
+case $- in *i*) ;; *) return ;; esac
+
+export BDOTDIR="${BDOTDIR:-${XDG_CONFIG_HOME:-$HOME/.config}/bash}"
+
+# Non-login interactive shells (Linux terminal emulators) skip ~/.bash_profile;
+# source it so they get the same env and PATH setup. The flag prevents
+# bash_profile from re-entering this file.
+if [[ -z "${_BASH_PROFILE_SOURCED:-}" ]]; then
+    _BASHRC_SOURCED=1
+    [[ -r "$BDOTDIR/bash_profile" ]] && source "$BDOTDIR/bash_profile"
+    unset _BASHRC_SOURCED
+fi
+
+# Load interactive shell configurations
+for config_file in "$BDOTDIR"/rc.d/*.bash; do
+    [[ -r "$config_file" ]] && source "$config_file"
+done
+unset config_file
+
+# Load theme (shared with zsh; the zsh tree is linked in every profile)
+dir_colors="${XDG_CONFIG_HOME:-$HOME/.config}/zsh/theme/dir_colors"
+if [[ -f "$dir_colors" ]]; then
+    dircolors_cmd=$(get_dircolors_command)
+    [[ -n "$dircolors_cmd" ]] && eval "$("$dircolors_cmd" -b "$dir_colors")"
+    unset dircolors_cmd
+fi
+unset dir_colors
