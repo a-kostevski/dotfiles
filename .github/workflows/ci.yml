@@ -82,7 +82,8 @@ jobs:
           mkdir -p "$home"
           HOME="$home" ./bootstrap.sh --profile standard
           test -L "$home/.zshenv"
-          test "$(readlink "$home/.config/nvim")" = "$(pwd -P)/config/nvim"
+          # nvim is a tree entry: the directory is real, its files are links
+          test "$(readlink "$home/.config/nvim/init.lua")" = "$(pwd -P)/config/nvim/init.lua"
           HOME="$home" ./bin/dotfiles status --summary
       - name: Flagless re-run keeps the stored profile
         run: |
