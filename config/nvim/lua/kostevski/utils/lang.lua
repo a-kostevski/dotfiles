@@ -139,7 +139,6 @@ end
 ---@field formatters? {list:string[], tools:string[], by_ft?:table<string, string[]>, config?:table} Formatter configuration for conform.nvim
 ---@field linters? {list:string[], tools:string[], by_ft?:table<string, string[]>, config?:table} Linter configuration for nvim-lint
 ---@field dap? {adapters:table, configurations:table} Debug Adapter Protocol configuration
----@field test_adapters? string[] Neotest adapter plugin names (e.g., "nvim-neotest/neotest-python")
 ---@field treesitter_parsers? string[] Treesitter parser names to install
 ---@field mason_packages? string[] Additional Mason packages (tools, linters, etc.)
 ---@field settings? table FileType-specific vim options (e.g., {expandtab=true, shiftwidth=4})
@@ -154,7 +153,6 @@ end
 ---  - Formatter setup (conform.nvim)
 ---  - Linter setup (nvim-lint)
 ---  - Debug adapter configuration (nvim-dap)
----  - Test adapter setup (neotest)
 ---  - Treesitter parser installation
 ---  - Mason package management
 ---  - FileType-specific settings
@@ -306,21 +304,6 @@ function M.register(def)
   end
 
   -- Neotest configuration
-  if def.test_adapters and #def.test_adapters > 0 then
-    table.insert(specs, {
-      "nvim-neotest/neotest",
-      optional = true,
-      dependencies = def.test_adapters,
-      opts = function(_, opts)
-        opts = opts or {}
-        opts.adapters = opts.adapters or {}
-        for _, adapter in ipairs(def.test_adapters) do
-          local module = adapter:match("([^/]+)$")
-          table.insert(opts.adapters, require(module))
-        end
-      end,
-    })
-  end
 
   -- Treesitter parsers
   if def.treesitter_parsers and #def.treesitter_parsers > 0 then

@@ -74,7 +74,6 @@ return lang.register({
       },
     },
   },
-  test_adapters = { "nvim-neotest/neotest-python" },
   treesitter_parsers = { "python", "requirements" },
   settings = {
     expandtab = true,
@@ -90,19 +89,6 @@ return lang.register({
       config = function()
         require("dap-python").setup("uv")
       end,
-    },
-    -- Additional neotest configuration for Python
-    {
-      "nvim-neotest/neotest",
-      optional = true,
-      opts = {
-        adapters = {
-          ["neotest-python"] = {
-            -- runner = "pytest",
-            -- python = ".venv/bin/python",
-          },
-        },
-      },
     },
   },
 })

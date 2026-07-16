@@ -24,7 +24,6 @@ return lang.register(lang.create_simple("ruby", {
   },
   treesitter_parsers = { "ruby", "embedded_template" },
   root_patterns = { "Gemfile", ".rubocop.yml", ".git" },
-  test_adapters = { "olimorris/neotest-rspec" },
   settings = {
     expandtab = true,
     shiftwidth = 2,
@@ -107,7 +106,6 @@ return lang.register(lang.create_simple("ruby", {
 --          },
 --       },
 --    },
---    test_adapters = { "olimorris/neotest-rspec" },
 --    treesitter_parsers = { "ruby", "erb" },
 --    mason_packages = { "ruby-lsp", "rubocop", "erb-formatter", "erb-lint" },
 --    settings = {

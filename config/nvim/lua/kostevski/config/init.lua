@@ -1,13 +1,5 @@
 local M = {}
 
--- Define modules outside the setup function
-local modules = {
-  { name = "options", requires = {} },
-  { name = "autocmds", requires = {} },
-  { name = "keymaps", requires = { "options" } },
-  { name = "lazy", requires = { "options" } },
-}
-
 function M.setup()
   local Utils = require("kostevski.utils")
   Utils.setup()

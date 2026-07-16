@@ -60,7 +60,6 @@ return lang.register({
       },
     },
   },
-  test_adapters = { "fredrikaverpil/neotest-golang" },
   treesitter_parsers = { "go", "gomod", "gowork", "gosum" },
   additional_plugins = {
     -- Go-specific DAP plugin
@@ -74,19 +73,6 @@ return lang.register({
     -- Hugo support
     {
       "phelipetls/vim-hugo",
-    },
-    -- Additional neotest configuration for Go
-    {
-      "nvim-neotest/neotest",
-      optional = true,
-      opts = {
-        adapters = {
-          ["neotest-golang"] = {
-            go_test_args = { "-v", "-race", "-count=1", "-timeout=60s" },
-            dap_go_enabled = true,
-          },
-        },
-      },
     },
   },
 })

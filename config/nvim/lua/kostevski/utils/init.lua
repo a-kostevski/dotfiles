@@ -7,7 +7,6 @@
 --
 -- Usage:
 --   local Utils = require("kostevski.utils")
---   Utils.P(value)             -- Pretty print
 --   Utils.lsp.format()         -- LSP formatting (lazy loaded)
 --   Utils.toggle.create(...)   -- Create toggles (lazy loaded)
 -- ============================================================================
@@ -146,58 +145,6 @@ function Utils.norm(path)
   end
 
   return path
-end
-
----Pretty print a value using vim.inspect and return it (for chaining)
----
----Useful for debugging - prints the value in a human-readable format
----and returns it so it can be used in expressions.
----
----@param value any The value to pretty print
----@return any value The same value that was passed in (for chaining)
----
----@usage
----  Utils.P(vim.lsp.get_clients())  -- Print and inspect LSP clients
----  local result = Utils.P(some_function())  -- Print and capture result
-function Utils.P(value)
-  print(vim.inspect(value))
-  return value
-end
-
----Reload a Lua module by clearing it from package.loaded
----
----Uses plenary.reload if available for better reloading, otherwise falls back
----to manually clearing package.loaded. Useful during development for testing
----changes without restarting Neovim.
----
----@param name string The module name to reload (e.g., "kostevski.utils")
----@return any module The reloaded module
----
----@usage
----  Utils.RELOAD("kostevski.config")  -- Reload config module
-function Utils.RELOAD(name)
-  local has_plenary, plenary = pcall(require, "plenary.reload")
-  if has_plenary then
-    return plenary.reload_module(name)
-  else
-    -- Fallback implementation
-    package.loaded[name] = nil
-    return require(name)
-  end
-end
-
----Reload and require a module (convenience wrapper for RELOAD)
----
----Shorthand for reloading and requiring a module. Useful for rapid development.
----
----@param name string The module name to reload and require
----@return any module The reloaded module
----
----@usage
----  local config = Utils.R("kostevski.config")  -- Reload and get module
-function Utils.R(name)
-  Utils.RELOAD(name)
-  return require(name)
 end
 
 ---Create a debounced version of a function

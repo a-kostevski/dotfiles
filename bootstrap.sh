@@ -38,7 +38,6 @@ declare -g PROFILE="minimal"
 declare -g PROFILE_EXPLICIT=false
 declare -g DRY_RUN=""
 declare -g VERBOSE=false
-declare -g SKIP_INSTALL=false
 declare -g INSTALL_PACKAGES=false
 declare -g PACKAGE_TIER=""
 declare -g PACKAGE_TIER_OVERRIDE=""
@@ -78,8 +77,6 @@ OPTIONS:
                                 profile's tier, e.g. standard -> standard)
     --apply-macos-defaults      Apply macOS system defaults (macOS only)
     --harden                    Apply macOS security hardening (macOS only)
-    -s, --skip-install          Legacy compatibility flag; packages are already
-                                skipped unless --install-packages is provided
     -f, --force                 Force overwrite existing files without backup
     -n, --dry-run               Show what would be done without making changes
     -v, --verbose               Enable verbose output
@@ -145,10 +142,6 @@ parse_args() {
         PROFILE_EXPLICIT=true
         shift 2
         ;;
-      -s | --skip-install)
-        SKIP_INSTALL=true
-        shift
-        ;;
       --install-packages)
         INSTALL_PACKAGES=true
         shift
@@ -199,11 +192,6 @@ parse_args() {
         ;;
     esac
   done
-
-  if [[ "$SKIP_INSTALL" == "true" ]] && [[ "$INSTALL_PACKAGES" == "true" ]]; then
-    dot_error "--skip-install cannot be combined with --install-packages"
-    exit 2
-  fi
 
   if [[ -n "$PACKAGE_TIER_OVERRIDE" ]] && [[ "$INSTALL_PACKAGES" != "true" ]]; then
     dot_error "--packages requires --install-packages"
@@ -295,12 +283,6 @@ link_configs() {
   done <<<"$links"
 
   dot_success "Configuration files linked"
-}
-
-# Binaries are linked via the manifest `bin` entry in link_configs; this
-# remains only to ensure the destination directory exists.
-link_binaries() {
-  create_directory "$BIN_DEST"
 }
 
 # Run explicitly requested system provisioning actions.
@@ -442,11 +424,6 @@ main() {
     # Link configurations
     link_configs
 
-    # Link binaries (skip only when syncing one specific config)
-    if [[ -z "$SYNC_CONFIG" ]]; then
-      link_binaries
-    fi
-
     if [[ -z "$SYNC_CONFIG" && -z "$DRY_RUN" ]]; then
       printf '%s\n' "$PROFILE" >"$PROFILE_FILE"
     fi
@@ -467,9 +444,6 @@ main() {
 
     # Link configurations
     link_configs
-
-    # Link binaries
-    link_binaries
 
     if [[ -z "$SYNC_CONFIG" && -z "$DRY_RUN" ]]; then
       printf '%s\n' "$PROFILE" >"$PROFILE_FILE"

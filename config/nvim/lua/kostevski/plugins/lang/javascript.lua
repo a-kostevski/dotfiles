@@ -61,7 +61,6 @@ return lang.register({
       }
     end,
   },
-  test_adapters = { "nvim-neotest/neotest-jest" },
   treesitter_parsers = { "javascript", "jsdoc" },
   settings = {
     expandtab = true,

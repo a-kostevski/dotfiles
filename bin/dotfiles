@@ -42,7 +42,6 @@ source "$DOTFILES_ROOT/install/manifest.sh"
 CONFIG_DEST="${CONFIG_DEST:-$HOME/.config}"
 export CONFIG_DEST
 export MANIFEST_FILE="$CONFIG_DEST/.dotfiles-manifest"
-export CACHE_FILE="$HOME/.cache/dotfiles-status"
 export PROFILE_FILE="$CONFIG_DEST/.dotfiles-profile"
 
 # Detect OS for profile management

@@ -10,7 +10,6 @@ fi
 
 # Configuration constants
 MANIFEST_FILE="${MANIFEST_FILE:-$HOME/.config/.dotfiles-manifest}"
-CACHE_DIR="${CACHE_DIR:-$HOME/.cache/dotfiles}"
 
 # Pick a backup destination that does not clobber an existing backup
 # (second-granularity timestamps collide when several files are backed up
@@ -168,14 +167,13 @@ clean_broken_symlinks() {
                 count=$((count + 1))
             done < <(find "$target_dir" -type l ! -exec test -e {} \; -print 2>/dev/null || true)
         done
+        # manifest.sh is always sourced before this module (bootstrap.sh and
+        # bin/dotfiles both do), so the manifest is the only source of
+        # HOME-level destinations.
         local -a home_links=()
-        if command -v manifest_home_dests >/dev/null 2>&1; then
-            while IFS= read -r link; do
-                [[ -n "$link" ]] && home_links+=("$link")
-            done < <(manifest_home_dests "${OS_TYPE:-}")
-        else
-            home_links=("$HOME/.zshenv" "$HOME/.lldbinit")
-        fi
+        while IFS= read -r link; do
+            [[ -n "$link" ]] && home_links+=("$link")
+        done < <(manifest_home_dests "${OS_TYPE:-}")
         for link in "${home_links[@]}"; do
             [[ -L "$link" && ! -e "$link" ]] || continue
             if [[ -n "$dry_run" ]]; then

@@ -130,10 +130,6 @@ end
 function Lsp.setup()
   Lsp.handlers.setup()
 
-  if rawget(Lsp, "words") then
-    Lsp.words.setup({ enabled = true })
-  end
-
   vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("kostevski_lsp_attach", { clear = true }),
     callback = function(args)

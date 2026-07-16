@@ -88,7 +88,6 @@ Common development setup:
 Complete development environment:
 - Everything from Standard
 - clang-format, curl, and LLDB configuration
-- 1Password CLI (`op`) configuration
 - macOS-specific: Karabiner, Kitty terminal configuration
 
 ### All
