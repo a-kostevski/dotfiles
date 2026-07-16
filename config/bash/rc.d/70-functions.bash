@@ -72,6 +72,7 @@ src() {
     case "$mode" in
         file)
             if [[ -f "$file" ]]; then
+                # shellcheck disable=SC1090
                 source "$file"
             else
                 echo "File not found: $file"
@@ -91,6 +92,7 @@ src() {
             ;;
         executable)
             if [[ -x "$file" ]]; then
+                # shellcheck disable=SC1090
                 source "$file"
             else
                 echo "File is not executable: $file"

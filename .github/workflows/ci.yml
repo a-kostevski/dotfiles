@@ -43,6 +43,50 @@ jobs:
         run: |
           find config/zsh -name '*.zsh' -print0 | xargs -0 -n1 zsh -n
           zsh -n config/zsh/zshenv config/zsh/.zshrc config/zsh/.zprofile
-          zsh -n config/macos/harden.zsh
+          zsh -n config/macos/harden.zsh config/macos/defaults.zsh
           # extensionless autoloaded functions and completions are zsh too
           find config/zsh/functions config/zsh/completions -type f -print0 | xargs -0 -n1 zsh -n
+
+  bash-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n on bash config
+        run: |
+          find config/bash -type f \( -name '*.bash' -o -name 'bash_profile' -o -name 'bashrc' \) -print0 |
+            xargs -0 -n1 bash -n
+      - name: shellcheck on bash config (warning severity)
+        run: |
+          find config/bash -type f \( -name '*.bash' -o -name 'bash_profile' -o -name 'bashrc' \) -print0 |
+            xargs -0 shellcheck -S warning --shell=bash
+
+  # Exercise the linking engine itself: dry-run, a real link into an isolated
+  # HOME, status verification, and the stored-profile contract (a flagless
+  # re-run must keep — not clobber — the previously linked profile).
+  bootstrap:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install bash 4+ (macOS ships 3.2)
+        if: runner.os == 'macOS'
+        run: brew install bash
+      - name: Dry-run link (full profile)
+        run: ./bootstrap.sh --dry-run --profile full --verbose
+      - name: Real link into temp HOME (standard profile)
+        run: |
+          home="$RUNNER_TEMP/bootstrap-home"
+          mkdir -p "$home"
+          HOME="$home" ./bootstrap.sh --profile standard
+          test -L "$home/.zshenv"
+          test "$(readlink "$home/.config/nvim")" = "$(pwd -P)/config/nvim"
+          HOME="$home" ./bin/dotfiles status --summary
+      - name: Flagless re-run keeps the stored profile
+        run: |
+          home="$RUNNER_TEMP/bootstrap-home"
+          HOME="$home" ./bootstrap.sh
+          test "$(cat "$home/.config/.dotfiles-profile")" = "standard"
+          HOME="$home" ./bin/dotfiles status --summary

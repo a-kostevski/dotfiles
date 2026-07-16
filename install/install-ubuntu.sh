@@ -65,18 +65,21 @@ install_neovim() {
     dot_info "Installing Neovim $NEOVIM_RELEASE_VERSION under $HOME/.local"
   fi
 
-  execute_cmd "mkdir -p '$opt_dir' '$HOME/.local/bin'"
+  # Every step chains || return 1: this function runs inside retry's `if "$@"`
+  # condition, where set -e is suppressed for the whole call tree — an
+  # unchained failure would fall through and link a nonexistent binary.
+  execute_cmd "mkdir -p '$opt_dir' '$HOME/.local/bin'" || return 1
   if [[ ! -x "$install_dir/bin/nvim" ]]; then
     if [[ -e "$install_dir" ]]; then
       dot_error "Refusing to replace incomplete Neovim installation: $install_dir"
       return 1
     fi
-    execute_cmd "curl -fL --retry 3 --retry-delay 2 '$url' -o '$archive'"
-    execute_cmd "tar -xzf '$archive' -C '$opt_dir'"
-    execute_cmd "mv '$opt_dir/$asset' '$install_dir'"
+    execute_cmd "curl -fL --retry 3 --retry-delay 2 '$url' -o '$archive'" || return 1
+    execute_cmd "tar -xzf '$archive' -C '$opt_dir'" || return 1
+    execute_cmd "mv '$opt_dir/$asset' '$install_dir'" || return 1
     execute_cmd "rm -f '$archive'"
   fi
-  execute_cmd "ln -sfn '$install_dir/bin/nvim' '$HOME/.local/bin/nvim'"
+  execute_cmd "ln -sfn '$install_dir/bin/nvim' '$HOME/.local/bin/nvim'" || return 1
 }
 
 # Pure selector: prints the space-joined apt package set required for <tier>.

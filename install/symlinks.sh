@@ -48,9 +48,22 @@ create_symlink() {
             [[ -z "${DRY_RUN:-}" ]] && update_manifest "$src" "$dest"
             return 0
         else
-            # Always show - symlink is being updated
-            dot_info "Updating existing symlink: $dest"
-            dry_run rm "$dest"
+            local owner_root="${dot_root:-}"
+            if [[ -z "$owner_root" ]]; then
+                owner_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+            fi
+            if [[ "$current_target" == "$owner_root"/* || "${FORCE:-false}" == "true" ]]; then
+                # Stale link into this repo — ours to replace, no backup needed
+                dot_info "Updating existing symlink: $dest"
+                dry_run rm "$dest"
+            else
+                # A symlink managed outside this repo gets the same backup
+                # treatment as a regular file, so uninstall can restore it
+                local backup
+                backup=$(unique_backup_path "$dest")
+                dot_info "Backing up: $dest -> $backup"
+                dry_run mv "$dest" "$backup"
+            fi
         fi
     # Handle existing file (non-symlink)
     elif [[ -e "$dest" ]]; then

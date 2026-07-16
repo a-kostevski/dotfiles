@@ -35,6 +35,7 @@ declare -g OS_VERSION=""
 declare -g CONFIG_DEST
 declare -g BIN_DEST
 declare -g PROFILE="minimal"
+declare -g PROFILE_EXPLICIT=false
 declare -g DRY_RUN=""
 declare -g VERBOSE=false
 declare -g SKIP_INSTALL=false
@@ -68,7 +69,8 @@ installation and macOS system changes require explicit opt-in flags.
 
 OPTIONS:
     -p, --profile <name>        Installation profile: minimal, standard, full, all
-                                (default: minimal)
+                                (default: the stored profile from a previous
+                                run, else minimal)
     --config <name>             Sync only a specific config (e.g., nvim, zsh)
     --install-packages          Install OS-specific packages (explicit opt-in)
     --packages <tier>           Package tier: minimal, standard, full
@@ -140,6 +142,7 @@ parse_args() {
         PROFILE="${2:-}"
         [[ -z "$PROFILE" ]] && dot_error "Profile requires a value" && exit 1
         validate_profile "$PROFILE" || exit 1
+        PROFILE_EXPLICIT=true
         shift 2
         ;;
       -s | --skip-install)
@@ -391,6 +394,18 @@ main() {
   BIN_DEST="${BIN_DEST:-$DEFAULT_BIN_DEST}"
   MANIFEST_FILE="${MANIFEST_FILE:-$CONFIG_DEST/.dotfiles-manifest}"
   PROFILE_FILE="${PROFILE_FILE:-$CONFIG_DEST/.dotfiles-profile}"
+
+  # The stored profile is the installation intent (same semantics as
+  # `dotfiles sync`).  Without an explicit --profile, honor it — otherwise
+  # any bootstrap invocation (e.g. `--harden`, `--install-packages`) would
+  # silently relink under the minimal default and overwrite the stored file.
+  if [[ "$PROFILE_EXPLICIT" != "true" && -f "$PROFILE_FILE" ]]; then
+    PROFILE="$(<"$PROFILE_FILE")"
+    if ! validate_profile "$PROFILE"; then
+      dot_error "Stored profile is invalid: $PROFILE (pass --profile to override)"
+      exit 1
+    fi
+  fi
 
   # Resolve the package tier now that OS detection and profile validation
   # (in parse_args) have both completed, and before any installer runs.

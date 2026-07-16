@@ -35,6 +35,7 @@ if [[ -x "$HOMEBREW_PREFIX/bin/brew" ]]; then
       "$brew_bin" shellenv bash > "$brew_cache"
    fi
 
+   # shellcheck source=/dev/null
    source "$brew_cache"
    unset brew_cache brew_bin
 else
@@ -43,6 +44,7 @@ else
 fi
 
 for config_file in "$BDOTDIR"/profile.d/*.bash; do
+    # shellcheck disable=SC1090
     [[ -r "$config_file" ]] && source "$config_file"
 done
 unset config_file

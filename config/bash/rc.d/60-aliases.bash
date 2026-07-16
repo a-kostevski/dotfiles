@@ -8,23 +8,24 @@ alias .....="cd ../../../.."
 
 alias dev="cd ~/dev"
 alias desk="cd ~/Desktop"
-alias dot="cd $DOTDIR"
+alias dot='cd "$DOTDIR"'
 alias proj="cd ~/dev/projects"
 alias life="cd ~/life"
 alias inbox="cd ~/life/0-inbox/"
 alias zets="cd ~/life/00-zettelkasten/"
-alias conf="cd $XDG_CONFIG_HOME"
-alias config="cd $XDG_CONFIG_HOME"
+alias conf='cd "$XDG_CONFIG_HOME"'
+alias config='cd "$XDG_CONFIG_HOME"'
 alias repos="cd ~/dev/repos"
 alias yrepo="cd ~/dev/repos/ymsen.com"
 alias yrepos="cd ~/dev/repos/ymsen.com"
 alias ghrepo="cd ~/dev/repos/github.com/a-kostevski"
-alias gorepo="cd $GOPATH"
-clconfig() { cd "$HOME/Library/Application Support/Claude/"; }
+alias gorepo='cd "$GOPATH"'
+clconfig() { cd "$HOME/Library/Application Support/Claude/" || return; }
 alias c="clear"
 alias clr="clear"
 
 # --- Network ---
+# shellcheck disable=SC2142  # \$2 etc. are awk fields, not shell positionals
 if is_macos; then
     alias getmac="ifconfig en0 | grep 'ether' | awk '{print \$2}'"
     alias localip4="ipconfig getifaddr en0"
@@ -48,10 +49,10 @@ alias urlencode="python3 -c 'import sys, urllib.parse as parse; print(parse.quot
 alias urldecode="python3 -c 'import sys, urllib.parse as parse; print(parse.unquote(sys.argv[1]));'"
 
 # --- Config editing ---
-alias dotconfig="cd $DOTDIR && $EDITOR ."
-alias zshconfig="cd $DOTDIR/config/zsh && $EDITOR ."
-alias bashconfig="cd $DOTDIR/config/bash && $EDITOR ."
-alias nvimconfig="cd $DOTDIR/config/nvim && $EDITOR ."
+alias dotconfig='cd "$DOTDIR" && $EDITOR .'
+alias zshconfig='cd "$DOTDIR/config/zsh" && $EDITOR .'
+alias bashconfig='cd "$DOTDIR/config/bash" && $EDITOR .'
+alias nvimconfig='cd "$DOTDIR/config/nvim" && $EDITOR .'
 
 # --- Macos bins ---
 if is_macos; then
@@ -67,7 +68,7 @@ command_exists bat && alias cat="bat"
 alias map="xargs -n1"
 alias vi="nvim"
 alias vim="nvim"
-command_exists zotify && alias zotify="zotify --config-location \"${XDG_CONFIG_HOME:-$HOME}/zotify/zconfig.json\""
+command_exists zotify && alias zotify='zotify --config-location "${XDG_CONFIG_HOME:-$HOME}/zotify/zconfig.json"'
 
 # --- ls ---
 if command_exists eza; then
@@ -144,7 +145,7 @@ fi
 
 # Homebrew-specific (available on both macOS and Linux if installed)
 if command_exists brew; then
-    alias brgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
+    alias brgraph='brew graph --installed --highlight-leaves | fdp -T png -o "${TMPDIR:-/tmp}/brewgraph.png" && open "${TMPDIR:-/tmp}/brewgraph.png"'
     alias brup="brew update && brew upgrade"
 fi
 

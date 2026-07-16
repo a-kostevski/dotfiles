@@ -46,7 +46,13 @@ dsr-fn() {
 }
 
 drmc-fn() {
-  docker rm $(docker ps --all -q -f status=exited)
+  local ids
+  ids=$(docker ps --all -q -f status=exited)
+  if [[ -n "$ids" ]]; then
+    echo "$ids" | xargs docker rm
+  else
+    echo "no exited containers."
+  fi
 }
 
 drmid-fn() {

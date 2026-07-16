@@ -117,9 +117,10 @@ cmd_sync() {
     exec "$DOTFILES_ROOT/bootstrap.sh" --sync --config "$config" "${args[@]}"
   fi
 
-  # When a profile is explicitly specified, use it
+  # When a profile is explicitly specified, use it.  Persistence is left to
+  # bootstrap, which saves only after a successful non-dry-run link — saving
+  # here would make `sync <profile> --dry-run` permanently switch the intent.
   if [[ -n "$profile" ]]; then
-    save_profile "$profile"
     dot_info "Syncing dotfiles configurations with $profile profile..."
     exec "$DOTFILES_ROOT/bootstrap.sh" --sync --profile "$profile" "${args[@]}"
   fi

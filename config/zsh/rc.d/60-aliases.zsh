@@ -142,7 +142,7 @@ fi
 
 # Homebrew-specific (available on both macOS and Linux if installed)
 if command_exists brew; then
-    alias brgraph="brew graph --installed --highlight-leaves | fdp -T png -o $TMPDIR/brewgraph.png && open $TMPDIR/brewgraph.png"
+    alias brgraph='brew graph --installed --highlight-leaves | fdp -T png -o "${TMPDIR:-/tmp}/brewgraph.png" && open "${TMPDIR:-/tmp}/brewgraph.png"'
     alias brup="brew update && brew upgrade"
 fi
 

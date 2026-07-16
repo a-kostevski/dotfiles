@@ -21,7 +21,8 @@ _resolve_link() {
 dotfiles_bin=$(command -v dotfiles 2>/dev/null)
 if [[ -n "$dotfiles_bin" ]]; then
     dotfiles_bin=$(_resolve_link "$dotfiles_bin")
-    export DOTDIR="$(cd "$(dirname "$dotfiles_bin")/.." && pwd -P)"
+    DOTDIR="$(cd "$(dirname "$dotfiles_bin")/.." && pwd -P)"
+    export DOTDIR
 else
     export DOTDIR="${DOTDIR:-$HOME/.dotfiles}"
 fi
@@ -75,7 +76,8 @@ export PYTHON_CONFIGURE_OPTS='--enable-optimizations --with-lto'
 export PYTHON_CFLAGS='-march=native -mtune=native'
 
 # Avoid issues with `gpg` as installed via Homebrew.
-export GPG_TTY=$(tty)
+GPG_TTY=$(tty)
+export GPG_TTY
 
 # Homebrew settings (only set if Homebrew is installed)
 if command_exists brew; then
